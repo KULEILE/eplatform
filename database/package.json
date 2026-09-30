@@ -1,0 +1,15 @@
+{
+  "name": "gov-services-database",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Migration runner + seed script for the Integrated Government Services prototype",
+  "scripts": {
+    "migrate": "node run-migrations.js",
+    "seed": "node seed/seed.js",
+    "reset": "npm run migrate && npm run seed"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "pg": "^8.23.0"
+  }
+}

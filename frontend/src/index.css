@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-scale: 1;
+}
+html[data-font-size='Small']       { --font-scale: 0.875; }
+html[data-font-size='Medium']      { --font-scale: 1; }
+html[data-font-size='Large']       { --font-scale: 1.15; }
+html[data-font-size='Extra Large'] { --font-scale: 1.35; }
+
+html {
+  font-size: calc(16px * var(--font-scale));
+}
+
+/* Display / brightness control — a browser cannot change the monitor's physical brightness,
+   so this adjusts the app's own rendered brightness within readable bounds (never below a
+   floor that would make text illegible). */
+html[data-brightness='Low']  body { filter: brightness(0.92); }
+html[data-brightness='High'] body { filter: brightness(1.08) contrast(1.02); }
+
+/* High contrast mode strengthens text/background contrast and border visibility app-wide. */
+html[data-contrast='High'] {
+  --gov-text: #000000;
+  --gov-bg: #ffffff;
+  --gov-border: #000000;
+}
+html[data-contrast='High'] .btn-primary { outline: 2px solid #000; }
+html[data-contrast='High'] .status-badge { border-width: 2px; font-weight: 700; }
+
+body {
+  @apply bg-slate-50 text-slate-900;
+}
+
+/* Strong, always-visible focus ring for keyboard navigation. */
+:focus-visible {
+  outline: 3px solid #0b5fff;
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 0;
+  background: #0b2545;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  z-index: 100;
+}
+.skip-link:focus {
+  left: 0.5rem;
+  top: 0.5rem;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-md bg-gov-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-gov-navyDark focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+}
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50;
+}
+.btn-danger {
+  @apply inline-flex items-center justify-center gap-2 rounded-md bg-gov-red px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50;
+}
+.form-input {
+  @apply block w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:border-gov-navy focus:ring-1 focus:ring-gov-navy;
+}
+.form-label {
+  @apply mb-1.5 block text-sm font-medium text-slate-700;
+}
+.card {
+  @apply rounded-xl border border-slate-200 bg-white p-5 shadow-card;
+}
+.card-link {
+  @apply rounded-xl border border-slate-200 bg-white p-5 shadow-card transition duration-150 hover:-translate-y-0.5 hover:shadow-card-hover focus-visible:-translate-y-0.5;
+}
+.eyebrow {
+  @apply text-xs font-semibold uppercase tracking-wide text-slate-500;
+}
+.section-title {
+  @apply text-xl font-bold text-slate-900 sm:text-2xl;
+}
