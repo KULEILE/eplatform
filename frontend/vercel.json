@@ -1,4 +1,5 @@
 {
+  "installCommand": "npm install && chmod +x node_modules/.bin/*",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "https://eplatform-lbnc.onrender.com/api/$1" },
     { "source": "/uploads/(.*)", "destination": "https://eplatform-lbnc.onrender.com/uploads/$1" },
