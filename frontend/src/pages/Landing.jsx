@@ -58,7 +58,7 @@ export default function Landing() {
               aria-label={t('common.searchPlaceholder')}
               className="w-full min-w-0 border-0 bg-transparent px-1 py-2 text-sm text-slate-800 focus:outline-none focus:ring-0"
             />
-            <button type="submit" className="btn-primary rounded-full !px-5">{t('common.search')}</button>
+            <button type="submit" className="btn-primary rounded-full px-5">{t('common.search')}</button>
           </form>
 
           <div className="mt-8 flex flex-wrap justify-center gap-3">

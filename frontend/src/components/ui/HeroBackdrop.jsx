@@ -15,7 +15,7 @@ import React from 'react';
 export function HeroBackdrop({ className = '' }) {
   return (
     <div className={`${className} overflow-hidden`} aria-hidden="true">
-      <img src="/images/hero-background.jpeg" alt="" className="h-full w-full object-cover" />
+      <img src="/images/hero-background.jpg" alt="" className="h-full w-full object-cover" />
       {/* Dark overlay so the white hero title/search box/buttons stay readable over any photo. */}
       <div className="absolute inset-0 bg-gov-navy/70" />
     </div>
@@ -27,8 +27,14 @@ export function HeroBackdrop({ className = '' }) {
  * plain pole) — the flag itself is the same real image used everywhere else, see LesothoFlag.jsx.
  */
 export function FlagOnPole({ className = 'h-28 w-20 sm:h-32 sm:w-24' }) {
+  // Note: deliberately NOT prefixing a hardcoded "relative" here. The caller always passes
+  // "absolute ..." in className, and position:absolute on its own already gives this element's
+  // children a valid positioning anchor. Adding a redundant "relative" class would conflict with
+  // the caller's "absolute" (same CSS property, and Tailwind's compiled stylesheet orders
+  // .relative after .absolute, so .relative would silently win) and knock this out of its
+  // intended bottom-right position.
   return (
-    <div className={`relative ${className}`} aria-hidden="true">
+    <div className={className} aria-hidden="true">
       {/* pole */}
       <div className="absolute left-[10%] top-0 h-full w-[4%] rounded-full bg-slate-300/85" />
       {/* finial */}
