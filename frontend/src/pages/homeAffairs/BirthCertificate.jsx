@@ -12,9 +12,9 @@ import { formatDateOnly } from '../../utils/format';
  * Certificate layout follows the numbered-field structure of the real Kingdom of Lesotho birth
  * certificate (Entry No., child's particulars, then father/mother/informant, then date of
  * registration) so the generated document reads like the real thing in structure and
- * terminology. It is still clearly marked as a demo — this is a prototype, not a legal document
- * — and the roundel below is a simplified, stylised graphic rather than a reproduction of the
- * national coat of arms (see LesothoFlag.jsx for the same convention used elsewhere).
+ * terminology. It is still clearly marked as a demo — this is a prototype, not a legal document.
+ * The flag at the top uses the same downloaded image as LesothoFlag.jsx (see that file for the
+ * expected path).
  */
 export default function BirthCertificate() {
   const { id } = useParams();
@@ -90,13 +90,11 @@ export default function BirthCertificate() {
         </div>
 
         <div className="relative flex flex-col items-center border-b border-slate-200 pb-4 text-center">
-          <svg viewBox="0 0 30 20" className="h-10 w-16" role="img" aria-label={t('homeAffairs.birthCertificateView.emblemAlt')}>
-            <rect width="30" height="20" rx="2" fill="#ffffff" stroke="#00209f" strokeWidth="0.6" />
-            <rect width="30" height="5.5" fill="#00209f" />
-            <rect y="14.5" width="30" height="5.5" fill="#009543" />
-            <path d="M15 7.2 L18.2 12.6 H11.8 Z" fill="#1a1a1a" />
-            <rect x="14.3" y="6.2" width="1.4" height="1.4" fill="#1a1a1a" />
-          </svg>
+          <img
+            src="/images/lesotho-flag.png"
+            alt={t('homeAffairs.birthCertificateView.emblemAlt')}
+            className="h-10 w-16 rounded-sm border border-gov-navy/30 object-cover"
+          />
           <p className="mt-2 text-xs uppercase tracking-widest text-slate-500">{t('homeAffairs.birthCertificateView.kingdomOfLesotho')}</p>
           <p className="text-xs uppercase tracking-widest text-slate-500">{t('homeAffairs.birthCertificateView.ministry')}</p>
           <h2 className="mt-2 text-xl font-bold uppercase tracking-wide text-slate-900">{t('homeAffairs.birthCertificateView.certificateTitle')}</h2>

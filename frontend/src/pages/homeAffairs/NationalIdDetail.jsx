@@ -30,8 +30,8 @@ const NATIONALITY_LABEL = {
  * Card layout follows the real Lesotho National Identity Card's field set and card-shaped
  * presentation (ID number, surname/first name, nationality, sex, date of birth, place/date of
  * issue and expiry, photo + signature panels) rather than the previous plain key-value list.
- * Kept clearly marked as a demo, with a simplified flag-style header instead of a reproduction
- * of the national emblem (same convention as LesothoFlag.jsx and the birth certificate view).
+ * Kept clearly marked as a demo. The flag in the card header uses the same downloaded image as
+ * LesothoFlag.jsx (see that file for the expected path).
  */
 export default function NationalIdDetail() {
   const { id } = useParams();
@@ -86,13 +86,11 @@ export default function NationalIdDetail() {
           <span className="rotate-[-20deg] select-none whitespace-nowrap text-4xl font-black uppercase tracking-widest text-slate-100">DEMO</span>
         </div>
         <div className="flex items-center gap-2 bg-gov-navy px-4 py-2 text-white">
-          <svg viewBox="0 0 30 20" className="h-5 w-8 shrink-0" role="img" aria-label={t('homeAffairs.birthCertificateView.emblemAlt')}>
-            <rect width="30" height="20" fill="#ffffff" />
-            <rect width="30" height="5.5" fill="#00209f" />
-            <rect y="14.5" width="30" height="5.5" fill="#009543" />
-            <path d="M15 7.2 L18.2 12.6 H11.8 Z" fill="#1a1a1a" />
-            <rect x="14.3" y="6.2" width="1.4" height="1.4" fill="#1a1a1a" />
-          </svg>
+          <img
+            src="/images/lesotho-flag.png"
+            alt={t('homeAffairs.birthCertificateView.emblemAlt')}
+            className="h-5 w-8 shrink-0 rounded-sm object-cover"
+          />
           <div className="leading-tight">
             <p className="text-[10px] uppercase tracking-widest text-slate-200">{t('homeAffairs.birthCertificateView.kingdomOfLesotho')}</p>
             <p className="text-xs font-bold uppercase tracking-wide">{t('homeAffairs.nationalIdCardView.cardTitle')}</p>
