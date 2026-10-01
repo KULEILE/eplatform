@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   BellIcon, ChevronDownIcon, UserCircleIcon, AdjustmentsHorizontalIcon,
@@ -44,10 +44,37 @@ export default function Header() {
   const [unread, setUnread] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [a11yOpen, setA11yOpen] = useState(false);
+  const [a11yPanelStyle, setA11yPanelStyle] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
   const menuRef = useClickOutside(() => setMenuOpen(false));
   const a11yRef = useClickOutside(() => setA11yOpen(false));
+  const a11yBtnRef = useRef(null);
+
+  // The panel is anchored to the button with plain CSS (`absolute right-0`), which assumes
+  // the button always sits near the right edge of its own row. When the header wraps (narrower
+  // windows, long nav labels, zoom) the button can end up near the LEFT edge instead, and a
+  // fixed-width right-anchored panel then overflows off-screen to the left, clipping its content.
+  // Fix: once open, measure the button's actual on-screen position and clamp the panel so it
+  // always stays fully inside the viewport, regardless of where the button lands.
+  useLayoutEffect(() => {
+    if (!a11yOpen || !a11yBtnRef.current) { setA11yPanelStyle(null); return; }
+    const panelWidth = 256; // matches the panel's w-64
+    const margin = 12;
+    const updatePosition = () => {
+      const rect = a11yBtnRef.current.getBoundingClientRect();
+      const maxLeft = window.innerWidth - panelWidth - margin;
+      const left = Math.max(margin, Math.min(rect.right - panelWidth, maxLeft));
+      setA11yPanelStyle({ position: 'fixed', top: rect.bottom + 8, left });
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [a11yOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,6 +156,7 @@ export default function Header() {
             {/* Accessibility dropdown */}
             <div className="relative" ref={a11yRef}>
               <button
+                ref={a11yBtnRef}
                 type="button"
                 onClick={() => setA11yOpen((o) => !o)}
                 aria-expanded={a11yOpen}
@@ -138,8 +166,8 @@ export default function Header() {
                 <span className="hidden sm:inline">{t('accessibility.title')}</span>
                 <ChevronDownIcon className="h-3.5 w-3.5" />
               </button>
-              {a11yOpen && (
-                <div className="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-slate-200 bg-white p-3 text-slate-800 shadow-lg">
+              {a11yOpen && a11yPanelStyle && (
+                <div style={a11yPanelStyle} className="z-20 w-64 rounded-lg border border-slate-200 bg-white p-3 text-slate-800 shadow-lg">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('accessibility.textSize')}</p>
                   <div className="mb-3 flex items-center overflow-hidden rounded-md border border-slate-300">
                     <button type="button" onClick={() => fontStep(-1)} aria-label="Decrease text size" className="flex-1 px-2 py-1.5 text-sm font-bold hover:bg-slate-50">A−</button>
