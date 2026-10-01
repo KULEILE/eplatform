@@ -35,7 +35,7 @@ export default function Landing() {
       {/* Hero */}
       <section className="relative overflow-hidden rounded-2xl bg-hero-gradient text-white shadow-header">
         <HeroBackdrop className="pointer-events-none absolute inset-0 h-full w-full" />
-        <FlagOnPole className="pointer-events-none absolute bottom-0 right-8 h-40 w-28 sm:right-16 sm:h-48 sm:w-32" />
+        
         <div className="relative z-10 mx-auto max-w-3xl px-6 py-14 text-center sm:px-10">
           <div className="mb-4 flex items-center justify-center gap-2">
             <LesothoFlag className="h-4 w-7 rounded-sm ring-1 ring-white/30" />

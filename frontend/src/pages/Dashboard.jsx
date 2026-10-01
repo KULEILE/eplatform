@@ -106,7 +106,7 @@ export default function Dashboard() {
     <div>
       <section className="relative overflow-hidden rounded-2xl bg-hero-gradient text-white shadow-header">
         <HeroBackdrop className="pointer-events-none absolute inset-0 h-full w-full" />
-        <FlagOnPole className="pointer-events-none absolute bottom-0 right-6 h-24 w-16 sm:right-10 sm:h-28 sm:w-20" />
+        
         <div className="relative z-10 px-6 py-10 sm:px-10">
           <p className="eyebrow text-white/70">{t('dashboard.welcomeBack')}</p>
           <h1 className="mt-1 text-2xl font-bold drop-shadow-sm sm:text-3xl">{user.email.split('@')[0]}</h1>

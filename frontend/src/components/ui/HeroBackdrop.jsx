@@ -15,7 +15,7 @@ import React from 'react';
 export function HeroBackdrop({ className = '' }) {
   return (
     <div className={`${className} overflow-hidden`} aria-hidden="true">
-      <img src="/images/hero-background.jpg" alt="" className="h-full w-full object-cover" />
+      <img src="/images/hero-background.jpeg" alt="" className="h-full w-full object-cover" />
       {/* Dark overlay so the white hero title/search box/buttons stay readable over any photo. */}
       <div className="absolute inset-0 bg-gov-navy/70" />
     </div>
