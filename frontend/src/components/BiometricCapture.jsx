@@ -9,9 +9,15 @@ const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
  * Replaces the old static "will be enrolled automatically during card production" notice on the
  * National ID application form with a real capture step. This prototype has no fingerprint
  * scanner to integrate with, so — the same simplification PhotoCapture.jsx already makes for
- * photo_reference — biometric enrolment is captured as an uploaded image, posted to
- * POST /api/uploads/biometric, and the returned reference is what the form submits as
- * biometricReference. See database/migrations/034_add_biometric_reference.sql.
+ * photo_reference — a biometric scan is captured as an uploaded image, posted to
+ * POST /api/uploads/biometric, and the returned reference is what the form submits.
+ * See database/migrations/034_add_biometric_reference.sql and 036 (which splits one generic
+ * capture into a left-hand and a right-hand scan — a real enrolment takes both, not one).
+ *
+ * Rendered twice by NationalIdApply.jsx (once per hand) with a `label`/`help` override each
+ * time, so this component itself stays hand-agnostic — it just captures and uploads one image.
+ * Uses the rear ("environment") camera by default rather than the front/selfie camera, since a
+ * citizen scanning their own hand needs to point the device at their hand, not at their face.
  *
  * Controlled component: value = biometricReference (string|null), onChange(biometricReference|null).
  */
@@ -82,7 +88,7 @@ export default function BiometricCapture({ value, onChange, label, help }) {
             ref={inputRef}
             type="file"
             accept="image/png,image/jpeg,image/webp"
-            capture="user"
+            capture="environment"
             onChange={onFileSelected}
             className="mx-auto block text-sm text-slate-600"
           />

@@ -13,7 +13,10 @@ export default function NationalIdApply() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [photoReference, setPhotoReference] = useState(null);
-  const [biometricReference, setBiometricReference] = useState(null);
+  // A real National ID enrolment scans both hands, not one generic "biometric" capture — see
+  // database/migrations/036_add_biometric_left_right.sql.
+  const [leftHandBiometricReference, setLeftHandBiometricReference] = useState(null);
+  const [rightHandBiometricReference, setRightHandBiometricReference] = useState(null);
   const [preferredOfficeId, setPreferredOfficeId] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -24,10 +27,12 @@ export default function NationalIdApply() {
     e.preventDefault();
     setError('');
     if (!preferredOfficeId) { setError(t('offices.chooseBranchRequired')); return; }
-    if (!biometricReference) { setError(t('biometricCapture.required')); return; }
+    if (!leftHandBiometricReference || !rightHandBiometricReference) { setError(t('biometricCapture.required')); return; }
     setBusy(true);
     try {
-      const result = await api.post('/home-affairs/national-id/apply', { photoReference, biometricReference, preferredOfficeId });
+      const result = await api.post('/home-affairs/national-id/apply', {
+        photoReference, leftHandBiometricReference, rightHandBiometricReference, preferredOfficeId,
+      });
       navigate(`/home-affairs/national-id/${result.nationalIdCardId}`);
     } catch (err) {
       setError(err.message || t('common.somethingWentWrong'));
@@ -66,9 +71,25 @@ export default function NationalIdApply() {
             label={t('homeAffairs.nationalIdForm.photoCapture')}
             help={t('photoCapture.idHelp')}
           />
-          <BiometricCapture value={biometricReference} onChange={setBiometricReference} />
+          <p className="mb-2 text-sm font-medium text-slate-700">{t('homeAffairs.nationalIdForm.biometricCapture')}</p>
+          <BiometricCapture
+            value={leftHandBiometricReference}
+            onChange={setLeftHandBiometricReference}
+            label={t('biometricCapture.leftHandLabel')}
+            help={t('biometricCapture.scanHint')}
+          />
+          <BiometricCapture
+            value={rightHandBiometricReference}
+            onChange={setRightHandBiometricReference}
+            label={t('biometricCapture.rightHandLabel')}
+            help={t('biometricCapture.scanHint')}
+          />
           <DistrictOfficeSelect departmentKey="home_affairs" value={preferredOfficeId} onChange={setPreferredOfficeId} />
-          <button type="submit" disabled={busy || !photoReference || !biometricReference} className="btn-primary w-full">
+          <button
+            type="submit"
+            disabled={busy || !photoReference || !leftHandBiometricReference || !rightHandBiometricReference}
+            className="btn-primary w-full"
+          >
             {busy ? t('common.loading') : t('homeAffairs.nationalIdForm.submit')}
           </button>
         </form>

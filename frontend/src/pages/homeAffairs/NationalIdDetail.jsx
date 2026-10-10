@@ -169,10 +169,21 @@ export default function NationalIdDetail() {
             <dt className="text-xs text-slate-500">Biometric status</dt>
             <dd className="flex items-center gap-2">
               <StatusBadge status={record.biometric_status} kind={record.biometric_status === 'Enrolled' ? 'positive' : 'neutral'} />
-              {record.biometric_reference && (
+              {/* A real enrolment scans both hands — see migration 036 — so this shows both
+                  thumbnails rather than the single generic capture it used to. */}
+              {record.biometric_reference_left && (
                 <img
-                  src={`/uploads/${record.biometric_reference}`}
-                  alt={t('biometricCapture.previewAlt')}
+                  src={`/uploads/${record.biometric_reference_left}`}
+                  alt={t('biometricCapture.leftHandLabel')}
+                  title={t('biometricCapture.leftHandLabel')}
+                  className="h-8 w-8 rounded border border-slate-200 object-cover"
+                />
+              )}
+              {record.biometric_reference_right && (
+                <img
+                  src={`/uploads/${record.biometric_reference_right}`}
+                  alt={t('biometricCapture.rightHandLabel')}
+                  title={t('biometricCapture.rightHandLabel')}
                   className="h-8 w-8 rounded border border-slate-200 object-cover"
                 />
               )}

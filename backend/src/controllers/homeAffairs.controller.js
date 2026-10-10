@@ -421,23 +421,26 @@ async function applyNationalId(req, res, next) {
     );
     if (existing.length > 0) return res.status(409).json({ error: 'You already have a National ID card application in progress.' });
 
-    const { photoReference, biometricReference, preferredOfficeId } = req.body; // photoReference/biometricReference: capture references from the frontend
+    // photoReference: capture reference from the frontend. A real National ID enrolment scans
+    // both hands, not one generic "biometric" capture — see migration 036 — so this now requires
+    // a reference for each hand separately rather than a single biometricReference.
+    const { photoReference, leftHandBiometricReference, rightHandBiometricReference, preferredOfficeId } = req.body;
     if (!preferredOfficeId) {
       return res.status(400).json({ error: 'preferredOfficeId is required — choose the branch where you will collect the card.' });
     }
-    if (!biometricReference) {
-      return res.status(400).json({ error: 'Biometric capture is required to apply for a National ID card.' });
+    if (!leftHandBiometricReference || !rightHandBiometricReference) {
+      return res.status(400).json({ error: 'A biometric scan of both the left and right hand is required to apply for a National ID card.' });
     }
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
       const { rows } = await client.query(
-        // biometric_status is set to 'Enrolled' here, at the same moment the reference is actually
-        // captured — not later as a side effect of a status transition (see 034's comment and
-        // transitionNationalId below, which no longer touches this column at all).
-        `INSERT INTO national_id_cards (citizen_id, permanent_identity_number, application_date, production_status, photo_reference, biometric_reference, biometric_status, preferred_office_id, collection_office_id)
-         VALUES ($1,$2, CURRENT_DATE, 'Application Submitted', $3, $4, 'Enrolled', $5, $5) RETURNING national_id_card_id`,
-        [req.user.citizenId, citizen.permanent_identity_number, photoReference || null, biometricReference, preferredOfficeId]
+        // biometric_status is set to 'Enrolled' here, at the same moment both hand references are
+        // actually captured — not later as a side effect of a status transition (see 034's comment
+        // and transitionNationalId below, which no longer touches this column at all).
+        `INSERT INTO national_id_cards (citizen_id, permanent_identity_number, application_date, production_status, photo_reference, biometric_reference_left, biometric_reference_right, biometric_status, preferred_office_id, collection_office_id)
+         VALUES ($1,$2, CURRENT_DATE, 'Application Submitted', $3, $4, $5, 'Enrolled', $6, $6) RETURNING national_id_card_id`,
+        [req.user.citizenId, citizen.permanent_identity_number, photoReference || null, leftHandBiometricReference, rightHandBiometricReference, preferredOfficeId]
       );
       const nationalIdCardId = rows[0].national_id_card_id;
       const referenceNumber = generateReference('NIDA');
