@@ -94,6 +94,12 @@ export default function BirthCertificate() {
 
   const v = (value) => value || t('homeAffairs.birthCertificateView.notRecorded');
   const fields = [
+    // Field 1 on the real Kingdom of Lesotho birth certificate is the holder's ID number, shown
+    // before the name — matches citizens.permanent_identity_number, generated once at the
+    // birth registration's approval step (see approveBirthRegistration). Previously this value
+    // was left out of the numbered certificate fields entirely and only shown in the separate
+    // "system reference" box below; moved here to match the real document's layout.
+    [t('homeAffairs.birthCertificateView.field.idNumber'), v(cert.permanent_identity_number)],
     [t('homeAffairs.birthCertificateView.field.name'), `${cert.first_name} ${cert.middle_name || ''}`.trim()],
     [t('homeAffairs.birthCertificateView.field.surname'), cert.last_name],
     [t('homeAffairs.birthCertificateView.field.sex'), cert.sex],
@@ -164,13 +170,12 @@ export default function BirthCertificate() {
         </div>
       </div>
 
-      {/* System reference (not part of the certificate's official fields, but useful to the
-          citizen/officer in this system: links the certificate to the permanent identity number
-          used everywhere else, and to the parent account that applied). */}
+      {/* System reference (not part of the certificate's official fields) — the permanent ID now
+          appears as Field 1 on the certificate itself (see `fields` above), matching the real
+          document's layout, so this box only needs the linked parent/guardian account. */}
       <div className="card mt-4">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthCertificateView.systemReference')}</p>
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthCertificateView.permanentId')}</dt><dd className="font-mono font-medium">{cert.permanent_identity_number}</dd></div>
           <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthCertificateView.parent')}</dt><dd className="font-medium">{cert.parent_first_name} {cert.parent_last_name}</dd></div>
         </dl>
       </div>

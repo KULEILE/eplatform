@@ -342,6 +342,7 @@
       "systemReference": "System reference (not part of the printed certificate)",
       "field": {
         "entryNo": "Entry No.",
+        "idNumber": "ID number",
         "name": "Name(s)",
         "surname": "Surname",
         "sex": "Sex",
