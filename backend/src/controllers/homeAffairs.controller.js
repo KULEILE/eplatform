@@ -125,9 +125,13 @@ async function getBirthRegistration(req, res, next) {
   }
 }
 
-async function transitionBirthRegistration(req, res, next, { from, to, sideEffect }) {
+// allowOwner: when true, the citizen who owns the record may also call this transition (in
+// addition to officers) — used by resubmit, below. Every other transition in this file leaves
+// it false, so officer-only behaviour is unchanged everywhere except resubmit.
+async function transitionBirthRegistration(req, res, next, { from, to, sideEffect, allowOwner = false }) {
   try {
-    if (req.user.roleKey !== 'home_affairs_officer' && req.user.roleKey !== 'system_administrator') {
+    const isOfficer = req.user.roleKey === 'home_affairs_officer' || req.user.roleKey === 'system_administrator';
+    if (!isOfficer && !allowOwner) {
       return res.status(403).json({ error: 'Only Home Affairs officers can perform this action.' });
     }
     const client = await db.getClient();
@@ -136,6 +140,10 @@ async function transitionBirthRegistration(req, res, next, { from, to, sideEffec
       const { rows } = await client.query('SELECT * FROM birth_records WHERE birth_record_id = $1 FOR UPDATE', [req.params.id]);
       if (rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Birth registration not found.' }); }
       const record = rows[0];
+      if (!isOfficer && record.parent_citizen_id !== req.user.citizenId) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'Not your application.' });
+      }
       if (Array.isArray(from) ? !from.includes(record.registration_status) : record.registration_status !== from) {
         await client.query('ROLLBACK');
         return res.status(409).json({ error: `Cannot move from '${record.registration_status}' to '${to}'.` });
@@ -184,13 +192,32 @@ function requestInformationBirthRegistration(req, res, next) {
   });
 }
 
-/** POST /:id/resubmit — parent resubmits after Information Required -> Under Review */
+/** POST /:id/resubmit (citizen, owner only) — Feature 4: lets the citizen correct and resubmit
+ *  after either Information Required OR Rejected, instead of starting a brand-new application.
+ *  Unlike the old version (which only flipped the status back with no way to actually fix
+ *  anything), this accepts the same fields createBirthRegistration does and saves the edits. */
 function resubmitBirthRegistration(req, res, next) {
+  const {
+    childFirstName, childMiddleName, childLastName, dateOfBirth, placeOfBirth, sex,
+    fatherName, fatherNationality, motherName, motherMaidenSurname, motherNationality, motherResidence,
+    informantName, informantCapacity, informantResidence,
+  } = req.body;
   return transitionBirthRegistration(req, res, next, {
-    from: 'Information Required', to: 'Under Review',
+    from: ['Information Required', 'Rejected'], to: 'Under Review', allowOwner: true,
     sideEffect: async (client, record) => {
-      if (record.parent_citizen_id !== req.user.citizenId) throw Object.assign(new Error('Not your application.'), { status: 403 });
-      await client.query(`UPDATE birth_records SET registration_status = 'Under Review', updated_at = NOW() WHERE birth_record_id = $1`, [record.birth_record_id]);
+      if (!childFirstName || !childLastName || !dateOfBirth || !placeOfBirth || !sex) {
+        throw Object.assign(new Error('childFirstName, childLastName, dateOfBirth, placeOfBirth and sex are required.'), { status: 400 });
+      }
+      await client.query(
+        `UPDATE birth_records SET registration_status = 'Under Review', rejection_reason = NULL,
+            child_first_name = $1, child_middle_name = $2, child_last_name = $3, date_of_birth = $4, place_of_birth = $5, sex = $6,
+            father_name = $7, father_nationality = $8, mother_name = $9, mother_maiden_surname = $10, mother_nationality = $11,
+            mother_residence = $12, informant_name = $13, informant_capacity = $14, informant_residence = $15, updated_at = NOW()
+         WHERE birth_record_id = $16`,
+        [childFirstName, childMiddleName || null, childLastName, dateOfBirth, placeOfBirth, sex,
+         fatherName || null, fatherNationality || 'Mosotho', motherName || null, motherMaidenSurname || null, motherNationality || 'Mosotho',
+         motherResidence || null, informantName || null, informantCapacity || null, informantResidence || null, record.birth_record_id]
+      );
       await syncApplicationStatus(client, { sourceTable: 'birth_records', sourceId: record.birth_record_id, status: 'Under Review' });
       return { status: 'Under Review' };
     },
@@ -361,10 +388,14 @@ async function markCertificateReadyForCollection(req, res, next) {
 async function collectBirthCertificate(req, res, next) {
   try {
     if (!['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
+    // Collection (Feature 3): the citizen signs on a pad at the counter before the officer can
+    // mark the certificate collected — see database/migrations/035_add_signature_reference.sql.
+    const { signatureReference } = req.body;
+    if (!signatureReference) return res.status(400).json({ error: 'The citizen\'s signature is required before the certificate can be marked collected.' });
     const { rows } = await db.query(
-      `UPDATE birth_certificates SET status = 'Collected', collected_at = NOW(), updated_at = NOW()
+      `UPDATE birth_certificates SET status = 'Collected', collected_at = NOW(), signature_reference = $2, updated_at = NOW()
        WHERE birth_certificate_id = $1 AND status = 'Ready for Collection' RETURNING *`,
-      [req.params.id]
+      [req.params.id, signatureReference]
     );
     if (rows.length === 0) return res.status(409).json({ error: 'Certificate must be Ready for Collection before it can be marked Collected.' });
     await recordAudit({ userId: req.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'BIRTH_CERTIFICATE_COLLECTED', targetType: 'birth_certificate', targetId: Number(req.params.id) });
@@ -390,17 +421,23 @@ async function applyNationalId(req, res, next) {
     );
     if (existing.length > 0) return res.status(409).json({ error: 'You already have a National ID card application in progress.' });
 
-    const { photoReference, preferredOfficeId } = req.body; // photoReference: simulated capture reference from the frontend
+    const { photoReference, biometricReference, preferredOfficeId } = req.body; // photoReference/biometricReference: capture references from the frontend
     if (!preferredOfficeId) {
       return res.status(400).json({ error: 'preferredOfficeId is required — choose the branch where you will collect the card.' });
+    }
+    if (!biometricReference) {
+      return res.status(400).json({ error: 'Biometric capture is required to apply for a National ID card.' });
     }
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
       const { rows } = await client.query(
-        `INSERT INTO national_id_cards (citizen_id, permanent_identity_number, application_date, production_status, photo_reference, preferred_office_id, collection_office_id)
-         VALUES ($1,$2, CURRENT_DATE, 'Application Submitted', $3, $4, $4) RETURNING national_id_card_id`,
-        [req.user.citizenId, citizen.permanent_identity_number, photoReference || null, preferredOfficeId]
+        // biometric_status is set to 'Enrolled' here, at the same moment the reference is actually
+        // captured — not later as a side effect of a status transition (see 034's comment and
+        // transitionNationalId below, which no longer touches this column at all).
+        `INSERT INTO national_id_cards (citizen_id, permanent_identity_number, application_date, production_status, photo_reference, biometric_reference, biometric_status, preferred_office_id, collection_office_id)
+         VALUES ($1,$2, CURRENT_DATE, 'Application Submitted', $3, $4, 'Enrolled', $5, $5) RETURNING national_id_card_id`,
+        [req.user.citizenId, citizen.permanent_identity_number, photoReference || null, biometricReference, preferredOfficeId]
       );
       const nationalIdCardId = rows[0].national_id_card_id;
       const referenceNumber = generateReference('NIDA');
@@ -486,6 +523,11 @@ async function transitionNationalId(req, res, next) {
     const action = req.params.action;
     const transition = NID_TRANSITIONS[action];
     if (!transition) return res.status(400).json({ error: `Unknown action: ${action}` });
+    // Collection (Feature 3): the citizen signs on a pad at the counter before the officer can
+    // mark the card collected — see database/migrations/035_add_signature_reference.sql.
+    if (transition.to === 'Collected' && !req.body.signatureReference) {
+      return res.status(400).json({ error: 'The citizen\'s signature is required before the card can be marked collected.' });
+    }
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
@@ -510,10 +552,10 @@ async function transitionNationalId(req, res, next) {
             collection_office_id = CASE WHEN $1::varchar = 'Ready for Collection' THEN $3 ELSE collection_office_id END,
             ready_for_collection_at = CASE WHEN $1::varchar = 'Ready for Collection' THEN NOW() ELSE ready_for_collection_at END,
             collected_at = CASE WHEN $1::varchar = 'Collected' THEN NOW() ELSE collected_at END,
-            biometric_status = CASE WHEN $1::varchar = 'Card Production' THEN 'Enrolled' ELSE biometric_status END,
+            signature_reference = CASE WHEN $1::varchar = 'Collected' THEN $5 ELSE signature_reference END,
             updated_at = NOW()
          WHERE national_id_card_id = $4`,
-        [transition.to, cardNumber, officeId, record.national_id_card_id]
+        [transition.to, cardNumber, officeId, record.national_id_card_id, req.body.signatureReference || null]
       );
       await syncApplicationStatus(client, { sourceTable: 'national_id_cards', sourceId: record.national_id_card_id, status: transition.to, completed: transition.to === 'Collected' });
       await client.query('COMMIT');
@@ -822,9 +864,10 @@ async function getMarriageRegistration(req, res, next) {
   } catch (err) { next(err); }
 }
 
-async function transitionMarriage(req, res, next, { from, to, sideEffect }) {
+async function transitionMarriage(req, res, next, { from, to, sideEffect, allowOwner = false }) {
   try {
-    if (req.user.roleKey !== 'home_affairs_officer' && req.user.roleKey !== 'system_administrator') {
+    const isOfficer = req.user.roleKey === 'home_affairs_officer' || req.user.roleKey === 'system_administrator';
+    if (!isOfficer && !allowOwner) {
       return res.status(403).json({ error: 'Only Home Affairs officers can perform this action.' });
     }
     const client = await db.getClient();
@@ -833,6 +876,10 @@ async function transitionMarriage(req, res, next, { from, to, sideEffect }) {
       const { rows } = await client.query('SELECT * FROM marriage_records WHERE marriage_record_id = $1 FOR UPDATE', [req.params.id]);
       if (rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Marriage registration not found.' }); }
       const record = rows[0];
+      if (!isOfficer && record.filer_citizen_id !== req.user.citizenId) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'Not your application.' });
+      }
       if (Array.isArray(from) ? !from.includes(record.status) : record.status !== from) {
         await client.query('ROLLBACK');
         return res.status(409).json({ error: `Cannot move from '${record.status}' to '${to}'.` });
@@ -874,12 +921,28 @@ function requestInformationMarriage(req, res, next) {
   });
 }
 
+/** POST /:id/resubmit (citizen, owner only) — Feature 4: lets the filer correct and resubmit
+ *  after either Additional Information Required OR Rejected, instead of starting over. */
 function resubmitMarriage(req, res, next) {
+  const {
+    spouse2Name, spouse2DateOfBirth, spouse2Nationality, spouse2PermanentIdentityNumber,
+    marriageType, marriageDate, placeOfMarriage, witness1Name, witness2Name, officiantName,
+  } = req.body;
   return transitionMarriage(req, res, next, {
-    from: 'Additional Information Required', to: 'Under Review',
+    from: ['Additional Information Required', 'Rejected'], to: 'Under Review', allowOwner: true,
     sideEffect: async (client, record) => {
-      if (record.filer_citizen_id !== req.user.citizenId) throw Object.assign(new Error('Not your application.'), { status: 403 });
-      await client.query(`UPDATE marriage_records SET status = 'Under Review', updated_at = NOW() WHERE marriage_record_id = $1`, [record.marriage_record_id]);
+      if (!spouse2Name || !marriageType || !marriageDate || !placeOfMarriage || !witness1Name || !witness2Name) {
+        throw Object.assign(new Error('spouse2Name, marriageType, marriageDate, placeOfMarriage, witness1Name and witness2Name are required.'), { status: 400 });
+      }
+      await client.query(
+        `UPDATE marriage_records SET status = 'Under Review', rejection_reason = NULL,
+            spouse2_name = $1, spouse2_date_of_birth = $2, spouse2_nationality = $3, spouse2_permanent_identity_number = $4,
+            marriage_type = $5, marriage_date = $6, place_of_marriage = $7, witness1_name = $8, witness2_name = $9,
+            officiant_name = $10, updated_at = NOW()
+         WHERE marriage_record_id = $11`,
+        [spouse2Name, spouse2DateOfBirth || null, spouse2Nationality || 'Mosotho', spouse2PermanentIdentityNumber || null,
+         marriageType, marriageDate, placeOfMarriage, witness1Name, witness2Name, officiantName || null, record.marriage_record_id]
+      );
       await syncApplicationStatus(client, { sourceTable: 'marriage_records', sourceId: record.marriage_record_id, status: 'Under Review' });
       return { status: 'Under Review' };
     },
@@ -1052,9 +1115,10 @@ async function getDivorceRegistration(req, res, next) {
   } catch (err) { next(err); }
 }
 
-async function transitionDivorce(req, res, next, { from, to, sideEffect }) {
+async function transitionDivorce(req, res, next, { from, to, sideEffect, allowOwner = false }) {
   try {
-    if (req.user.roleKey !== 'home_affairs_officer' && req.user.roleKey !== 'system_administrator') {
+    const isOfficer = req.user.roleKey === 'home_affairs_officer' || req.user.roleKey === 'system_administrator';
+    if (!isOfficer && !allowOwner) {
       return res.status(403).json({ error: 'Only Home Affairs officers can perform this action.' });
     }
     const client = await db.getClient();
@@ -1063,6 +1127,10 @@ async function transitionDivorce(req, res, next, { from, to, sideEffect }) {
       const { rows } = await client.query('SELECT * FROM divorce_records WHERE divorce_record_id = $1 FOR UPDATE', [req.params.id]);
       if (rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Divorce registration not found.' }); }
       const record = rows[0];
+      if (!isOfficer && record.filer_citizen_id !== req.user.citizenId) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'Not your application.' });
+      }
       if (Array.isArray(from) ? !from.includes(record.status) : record.status !== from) {
         await client.query('ROLLBACK');
         return res.status(409).json({ error: `Cannot move from '${record.status}' to '${to}'.` });
@@ -1104,12 +1172,23 @@ function requestInformationDivorce(req, res, next) {
   });
 }
 
+/** POST /:id/resubmit (citizen, owner only) — Feature 4: lets the filer correct and resubmit
+ *  after either Additional Information Required OR Rejected, instead of starting over. */
 function resubmitDivorce(req, res, next) {
+  const { spouseName, spousePermanentIdentityNumber, marriageReference, courtName, courtOrderReference, divorceOrderDate } = req.body;
   return transitionDivorce(req, res, next, {
-    from: 'Additional Information Required', to: 'Under Review',
+    from: ['Additional Information Required', 'Rejected'], to: 'Under Review', allowOwner: true,
     sideEffect: async (client, record) => {
-      if (record.filer_citizen_id !== req.user.citizenId) throw Object.assign(new Error('Not your application.'), { status: 403 });
-      await client.query(`UPDATE divorce_records SET status = 'Under Review', updated_at = NOW() WHERE divorce_record_id = $1`, [record.divorce_record_id]);
+      if (!spouseName || !courtName || !courtOrderReference || !divorceOrderDate) {
+        throw Object.assign(new Error('spouseName, courtName, courtOrderReference and divorceOrderDate are required.'), { status: 400 });
+      }
+      await client.query(
+        `UPDATE divorce_records SET status = 'Under Review', rejection_reason = NULL,
+            spouse_name = $1, spouse_permanent_identity_number = $2, marriage_reference = $3,
+            court_name = $4, court_order_reference = $5, divorce_order_date = $6, updated_at = NOW()
+         WHERE divorce_record_id = $7`,
+        [spouseName, spousePermanentIdentityNumber || null, marriageReference || null, courtName, courtOrderReference, divorceOrderDate, record.divorce_record_id]
+      );
       await syncApplicationStatus(client, { sourceTable: 'divorce_records', sourceId: record.divorce_record_id, status: 'Under Review' });
       return { status: 'Under Review' };
     },

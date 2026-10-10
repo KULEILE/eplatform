@@ -8,6 +8,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import EmptyState from '../../components/ui/EmptyState';
 import Modal from '../../components/ui/Modal';
 import ReceiptCapture from '../../components/ReceiptCapture';
+import SignaturePad from '../../components/SignaturePad';
 import { formatDateOnly } from '../../utils/format';
 
 /**
@@ -28,6 +29,8 @@ export default function BirthCertificate() {
   const [receiptModalOpen, setReceiptModalOpen] = useState(false);
   const [receipt, setReceipt] = useState({ paymentReference: '', receiptImageReference: '' });
   const [receiptError, setReceiptError] = useState('');
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+  const [signatureReference, setSignatureReference] = useState(null);
   const isOfficer = ['home_affairs_officer', 'system_administrator'].includes(user.roleKey);
 
   function load() {
@@ -61,9 +64,18 @@ export default function BirthCertificate() {
       setBusy(false);
     }
   }
-  async function collect() {
+  // Collection (Feature 3): collecting the physical certificate requires the citizen's
+  // signature, captured on a pad handed to them at the counter — see SignaturePad.jsx.
+  async function confirmCollect() {
     setBusy(true);
-    try { await api.post(`/home-affairs/birth-certificate/${id}/collect`, {}); load(); } finally { setBusy(false); }
+    try {
+      await api.post(`/home-affairs/birth-certificate/${id}/collect`, { signatureReference });
+      setSignatureModalOpen(false);
+      setSignatureReference(null);
+      load();
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (loadError) {
@@ -182,7 +194,7 @@ export default function BirthCertificate() {
                 <button type="button" disabled={busy} className="btn-primary" onClick={() => setReceiptModalOpen(true)}>{t('common.readyForCollection')}</button>
               )}
               {cert.status === 'Ready for Collection' && (
-                <button type="button" disabled={busy} className="btn-primary" onClick={collect}>{t('common.collect')}</button>
+                <button type="button" disabled={busy} className="btn-primary" onClick={() => setSignatureModalOpen(true)}>{t('common.collect')}</button>
               )}
             </div>
           )}
@@ -205,6 +217,20 @@ export default function BirthCertificate() {
       >
         <ReceiptCapture value={receipt} onChange={setReceipt} />
         {receiptError && <p className="mt-2 text-sm text-gov-red" role="alert">⚠ {receiptError}</p>}
+      </Modal>
+
+      <Modal
+        open={signatureModalOpen}
+        onClose={() => { setSignatureModalOpen(false); setSignatureReference(null); }}
+        title={t('common.collect')}
+        footer={
+          <>
+            <button type="button" className="btn-secondary" onClick={() => { setSignatureModalOpen(false); setSignatureReference(null); }}>{t('common.cancel')}</button>
+            <button type="button" disabled={busy || !signatureReference} className="btn-primary" onClick={confirmCollect}>{t('common.confirm')}</button>
+          </>
+        }
+      >
+        <SignaturePad value={signatureReference} onChange={setSignatureReference} />
       </Modal>
     </div>
   );

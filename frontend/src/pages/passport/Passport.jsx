@@ -9,6 +9,7 @@ import Modal from '../../components/ui/Modal';
 import DistrictOfficeSelect from '../../components/DistrictOfficeSelect';
 import PhotoCapture from '../../components/PhotoCapture';
 import ReceiptCapture from '../../components/ReceiptCapture';
+import SignaturePad from '../../components/SignaturePad';
 
 const NEXT = {
   'Submitted': { action: 'start-review', labelKey: 'status.Under Review' },
@@ -33,9 +34,32 @@ export default function Passport() {
   const [error, setError] = useState('');
   const [modal, setModal] = useState(null);
   const [reason, setReason] = useState('');
+  const [signatureModal, setSignatureModal] = useState(null); // passport_record_id | null
+  const [signatureReference, setSignatureReference] = useState(null);
+  // Feature 4 — editing a rejected/information-required application instead of starting a new
+  // one. When set, the form above switches to editing that record and submits to /resubmit.
+  const [resubmitTarget, setResubmitTarget] = useState(null);
 
   function load() { api.get('/passport').then((d) => setRecords(d.passportRecords)); }
   useEffect(() => { load(); }, []);
+
+  function startResubmit(record) {
+    setResubmitTarget(record);
+    setPassportType(record.passport_type || 'Ordinary');
+    setPreferredOfficeId(record.preferred_office_id || record.collection_office_id || '');
+    setPhotoReference(record.photo_reference || null);
+    setReceipt({ paymentReference: record.payment_reference || '', receiptImageReference: record.receipt_image_reference || '' });
+    setError('');
+  }
+
+  function cancelResubmit() {
+    setResubmitTarget(null);
+    setPassportType('Ordinary');
+    setPreferredOfficeId('');
+    setPhotoReference(null);
+    setReceipt({ paymentReference: '', receiptImageReference: '' });
+    setError('');
+  }
 
   async function apply(e) {
     e.preventDefault();
@@ -44,13 +68,16 @@ export default function Passport() {
     if (!photoReference) { setError(t('photoCapture.required')); return; }
     if (!receipt.paymentReference.trim() || !receipt.receiptImageReference) { setError(t('receiptCapture.required')); return; }
     try {
-      await api.post('/passport/apply', {
+      const payload = {
         passportType, preferredOfficeId, photoReference,
         paymentReference: receipt.paymentReference.trim(), receiptImageReference: receipt.receiptImageReference,
-      });
-      setPreferredOfficeId('');
-      setPhotoReference(null);
-      setReceipt({ paymentReference: '', receiptImageReference: '' });
+      };
+      if (resubmitTarget) {
+        await api.post(`/passport/${resubmitTarget.passport_record_id}/resubmit`, payload);
+      } else {
+        await api.post('/passport/apply', payload);
+      }
+      cancelResubmit();
       load();
     } catch (err) {
       setError(err.message || t('common.somethingWentWrong'));
@@ -59,6 +86,15 @@ export default function Passport() {
 
   async function transition(id, action) {
     await api.post(`/passport/${id}/${action}`, {});
+    load();
+  }
+
+  // Collection (Feature 3): collecting the passport requires the citizen's signature, captured
+  // on a pad handed to them at the counter — see SignaturePad.jsx.
+  async function confirmCollect() {
+    await api.post(`/passport/${signatureModal}/collect`, { signatureReference });
+    setSignatureModal(null);
+    setSignatureReference(null);
     load();
   }
 
@@ -77,7 +113,17 @@ export default function Passport() {
       {!isOfficer && (
         <form onSubmit={apply} className="card mb-8">
           {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}
-          <p className="mb-3 text-sm text-slate-600">ℹ {t('passport.reuseNotice')}</p>
+          {resubmitTarget ? (
+            <div className="mb-3 flex items-center justify-between gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-gov-amber">
+              <span>
+                ✎ {t('common.editAndResubmit')} — <span className="font-mono text-xs">{resubmitTarget.application_reference}</span>
+                {resubmitTarget.rejection_reason ? `: ${resubmitTarget.rejection_reason}` : ''}
+              </span>
+              <button type="button" className="font-semibold underline" onClick={cancelResubmit}>{t('common.cancel')}</button>
+            </div>
+          ) : (
+            <p className="mb-3 text-sm text-slate-600">ℹ {t('passport.reuseNotice')}</p>
+          )}
           <div className="mb-4 max-w-xs">
             <label htmlFor="passportType" className="form-label">{t('passport.type')}</label>
             <select id="passportType" className="form-input" value={passportType} onChange={(e) => setPassportType(e.target.value)}>
@@ -89,7 +135,7 @@ export default function Passport() {
           <PhotoCapture value={photoReference} onChange={setPhotoReference} help={t('photoCapture.idHelp')} />
           <ReceiptCapture value={receipt} onChange={setReceipt} help={t('passport.feeNotice')} />
           <DistrictOfficeSelect departmentKey="passport" value={preferredOfficeId} onChange={setPreferredOfficeId} />
-          <button type="submit" className="btn-primary">{t('passport.apply')}</button>
+          <button type="submit" className="btn-primary">{resubmitTarget ? t('common.resubmitForReview') : t('passport.apply')}</button>
         </form>
       )}
 
@@ -125,7 +171,15 @@ export default function Passport() {
               const next = NEXT[r.status];
               return (
                 <div className="flex flex-wrap gap-2">
-                  {next && <button type="button" className="text-sm font-medium text-gov-navy hover:underline" onClick={() => transition(r.passport_record_id, next.action)}>{t(next.labelKey)}</button>}
+                  {next && (
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-gov-navy hover:underline"
+                      onClick={() => (next.action === 'collect' ? setSignatureModal(r.passport_record_id) : transition(r.passport_record_id, next.action))}
+                    >
+                      {t(next.labelKey)}
+                    </button>
+                  )}
                   {!['Rejected', 'Collected'].includes(r.status) && (
                     <>
                       <button type="button" className="text-sm font-medium text-slate-500 hover:underline" onClick={() => setModal({ id: r.passport_record_id, kind: 'request-information' })}>{t('common.requestInformation')}</button>
@@ -135,7 +189,20 @@ export default function Passport() {
                 </div>
               );
             },
-          }] : []),
+          }] : [{
+            key: 'actions', header: t('common.actions'),
+            render: (r) => (['Additional Information Required', 'Rejected'].includes(r.status)
+              ? (
+                <button
+                  type="button"
+                  className="text-sm font-medium text-gov-navy hover:underline"
+                  onClick={() => { startResubmit(r); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                >
+                  {t('common.editAndResubmit')}
+                </button>
+              )
+              : <span className="text-slate-300">—</span>),
+          }]),
         ]}
       />
 
@@ -152,6 +219,20 @@ export default function Passport() {
       >
         <label htmlFor="passportReason" className="form-label">{t('common.reason')}</label>
         <textarea id="passportReason" className="form-input" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
+      </Modal>
+
+      <Modal
+        open={!!signatureModal}
+        onClose={() => { setSignatureModal(null); setSignatureReference(null); }}
+        title={t('common.collect')}
+        footer={
+          <>
+            <button type="button" className="btn-secondary" onClick={() => { setSignatureModal(null); setSignatureReference(null); }}>{t('common.cancel')}</button>
+            <button type="button" disabled={!signatureReference} className="btn-primary" onClick={confirmCollect}>{t('common.confirm')}</button>
+          </>
+        }
+      >
+        <SignaturePad value={signatureReference} onChange={setSignatureReference} />
       </Modal>
     </div>
   );

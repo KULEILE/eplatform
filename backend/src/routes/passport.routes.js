@@ -10,6 +10,7 @@ router.get('/', pc.list);
 router.get('/:id', pc.getOne);
 router.post('/:id/request-information', pc.requestInformation);
 router.post('/:id/reject', pc.reject);
+router.post('/:id/resubmit', pc.resubmit);
 router.post('/:id/:action', pc.transition);
 
 module.exports = router;

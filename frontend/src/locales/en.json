@@ -29,6 +29,8 @@
     "collect": "Mark as collected",
     "readyForCollection": "Mark ready for collection",
     "requestInformation": "Request more information",
+    "editAndResubmit": "Edit & resubmit",
+    "resubmitForReview": "Resubmit for review",
     "confirm": "Confirm",
     "somethingWentWrong": "Something went wrong. Please try again.",
     "noResults": "Nothing to show here yet.",
@@ -109,6 +111,24 @@
     "wrongType": "Please choose a PNG, JPG or WEBP image.",
     "tooLarge": "That image is too large — please choose one under 5MB.",
     "required": "Please add a photo before submitting."
+  },
+  "biometricCapture": {
+    "hint": "Used to enrol your fingerprints for this National ID card.",
+    "captureHint": "PNG, JPG or WEBP, up to 5MB. On a phone, this opens your camera; on a computer, choose an existing photo.",
+    "previewAlt": "Biometric capture",
+    "uploaded": "Biometric capture recorded",
+    "retake": "Capture again",
+    "wrongType": "Please choose a PNG, JPG or WEBP image.",
+    "tooLarge": "That image is too large — please choose one under 5MB.",
+    "required": "Biometric capture is required before submitting."
+  },
+  "signaturePad": {
+    "label": "Citizen's signature",
+    "hint": "Hand this device to the citizen to sign for the item being collected.",
+    "clear": "Clear",
+    "confirm": "Confirm signature",
+    "captured": "Signature captured",
+    "required": "Please have the citizen sign before confirming."
   },
   "receiptCapture": {
     "label": "Proof of payment",

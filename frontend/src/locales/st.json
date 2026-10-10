@@ -29,6 +29,8 @@
     "collect": "Tshwaya e nkuwe",
     "readyForCollection": "Tshwaya e loketse ho nkuwa",
     "requestInformation": "Kopa lesedi le leng",
+    "editAndResubmit": "Fetola o kene hape",
+    "resubmitForReview": "Romela hape bakeng sa tlhahlobo",
     "confirm": "Netefatsa",
     "somethingWentWrong": "Ho na le se sa kang sa sebetsa hantle. Ka kopo leka hape.",
     "noResults": "Ha ho letho hona joale.",
@@ -109,6 +111,24 @@
     "wrongType": "Ka kopo kgetha setshwantsho sa PNG, JPG kapa WEBP.",
     "tooLarge": "Setshwantsho seo se seholo haholo — ka kopo kgetha se ka tlase ho 5MB.",
     "required": "Ka kopo kenya setshwantsho pele o romela."
+  },
+  "biometricCapture": {
+    "hint": "E sebediswa ho ngolisa menwana ya hao bakeng sa ID ena ya Setjhaba.",
+    "captureHint": "PNG, JPG kapa WEBP, ho fihla ho 5MB. Sellathekeng, sena se bula khamera ya hao; komporong, kgetha setshwantsho se seng.",
+    "previewAlt": "Tshwantsho ya menwana",
+    "uploaded": "Tlhahlobo ya menwana e ngolisitswe",
+    "retake": "Nka setshwantsho hape",
+    "wrongType": "Ka kopo kgetha setshwantsho sa PNG, JPG kapa WEBP.",
+    "tooLarge": "Setshwantsho seo se seholo haholo — ka kopo kgetha se ka tlase ho 5MB.",
+    "required": "Ka kopo etsa tlhahlobo ya menwana pele o romela."
+  },
+  "signaturePad": {
+    "label": "Mosaeno wa moahi",
+    "hint": "Fana ka sesebediswa sena ho moahi hore a saene bakeng sa ntho eo a e nkang.",
+    "clear": "Hlakola",
+    "confirm": "Netefatsa mosaeno",
+    "captured": "Mosaeno o nkilwe",
+    "required": "Ka kopo etsa hore moahi a saene pele o netefatsa."
   },
   "receiptCapture": {
     "label": "Bopaki ba tefo",

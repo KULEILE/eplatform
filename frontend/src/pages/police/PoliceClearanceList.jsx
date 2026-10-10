@@ -7,11 +7,14 @@ import Loading from '../../components/ui/Loading';
 import DataTable from '../../components/ui/DataTable';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Modal from '../../components/ui/Modal';
+import DistrictOfficeSelect from '../../components/DistrictOfficeSelect';
 
 const NEXT_ACTION = {
   'Submitted': { action: 'start-review', labelKey: 'status.Under Review' },
   'Under Review': { action: 'begin-background-check', labelKey: 'status.Background Check In Progress' },
 };
+
+const PURPOSES = ['Employment', 'Travel or Visa', 'Education', 'Immigration', 'Other'];
 
 export default function PoliceClearanceList() {
   const { user } = useAuth();
@@ -25,11 +28,38 @@ export default function PoliceClearanceList() {
   const [clearanceResult, setClearanceResult] = useState('Clean Record');
   const [officerNotes, setOfficerNotes] = useState('');
   const isOfficer = ['police_officer', 'system_administrator'].includes(user.roleKey);
+  // Feature 4 — editing a rejected/information-required application instead of starting over.
+  const [resubmitTarget, setResubmitTarget] = useState(null);
+  const [resubmitPurpose, setResubmitPurpose] = useState(PURPOSES[0]);
+  const [resubmitOfficeId, setResubmitOfficeId] = useState('');
+  const [resubmitBusy, setResubmitBusy] = useState(false);
 
   function load() {
     api.get('/police/clearance').then((d) => setRows(d.records)).catch((err) => setError(err.message || t('common.somethingWentWrong')));
   }
   useEffect(() => { load(); }, []);
+
+  function startResubmit(record) {
+    setResubmitTarget(record);
+    setResubmitPurpose(record.purpose || PURPOSES[0]);
+    setResubmitOfficeId(record.preferred_office_id || '');
+    setError('');
+  }
+
+  async function submitResubmit() {
+    if (!resubmitOfficeId) { setError(t('offices.chooseBranchRequired')); return; }
+    setResubmitBusy(true);
+    setError('');
+    try {
+      await api.post(`/police/clearance/${resubmitTarget.clearance_record_id}/resubmit`, { purpose: resubmitPurpose, preferredOfficeId: resubmitOfficeId });
+      setResubmitTarget(null);
+      load();
+    } catch (err) {
+      setError(err.message || t('common.somethingWentWrong'));
+    } finally {
+      setResubmitBusy(false);
+    }
+  }
 
   async function runAction(id, action, body = {}) {
     setBusyId(id);
@@ -74,7 +104,11 @@ export default function PoliceClearanceList() {
               if (['Approved', 'Ready for Collection', 'Collected'].includes(r.status)) {
                 return <button type="button" className="text-sm font-medium text-gov-navy hover:underline" onClick={() => navigate(`/police/clearance/${r.clearance_record_id}/certificate`)}>{t('police.clearance.viewCertificate')}</button>;
               }
-              if (!isOfficer) return <span className="text-sm text-slate-400">—</span>;
+              if (!isOfficer) {
+                return ['Additional Information Required', 'Rejected'].includes(r.status)
+                  ? <button type="button" className="text-sm font-medium text-gov-navy hover:underline" onClick={() => startResubmit(r)}>{t('common.editAndResubmit')}</button>
+                  : <span className="text-sm text-slate-400">—</span>;
+              }
               const next = NEXT_ACTION[r.status];
               return (
                 <div className="flex flex-wrap gap-2">
@@ -137,6 +171,27 @@ export default function PoliceClearanceList() {
       >
         <label htmlFor="modalReason" className="form-label">{t('common.reason')}</label>
         <textarea id="modalReason" className="form-input" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
+      </Modal>
+
+      <Modal
+        open={!!resubmitTarget}
+        onClose={() => setResubmitTarget(null)}
+        title={t('common.editAndResubmit')}
+        footer={
+          <>
+            <button type="button" className="btn-secondary" onClick={() => setResubmitTarget(null)}>{t('common.cancel')}</button>
+            <button type="button" disabled={resubmitBusy} className="btn-primary" onClick={submitResubmit}>{t('common.resubmitForReview')}</button>
+          </>
+        }
+      >
+        {resubmitTarget?.rejection_reason && (
+          <p className="mb-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-gov-amber">⚠ {resubmitTarget.rejection_reason}</p>
+        )}
+        <label htmlFor="resubmitPurpose" className="form-label">{t('police.clearance.purpose')}</label>
+        <select id="resubmitPurpose" className="form-input mb-4" value={resubmitPurpose} onChange={(e) => setResubmitPurpose(e.target.value)}>
+          {PURPOSES.map((p) => <option key={p} value={p}>{t(`police.clearance.purposeOption.${p}`)}</option>)}
+        </select>
+        <DistrictOfficeSelect departmentKey="police" value={resubmitOfficeId} onChange={setResubmitOfficeId} />
       </Modal>
     </div>
   );

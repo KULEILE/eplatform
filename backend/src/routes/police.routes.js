@@ -18,6 +18,7 @@ router.get('/clearance/:id', pcc.getOne);
 router.get('/clearance/:id/certificate', pcc.getCertificate);
 router.post('/clearance/:id/request-information', pcc.requestInformation);
 router.post('/clearance/:id/reject', pcc.reject);
+router.post('/clearance/:id/resubmit', pcc.resubmit);
 router.post('/clearance/:id/:action', pcc.transition);
 
 module.exports = router;

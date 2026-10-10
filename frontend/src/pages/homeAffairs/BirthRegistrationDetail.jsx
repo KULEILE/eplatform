@@ -27,6 +27,9 @@ export default function BirthRegistrationDetail() {
   const [reasonModal, setReasonModal] = useState(null); // 'reject' | 'request-information'
   const [reason, setReason] = useState('');
   const [loadError, setLoadError] = useState('');
+  // Feature 4 — editing a rejected/information-required application instead of starting over.
+  const [editing, setEditing] = useState(false);
+  const [edit, setEdit] = useState(null);
 
   const isOfficer = ['home_affairs_officer', 'system_administrator'].includes(user.roleKey);
 
@@ -37,6 +40,32 @@ export default function BirthRegistrationDetail() {
       .catch((err) => setLoadError(err.message || t('common.somethingWentWrong')));
   }
   useEffect(() => { load(); }, [id]);
+
+  function startEditing() {
+    setEdit({
+      childFirstName: record.child_first_name || '', childMiddleName: record.child_middle_name || '', childLastName: record.child_last_name || '',
+      dateOfBirth: record.date_of_birth ? record.date_of_birth.slice(0, 10) : '', placeOfBirth: record.place_of_birth || '', sex: record.sex || 'Male',
+      fatherName: record.father_name || '', fatherNationality: record.father_nationality || 'Mosotho',
+      motherName: record.mother_name || '', motherMaidenSurname: record.mother_maiden_surname || '', motherNationality: record.mother_nationality || 'Mosotho',
+      motherResidence: record.mother_residence || '', informantName: record.informant_name || '', informantCapacity: record.informant_capacity || '',
+      informantResidence: record.informant_residence || '',
+    });
+    setEditing(true);
+  }
+
+  async function submitResubmit() {
+    setBusy(true);
+    setError('');
+    try {
+      await api.post(`/home-affairs/birth-registration/${id}/resubmit`, edit);
+      setEditing(false);
+      load();
+    } catch (err) {
+      setError(err.message || t('common.somethingWentWrong'));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function runAction(action, body = {}) {
     setBusy(true);
@@ -72,7 +101,8 @@ export default function BirthRegistrationDetail() {
   if (!record) return <Loading />;
 
   const next = isOfficer ? NEXT_ACTION[record.registration_status] : null;
-  const canResubmit = !isOfficer && record.registration_status === 'Information Required';
+  // Feature 4: a citizen can now correct and resubmit from Rejected too, not just Information Required.
+  const canResubmit = !isOfficer && ['Information Required', 'Rejected'].includes(record.registration_status);
   const canReject = isOfficer && !['Approved', 'Rejected'].includes(record.registration_status);
   const canRequestInfo = isOfficer && ['Under Review', 'Verification in Progress'].includes(record.registration_status);
 
@@ -96,48 +126,95 @@ export default function BirthRegistrationDetail() {
         {record.rejection_reason && (
           <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red">{t('common.reason')}: {record.rejection_reason}</p>
         )}
-        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div><dt className="text-xs text-slate-500">Child's name</dt><dd className="font-medium">{record.child_first_name} {record.child_middle_name} {record.child_last_name}</dd></div>
-          <div><dt className="text-xs text-slate-500">{t('auth.dateOfBirth')}</dt><dd className="font-medium">{formatDateOnly(record.date_of_birth)}</dd></div>
-          <div><dt className="text-xs text-slate-500">Place of birth</dt><dd className="font-medium">{record.place_of_birth}</dd></div>
-          <div><dt className="text-xs text-slate-500">Sex</dt><dd className="font-medium">{record.sex}</dd></div>
-        </dl>
+        {editing ? (
+          <>
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><label className="form-label">Child's first name</label><input className="form-input" value={edit.childFirstName} onChange={(e) => setEdit({ ...edit, childFirstName: e.target.value })} /></div>
+              <div><label className="form-label">Child's middle name</label><input className="form-input" value={edit.childMiddleName} onChange={(e) => setEdit({ ...edit, childMiddleName: e.target.value })} /></div>
+              <div><label className="form-label">Child's last name</label><input className="form-input" value={edit.childLastName} onChange={(e) => setEdit({ ...edit, childLastName: e.target.value })} /></div>
+              <div><label className="form-label">{t('auth.dateOfBirth')}</label><input type="date" className="form-input" value={edit.dateOfBirth} onChange={(e) => setEdit({ ...edit, dateOfBirth: e.target.value })} /></div>
+              <div><label className="form-label">Place of birth</label><input className="form-input" value={edit.placeOfBirth} onChange={(e) => setEdit({ ...edit, placeOfBirth: e.target.value })} /></div>
+              <div>
+                <label className="form-label">Sex</label>
+                <select className="form-input" value={edit.sex} onChange={(e) => setEdit({ ...edit, sex: e.target.value })}>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+            </dl>
 
-        <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthRegistrationForm.fatherDetails')}</p>
-        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.fatherName')}</dt><dd className="font-medium">{record.father_name || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.fatherNationality')}</dt><dd className="font-medium">{record.father_nationality || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
-        </dl>
+            <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthRegistrationForm.fatherDetails')}</p>
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><label className="form-label">{t('homeAffairs.birthRegistrationForm.fatherName')}</label><input className="form-input" value={edit.fatherName} onChange={(e) => setEdit({ ...edit, fatherName: e.target.value })} /></div>
+              <div><label className="form-label">{t('homeAffairs.birthRegistrationForm.fatherNationality')}</label><input className="form-input" value={edit.fatherNationality} onChange={(e) => setEdit({ ...edit, fatherNationality: e.target.value })} /></div>
+            </dl>
 
-        <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthRegistrationForm.motherDetails')}</p>
-        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.motherName')}</dt><dd className="font-medium">{record.mother_name || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.motherMaidenSurname')}</dt><dd className="font-medium">{record.mother_maiden_surname || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.motherNationality')}</dt><dd className="font-medium">{record.mother_nationality || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.motherResidence')}</dt><dd className="font-medium">{record.mother_residence || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
-        </dl>
+            <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthRegistrationForm.motherDetails')}</p>
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><label className="form-label">{t('homeAffairs.birthRegistrationForm.motherName')}</label><input className="form-input" value={edit.motherName} onChange={(e) => setEdit({ ...edit, motherName: e.target.value })} /></div>
+              <div><label className="form-label">{t('homeAffairs.birthRegistrationForm.motherMaidenSurname')}</label><input className="form-input" value={edit.motherMaidenSurname} onChange={(e) => setEdit({ ...edit, motherMaidenSurname: e.target.value })} /></div>
+              <div><label className="form-label">{t('homeAffairs.birthRegistrationForm.motherNationality')}</label><input className="form-input" value={edit.motherNationality} onChange={(e) => setEdit({ ...edit, motherNationality: e.target.value })} /></div>
+              <div><label className="form-label">{t('homeAffairs.birthRegistrationForm.motherResidence')}</label><input className="form-input" value={edit.motherResidence} onChange={(e) => setEdit({ ...edit, motherResidence: e.target.value })} /></div>
+            </dl>
 
-        <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthRegistrationForm.informantDetails')}</p>
-        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.informantName')}</dt><dd className="font-medium">{record.informant_name || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.informantCapacity')}</dt><dd className="font-medium">{record.informant_capacity || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.informantResidence')}</dt><dd className="font-medium">{record.informant_residence || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
-        </dl>
+            <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthRegistrationForm.informantDetails')}</p>
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><label className="form-label">{t('homeAffairs.birthRegistrationForm.informantName')}</label><input className="form-input" value={edit.informantName} onChange={(e) => setEdit({ ...edit, informantName: e.target.value })} /></div>
+              <div><label className="form-label">{t('homeAffairs.birthRegistrationForm.informantCapacity')}</label><input className="form-input" value={edit.informantCapacity} onChange={(e) => setEdit({ ...edit, informantCapacity: e.target.value })} /></div>
+              <div><label className="form-label">{t('homeAffairs.birthRegistrationForm.informantResidence')}</label><input className="form-input" value={edit.informantResidence} onChange={(e) => setEdit({ ...edit, informantResidence: e.target.value })} /></div>
+            </dl>
 
-        <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
-          {canResubmit && (
-            <button type="button" disabled={busy} className="btn-primary" onClick={() => runAction('resubmit')}>Resubmit for review</button>
-          )}
-          {next && (
-            <button type="button" disabled={busy} className="btn-primary" onClick={() => runAction(next.action)}>{next.label}</button>
-          )}
-          {canRequestInfo && (
-            <button type="button" disabled={busy} className="btn-secondary" onClick={() => setReasonModal('request-information')}>{t('common.requestInformation')}</button>
-          )}
-          {canReject && (
-            <button type="button" disabled={busy} className="btn-danger" onClick={() => setReasonModal('reject')}>{t('common.reject')}</button>
-          )}
-        </div>
+            <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
+              <button type="button" disabled={busy} className="btn-primary" onClick={submitResubmit}>{t('common.resubmitForReview')}</button>
+              <button type="button" disabled={busy} className="btn-secondary" onClick={() => setEditing(false)}>{t('common.cancel')}</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><dt className="text-xs text-slate-500">Child's name</dt><dd className="font-medium">{record.child_first_name} {record.child_middle_name} {record.child_last_name}</dd></div>
+              <div><dt className="text-xs text-slate-500">{t('auth.dateOfBirth')}</dt><dd className="font-medium">{formatDateOnly(record.date_of_birth)}</dd></div>
+              <div><dt className="text-xs text-slate-500">Place of birth</dt><dd className="font-medium">{record.place_of_birth}</dd></div>
+              <div><dt className="text-xs text-slate-500">Sex</dt><dd className="font-medium">{record.sex}</dd></div>
+            </dl>
+
+            <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthRegistrationForm.fatherDetails')}</p>
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.fatherName')}</dt><dd className="font-medium">{record.father_name || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.fatherNationality')}</dt><dd className="font-medium">{record.father_nationality || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
+            </dl>
+
+            <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthRegistrationForm.motherDetails')}</p>
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.motherName')}</dt><dd className="font-medium">{record.mother_name || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.motherMaidenSurname')}</dt><dd className="font-medium">{record.mother_maiden_surname || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.motherNationality')}</dt><dd className="font-medium">{record.mother_nationality || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.motherResidence')}</dt><dd className="font-medium">{record.mother_residence || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
+            </dl>
+
+            <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthRegistrationForm.informantDetails')}</p>
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.informantName')}</dt><dd className="font-medium">{record.informant_name || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.informantCapacity')}</dt><dd className="font-medium">{record.informant_capacity || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.informantResidence')}</dt><dd className="font-medium">{record.informant_residence || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
+            </dl>
+
+            <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
+              {canResubmit && (
+                <button type="button" disabled={busy} className="btn-primary" onClick={startEditing}>{t('common.editAndResubmit')}</button>
+              )}
+              {next && (
+                <button type="button" disabled={busy} className="btn-primary" onClick={() => runAction(next.action)}>{next.label}</button>
+              )}
+              {canRequestInfo && (
+                <button type="button" disabled={busy} className="btn-secondary" onClick={() => setReasonModal('request-information')}>{t('common.requestInformation')}</button>
+              )}
+              {canReject && (
+                <button type="button" disabled={busy} className="btn-danger" onClick={() => setReasonModal('reject')}>{t('common.reject')}</button>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       <Modal

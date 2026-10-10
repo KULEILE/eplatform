@@ -102,6 +102,11 @@ async function transition(req, res, next) {
     if (!['passport_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
     const t = TRANSITIONS[req.params.action];
     if (!t) return res.status(400).json({ error: `Unknown action: ${req.params.action}` });
+    // Collection (Feature 3): the citizen signs on a pad at the counter before the officer can
+    // mark the passport collected — see database/migrations/035_add_signature_reference.sql.
+    if (t.to === 'Collected' && !req.body.signatureReference) {
+      return res.status(400).json({ error: 'The citizen\'s signature is required before the passport can be marked collected.' });
+    }
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
@@ -123,9 +128,10 @@ async function transition(req, res, next) {
             collection_office_id = CASE WHEN $1::varchar = 'Ready for Collection' THEN $3 ELSE collection_office_id END,
             ready_for_collection_at = CASE WHEN $1::varchar = 'Ready for Collection' THEN NOW() ELSE ready_for_collection_at END,
             collected_at = CASE WHEN $1::varchar = 'Collected' THEN NOW() ELSE collected_at END,
+            signature_reference = CASE WHEN $1::varchar = 'Collected' THEN $5 ELSE signature_reference END,
             updated_at = NOW()
          WHERE passport_record_id = $4`,
-        [t.to, passportNumber, officeId, record.passport_record_id]
+        [t.to, passportNumber, officeId, record.passport_record_id, req.body.signatureReference || null]
       );
       await syncApplicationStatus(client, { sourceTable: 'passport_records', sourceId: record.passport_record_id, status: t.to, completed: t.to === 'Collected' });
       await client.query('COMMIT');
@@ -141,6 +147,53 @@ async function transition(req, res, next) {
         });
       }
       res.json({ passportRecordId: record.passport_record_id, status: t.to, passportNumber });
+    } catch (err) {
+      await client.query('ROLLBACK'); throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** POST /api/passport/:id/resubmit (citizen, owner only) — Feature 4: lets the citizen correct
+ *  and resubmit after Additional Information Required or Rejected, instead of starting a new
+ *  application. Built from scratch — passport had no resubmit concept before this. */
+async function resubmit(req, res, next) {
+  try {
+    if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required.' });
+    const { passportType, preferredOfficeId, photoReference, paymentReference, receiptImageReference } = req.body;
+    if (!preferredOfficeId) {
+      return res.status(400).json({ error: 'preferredOfficeId is required — choose the branch where you will collect the passport.' });
+    }
+    if (!paymentReference || !receiptImageReference) {
+      return res.status(400).json({ error: 'paymentReference and receiptImageReference are required.' });
+    }
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query('SELECT * FROM passport_records WHERE passport_record_id = $1 FOR UPDATE', [req.params.id]);
+      if (rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Not found.' }); }
+      const record = rows[0];
+      if (record.citizen_id !== req.user.citizenId) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Not your application.' }); }
+      if (!['Additional Information Required', 'Rejected'].includes(record.status)) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: `Cannot resubmit from '${record.status}'.` });
+      }
+      await client.query(
+        `UPDATE passport_records SET status = 'Under Review', rejection_reason = NULL,
+            passport_type = $1, preferred_office_id = $2, photo_reference = $3, payment_reference = $4, receipt_image_reference = $5, updated_at = NOW()
+         WHERE passport_record_id = $6`,
+        [passportType || record.passport_type, preferredOfficeId, photoReference || null, paymentReference, receiptImageReference, record.passport_record_id]
+      );
+      await syncApplicationStatus(client, { sourceTable: 'passport_records', sourceId: record.passport_record_id, status: 'Under Review' });
+      await client.query('COMMIT');
+      const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.citizen_id])).rows[0];
+      if (userRow) {
+        await createNotification({ userId: userRow.user_id, title: 'Passport application resubmitted', message: `Reference ${record.application_reference} has been resubmitted and is under review.`, type: 'Status Change' });
+      }
+      res.json({ passportRecordId: record.passport_record_id, status: 'Under Review' });
     } catch (err) {
       await client.query('ROLLBACK'); throw err;
     } finally {
@@ -194,4 +247,4 @@ async function reject(req, res, next) {
   }
 }
 
-module.exports = { apply, list, getOne, transition, requestInformation, reject };
+module.exports = { apply, list, getOne, transition, requestInformation, reject, resubmit };

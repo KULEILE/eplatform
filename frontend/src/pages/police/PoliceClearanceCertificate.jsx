@@ -6,6 +6,8 @@ import { api } from '../../api/client';
 import Loading from '../../components/ui/Loading';
 import StatusBadge from '../../components/ui/StatusBadge';
 import EmptyState from '../../components/ui/EmptyState';
+import Modal from '../../components/ui/Modal';
+import SignaturePad from '../../components/SignaturePad';
 import { formatDateOnly } from '../../utils/format';
 
 export default function PoliceClearanceCertificate() {
@@ -15,6 +17,8 @@ export default function PoliceClearanceCertificate() {
   const [cert, setCert] = useState(null);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+  const [signatureReference, setSignatureReference] = useState(null);
   const isOfficer = ['police_officer', 'system_administrator'].includes(user.roleKey);
 
   function load() {
@@ -29,9 +33,18 @@ export default function PoliceClearanceCertificate() {
     setBusy(true);
     try { await api.post(`/police/clearance/${id}/ready-for-collection`, {}); load(); } finally { setBusy(false); }
   }
-  async function collect() {
+  // Collection (Feature 3): collecting the certificate requires the citizen's signature,
+  // captured on a pad handed to them at the counter — see SignaturePad.jsx.
+  async function confirmCollect() {
     setBusy(true);
-    try { await api.post(`/police/clearance/${id}/collect`, {}); load(); } finally { setBusy(false); }
+    try {
+      await api.post(`/police/clearance/${id}/collect`, { signatureReference });
+      setSignatureModalOpen(false);
+      setSignatureReference(null);
+      load();
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (loadError) {
@@ -110,7 +123,7 @@ export default function PoliceClearanceCertificate() {
           {isOfficer && (
             <div className="flex gap-3">
               {cert.status === 'Approved' && <button type="button" disabled={busy} className="btn-primary" onClick={readyForCollection}>{t('common.readyForCollection')}</button>}
-              {cert.status === 'Ready for Collection' && <button type="button" disabled={busy} className="btn-primary" onClick={collect}>{t('common.collect')}</button>}
+              {cert.status === 'Ready for Collection' && <button type="button" disabled={busy} className="btn-primary" onClick={() => setSignatureModalOpen(true)}>{t('common.collect')}</button>}
             </div>
           )}
         </div>
@@ -118,6 +131,20 @@ export default function PoliceClearanceCertificate() {
       {cert.status === 'Collected' && (
         <p className="mt-4 rounded-md bg-green-50 px-3 py-2 text-sm text-gov-green">✓ {t('common.status')}: {t('status.Collected')}</p>
       )}
+
+      <Modal
+        open={signatureModalOpen}
+        onClose={() => { setSignatureModalOpen(false); setSignatureReference(null); }}
+        title={t('common.collect')}
+        footer={
+          <>
+            <button type="button" className="btn-secondary" onClick={() => { setSignatureModalOpen(false); setSignatureReference(null); }}>{t('common.cancel')}</button>
+            <button type="button" disabled={busy || !signatureReference} className="btn-primary" onClick={confirmCollect}>{t('common.confirm')}</button>
+          </>
+        }
+      >
+        <SignaturePad value={signatureReference} onChange={setSignatureReference} />
+      </Modal>
     </div>
   );
 }

@@ -25,6 +25,9 @@ export default function DivorceRegistrationDetail() {
   const [reasonModal, setReasonModal] = useState(null);
   const [reason, setReason] = useState('');
   const [loadError, setLoadError] = useState('');
+  // Feature 4 — editing a rejected/information-required application instead of starting over.
+  const [editing, setEditing] = useState(false);
+  const [edit, setEdit] = useState(null);
 
   const isOfficer = ['home_affairs_officer', 'system_administrator'].includes(user.roleKey);
 
@@ -35,6 +38,29 @@ export default function DivorceRegistrationDetail() {
       .catch((err) => setLoadError(err.message || t('common.somethingWentWrong')));
   }
   useEffect(() => { load(); }, [id]);
+
+  function startEditing(record) {
+    setEdit({
+      spouseName: record.spouse_name || '', spousePermanentIdentityNumber: record.spouse_permanent_identity_number || '',
+      marriageReference: record.marriage_reference || '', courtName: record.court_name || '',
+      courtOrderReference: record.court_order_reference || '', divorceOrderDate: record.divorce_order_date ? record.divorce_order_date.slice(0, 10) : '',
+    });
+    setEditing(true);
+  }
+
+  async function submitResubmit() {
+    setBusy(true);
+    setError('');
+    try {
+      await api.post(`/home-affairs/divorce-registration/${id}/resubmit`, edit);
+      setEditing(false);
+      load();
+    } catch (err) {
+      setError(err.message || t('common.somethingWentWrong'));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function runAction(action, body = {}) {
     setBusy(true);
@@ -82,30 +108,56 @@ export default function DivorceRegistrationDetail() {
           <Link to={`/home-affairs/divorce-certificate/${record.divorce_record_id}`} className="btn-primary">{t('homeAffairs.divorceForm.viewCertificate')}</Link>
         </p>
       )}
-      {record.status === 'Additional Information Required' && isOwner && (
+      {/* Feature 4: citizen can correct and resubmit from Additional Information Required OR Rejected. */}
+      {['Additional Information Required', 'Rejected'].includes(record.status) && isOwner && !editing && (
         <div className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-gov-amber">
-          ⚠ {t('common.requestInformation')}
-          <button type="button" className="ml-3 font-semibold underline" onClick={() => runAction('resubmit')}>{t('common.submit')}</button>
+          ⚠ {record.status === 'Rejected' ? t('common.reject') : t('common.requestInformation')}{record.rejection_reason ? `: ${record.rejection_reason}` : ''}
+          <button type="button" className="ml-3 font-semibold underline" onClick={() => startEditing(record)}>{t('common.editAndResubmit')}</button>
         </div>
       )}
 
-      <div className="card mb-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.divorceForm.spouseName')}</p>
-        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.divorceForm.spouseName')}</dt><dd className="font-medium">{record.spouse_name}</dd></div>
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.divorceForm.spousePermanentId')}</dt><dd className="font-mono font-medium">{record.spouse_permanent_identity_number || '—'}</dd></div>
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.divorceForm.marriageReference')}</dt><dd className="font-medium">{record.marriage_reference || '—'}</dd></div>
-        </dl>
-      </div>
+      {editing ? (
+        <div className="card mb-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.divorceForm.spouseName')}</p>
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div><label className="form-label">{t('homeAffairs.divorceForm.spouseName')}</label><input className="form-input" value={edit.spouseName} onChange={(e) => setEdit({ ...edit, spouseName: e.target.value })} /></div>
+            <div><label className="form-label">{t('homeAffairs.divorceForm.spousePermanentId')}</label><input className="form-input" value={edit.spousePermanentIdentityNumber} onChange={(e) => setEdit({ ...edit, spousePermanentIdentityNumber: e.target.value })} /></div>
+            <div><label className="form-label">{t('homeAffairs.divorceForm.marriageReference')}</label><input className="form-input" value={edit.marriageReference} onChange={(e) => setEdit({ ...edit, marriageReference: e.target.value })} /></div>
+          </dl>
 
-      <div className="card mb-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.divorceForm.courtDetails')}</p>
-        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.divorceForm.courtName')}</dt><dd className="font-medium">{record.court_name}</dd></div>
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.divorceForm.courtOrderReference')}</dt><dd className="font-medium">{record.court_order_reference}</dd></div>
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.divorceForm.divorceOrderDate')}</dt><dd className="font-medium">{formatDateOnly(record.divorce_order_date)}</dd></div>
-        </dl>
-      </div>
+          <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.divorceForm.courtDetails')}</p>
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div><label className="form-label">{t('homeAffairs.divorceForm.courtName')}</label><input className="form-input" value={edit.courtName} onChange={(e) => setEdit({ ...edit, courtName: e.target.value })} /></div>
+            <div><label className="form-label">{t('homeAffairs.divorceForm.courtOrderReference')}</label><input className="form-input" value={edit.courtOrderReference} onChange={(e) => setEdit({ ...edit, courtOrderReference: e.target.value })} /></div>
+            <div><label className="form-label">{t('homeAffairs.divorceForm.divorceOrderDate')}</label><input type="date" className="form-input" value={edit.divorceOrderDate} onChange={(e) => setEdit({ ...edit, divorceOrderDate: e.target.value })} /></div>
+          </dl>
+
+          <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
+            <button type="button" disabled={busy} className="btn-primary" onClick={submitResubmit}>{t('common.resubmitForReview')}</button>
+            <button type="button" disabled={busy} className="btn-secondary" onClick={() => setEditing(false)}>{t('common.cancel')}</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="card mb-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.divorceForm.spouseName')}</p>
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.divorceForm.spouseName')}</dt><dd className="font-medium">{record.spouse_name}</dd></div>
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.divorceForm.spousePermanentId')}</dt><dd className="font-mono font-medium">{record.spouse_permanent_identity_number || '—'}</dd></div>
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.divorceForm.marriageReference')}</dt><dd className="font-medium">{record.marriage_reference || '—'}</dd></div>
+            </dl>
+          </div>
+
+          <div className="card mb-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.divorceForm.courtDetails')}</p>
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.divorceForm.courtName')}</dt><dd className="font-medium">{record.court_name}</dd></div>
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.divorceForm.courtOrderReference')}</dt><dd className="font-medium">{record.court_order_reference}</dd></div>
+              <div><dt className="text-xs text-slate-500">{t('homeAffairs.divorceForm.divorceOrderDate')}</dt><dd className="font-medium">{formatDateOnly(record.divorce_order_date)}</dd></div>
+            </dl>
+          </div>
+        </>
+      )}
 
       <div className="card mb-4">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthCertificateView.systemReference')}</p>

@@ -35,4 +35,32 @@ async function uploadReceipt(req, res, next) {
   }
 }
 
-module.exports = { uploadPhoto, uploadReceipt };
+/** POST /api/uploads/biometric — multipart upload, field name 'biometric'. Citizen applicant only
+ *  — always captured as part of the citizen's own National ID application (see
+ *  applyNationalId in homeAffairs.controller.js). Same convention as uploadPhoto: this prototype
+ *  has no real fingerprint scanner, so the captured image stands in for the biometric enrolment
+ *  evidence a real office would take in person. */
+async function uploadBiometric(req, res, next) {
+  try {
+    if (req.user.roleKey !== 'citizen') return res.status(403).json({ error: 'Only a citizen applicant can capture biometrics here.' });
+    if (!req.file) return res.status(400).json({ error: 'A biometric capture file is required (field name "biometric").' });
+    res.status(201).json({ biometricReference: `biometrics/${req.file.filename}` });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** POST /api/uploads/signature — multipart upload, field name 'signature'. Any authenticated
+ *  user. Unlike uploadBiometric (citizen-only — it's always the applicant capturing their own
+ *  biometrics), a signature is captured by an officer handing the citizen a pad at the counter
+ *  at the moment of physical collection, so it's the officer's request that uploads it. */
+async function uploadSignature(req, res, next) {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'A signature file is required (field name "signature").' });
+    res.status(201).json({ signatureReference: `signatures/${req.file.filename}` });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { uploadPhoto, uploadReceipt, uploadBiometric, uploadSignature };

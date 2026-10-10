@@ -6,6 +6,8 @@ import { api } from '../../api/client';
 import Loading from '../../components/ui/Loading';
 import StatusBadge from '../../components/ui/StatusBadge';
 import EmptyState from '../../components/ui/EmptyState';
+import Modal from '../../components/ui/Modal';
+import SignaturePad from '../../components/SignaturePad';
 import { formatDateOnly } from '../../utils/format';
 
 const NEXT = {
@@ -40,6 +42,8 @@ export default function NationalIdDetail() {
   const [record, setRecord] = useState(null);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+  const [signatureReference, setSignatureReference] = useState(null);
   const isOfficer = ['home_affairs_officer', 'system_administrator'].includes(user.roleKey);
 
   function load() {
@@ -53,6 +57,20 @@ export default function NationalIdDetail() {
   async function runAction(action) {
     setBusy(true);
     try { await api.post(`/home-affairs/national-id/${id}/${action}`, {}); load(); } finally { setBusy(false); }
+  }
+
+  // Collection (Feature 3): collecting the physical card requires the citizen's signature,
+  // captured on a pad handed to them at the counter — see SignaturePad.jsx.
+  async function confirmCollect() {
+    setBusy(true);
+    try {
+      await api.post(`/home-affairs/national-id/${id}/collect`, { signatureReference });
+      setSignatureModalOpen(false);
+      setSignatureReference(null);
+      load();
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (loadError) {
@@ -133,7 +151,11 @@ export default function NationalIdDetail() {
 
         <div className="relative flex items-center justify-between border-t border-dashed border-slate-300 px-4 py-2">
           <p className="font-mono text-xs tracking-widest text-slate-500">{t('homeAffairs.nationalIdCardView.field.idNumber')}: {record.permanent_identity_number}</p>
-          <div className="h-6 w-20 border-b border-slate-400 text-center text-[8px] uppercase text-slate-400">{t('homeAffairs.nationalIdCardView.signaturePlaceholder')}</div>
+          {record.signature_reference ? (
+            <img src={`/uploads/${record.signature_reference}`} alt={t('signaturePad.label')} className="h-8 w-20 border-b border-slate-400 object-contain" />
+          ) : (
+            <div className="h-6 w-20 border-b border-slate-400 text-center text-[8px] uppercase text-slate-400">{t('homeAffairs.nationalIdCardView.signaturePlaceholder')}</div>
+          )}
         </div>
         {record.card_number && (
           <p className="relative border-t border-slate-100 px-4 py-1.5 text-right font-mono text-[10px] text-slate-400">{record.card_number}</p>
@@ -143,7 +165,19 @@ export default function NationalIdDetail() {
       <div className="card mt-4">
         <p className="mb-4 text-sm text-slate-600">{t(`statusHelp.${record.production_status}`)}</p>
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div><dt className="text-xs text-slate-500">Biometric status</dt><dd><StatusBadge status={record.biometric_status} kind={record.biometric_status === 'Enrolled' ? 'positive' : 'neutral'} /></dd></div>
+          <div>
+            <dt className="text-xs text-slate-500">Biometric status</dt>
+            <dd className="flex items-center gap-2">
+              <StatusBadge status={record.biometric_status} kind={record.biometric_status === 'Enrolled' ? 'positive' : 'neutral'} />
+              {record.biometric_reference && (
+                <img
+                  src={`/uploads/${record.biometric_reference}`}
+                  alt={t('biometricCapture.previewAlt')}
+                  className="h-8 w-8 rounded border border-slate-200 object-cover"
+                />
+              )}
+            </dd>
+          </div>
           {record.collection_office_name && <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthCertificateView.collectionOffice')}</dt><dd className="font-medium">{record.collection_office_name}</dd></div>}
         </dl>
         {record.production_status === 'Ready for Collection' && (
@@ -151,10 +185,31 @@ export default function NationalIdDetail() {
         )}
         {next && (
           <div className="mt-6 border-t border-slate-100 pt-4">
-            <button type="button" disabled={busy} className="btn-primary" onClick={() => runAction(next.action)}>{next.label}</button>
+            <button
+              type="button"
+              disabled={busy}
+              className="btn-primary"
+              onClick={() => (next.action === 'collect' ? setSignatureModalOpen(true) : runAction(next.action))}
+            >
+              {next.label}
+            </button>
           </div>
         )}
       </div>
+
+      <Modal
+        open={signatureModalOpen}
+        onClose={() => { setSignatureModalOpen(false); setSignatureReference(null); }}
+        title={t('common.collect')}
+        footer={
+          <>
+            <button type="button" className="btn-secondary" onClick={() => { setSignatureModalOpen(false); setSignatureReference(null); }}>{t('common.cancel')}</button>
+            <button type="button" disabled={busy || !signatureReference} className="btn-primary" onClick={confirmCollect}>{t('common.confirm')}</button>
+          </>
+        }
+      >
+        <SignaturePad value={signatureReference} onChange={setSignatureReference} />
+      </Modal>
     </div>
   );
 }

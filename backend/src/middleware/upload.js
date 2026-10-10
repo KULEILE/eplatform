@@ -16,15 +16,29 @@ const PHOTOS_DIR = path.join(UPLOAD_DIR, 'photos');
 // convention as PHOTOS_DIR (see the comment above), since a receipt photo is no more sensitive
 // than an ID photo in this prototype's threat model.
 const RECEIPTS_DIR = path.join(UPLOAD_DIR, 'receipts');
-[UPLOAD_DIR, LOGO_DIR, DOCUMENTS_DIR, PHOTOS_DIR, RECEIPTS_DIR].forEach((dir) => fs.mkdirSync(dir, { recursive: true }));
+// Biometric enrolment capture for National ID applications. This prototype has no fingerprint
+// scanner to integrate with, so — same simplification the rest of the system already makes for
+// photo_reference ("simulated capture reference") — biometric enrolment is represented as an
+// uploaded image (e.g. a photo of/standing in for a fingerprint scan) rather than real biometric
+// data. See database/migrations/034_add_biometric_reference.sql.
+const BIOMETRICS_DIR = path.join(UPLOAD_DIR, 'biometrics');
+// Citizen's signature, captured on a signature pad at the collection counter (Feature 3) — an
+// officer action, not a citizen upload, so uploadSignature (below) isn't restricted to the
+// citizen role the way uploadPhoto/uploadBiometric are.
+const SIGNATURES_DIR = path.join(UPLOAD_DIR, 'signatures');
+[UPLOAD_DIR, LOGO_DIR, DOCUMENTS_DIR, PHOTOS_DIR, RECEIPTS_DIR, BIOMETRICS_DIR, SIGNATURES_DIR].forEach((dir) => fs.mkdirSync(dir, { recursive: true }));
 
 const LOGO_TYPES = new Set(['image/png', 'image/jpeg', 'image/svg+xml']);
 const PHOTO_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const RECEIPT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const BIOMETRIC_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const SIGNATURE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2MB
 const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024; // 8MB
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_BIOMETRIC_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_SIGNATURE_BYTES = 2 * 1024 * 1024; // 2MB — a signature-pad PNG is small
 
 function storageFor(dir) {
   return multer.diskStorage({
@@ -74,4 +88,29 @@ const uploadReceipt = multer({
   },
 });
 
-module.exports = { uploadLogo, uploadDocument, uploadPhoto, uploadReceipt, UPLOAD_DIR, LOGO_DIR, DOCUMENTS_DIR, PHOTOS_DIR, RECEIPTS_DIR };
+const uploadBiometric = multer({
+  storage: storageFor(BIOMETRICS_DIR),
+  limits: { fileSize: MAX_BIOMETRIC_BYTES },
+  fileFilter: (req, file, cb) => {
+    if (!BIOMETRIC_TYPES.has(file.mimetype)) {
+      return cb(new Error('Biometric capture must be PNG, JPG or WEBP.'));
+    }
+    cb(null, true);
+  },
+});
+
+const uploadSignature = multer({
+  storage: storageFor(SIGNATURES_DIR),
+  limits: { fileSize: MAX_SIGNATURE_BYTES },
+  fileFilter: (req, file, cb) => {
+    if (!SIGNATURE_TYPES.has(file.mimetype)) {
+      return cb(new Error('Signature must be PNG, JPG or WEBP.'));
+    }
+    cb(null, true);
+  },
+});
+
+module.exports = {
+  uploadLogo, uploadDocument, uploadPhoto, uploadReceipt, uploadBiometric, uploadSignature,
+  UPLOAD_DIR, LOGO_DIR, DOCUMENTS_DIR, PHOTOS_DIR, RECEIPTS_DIR, BIOMETRICS_DIR, SIGNATURES_DIR,
+};

@@ -40,9 +40,56 @@ const base = makeDepartmentController({
       },
     },
     'ready-for-collection': { from: 'Approved', to: 'Ready for Collection' },
-    'collect': { from: 'Ready for Collection', to: 'Collected' },
+    // Collection (Feature 3): the citizen signs on a pad at the counter before the officer can
+    // mark the certificate collected — see database/migrations/035_add_signature_reference.sql.
+    'collect': {
+      from: 'Ready for Collection', to: 'Collected',
+      extra: (record, req) => {
+        if (!req.body.signatureReference) {
+          return { error: 'The citizen\'s signature is required before the certificate can be marked collected.' };
+        }
+        return { setSql: 'signature_reference = $3', params: [req.body.signatureReference] };
+      },
+    },
   },
 });
+
+/** POST /api/police/clearance/:id/resubmit (citizen, owner only) — Feature 4: lets the citizen
+ *  correct and resubmit after Additional Information Required or Rejected, instead of starting
+ *  a new application. Built from scratch — police clearance had no resubmit concept before this
+ *  (it only ever had the generic officer-side transitions from simpleDepartmentController). */
+async function resubmit(req, res, next) {
+  try {
+    if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required.' });
+    const { purpose, preferredOfficeId } = req.body;
+    if (!purpose) return res.status(400).json({ error: 'purpose is required.' });
+    if (!preferredOfficeId) return res.status(400).json({ error: 'preferredOfficeId is required.' });
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query('SELECT * FROM police_clearance_requests WHERE clearance_record_id = $1 FOR UPDATE', [req.params.id]);
+      if (rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Not found.' }); }
+      const record = rows[0];
+      if (record.citizen_id !== req.user.citizenId) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Not your application.' }); }
+      if (!['Additional Information Required', 'Rejected'].includes(record.status)) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: `Cannot resubmit from '${record.status}'.` });
+      }
+      await client.query(
+        `UPDATE police_clearance_requests SET status = 'Under Review', rejection_reason = NULL,
+            purpose = $1, preferred_office_id = $2, updated_at = NOW()
+         WHERE clearance_record_id = $3`,
+        [purpose, preferredOfficeId, record.clearance_record_id]
+      );
+      await client.query('COMMIT');
+      res.json({ recordId: record.clearance_record_id, status: 'Under Review' });
+    } catch (err) {
+      await client.query('ROLLBACK'); throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) { next(err); }
+}
 
 /** GET /api/police/clearance/:id/certificate — the formatted, printable certificate. */
 async function getCertificate(req, res, next) {
@@ -76,4 +123,4 @@ async function getCertificate(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { ...base, getCertificate };
+module.exports = { ...base, getCertificate, resubmit };
