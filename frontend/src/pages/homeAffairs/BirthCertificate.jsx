@@ -6,6 +6,8 @@ import { api } from '../../api/client';
 import Loading from '../../components/ui/Loading';
 import StatusBadge from '../../components/ui/StatusBadge';
 import EmptyState from '../../components/ui/EmptyState';
+import Modal from '../../components/ui/Modal';
+import ReceiptCapture from '../../components/ReceiptCapture';
 import { formatDateOnly } from '../../utils/format';
 
 /**
@@ -23,6 +25,9 @@ export default function BirthCertificate() {
   const [cert, setCert] = useState(null);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [receipt, setReceipt] = useState({ paymentReference: '', receiptImageReference: '' });
+  const [receiptError, setReceiptError] = useState('');
   const isOfficer = ['home_affairs_officer', 'system_administrator'].includes(user.roleKey);
 
   function load() {
@@ -33,9 +38,28 @@ export default function BirthCertificate() {
   }
   useEffect(() => { load(); }, [id]);
 
-  async function readyForCollection() {
+  // Collecting the physical certificate is where the collection/reissue fee applies (birth
+  // registration itself is free) — the officer records the citizen's receipt here before the
+  // certificate can move to Ready for Collection. See migration 033.
+  async function confirmReadyForCollection() {
+    if (!receipt.paymentReference.trim() || !receipt.receiptImageReference) {
+      setReceiptError(t('receiptCapture.required'));
+      return;
+    }
     setBusy(true);
-    try { await api.post(`/home-affairs/birth-certificate/${id}/ready-for-collection`, {}); load(); } finally { setBusy(false); }
+    try {
+      await api.post(`/home-affairs/birth-certificate/${id}/ready-for-collection`, {
+        paymentReference: receipt.paymentReference.trim(), receiptImageReference: receipt.receiptImageReference,
+      });
+      setReceiptModalOpen(false);
+      setReceipt({ paymentReference: '', receiptImageReference: '' });
+      setReceiptError('');
+      load();
+    } catch (err) {
+      setReceiptError(err.message || t('common.somethingWentWrong'));
+    } finally {
+      setBusy(false);
+    }
   }
   async function collect() {
     setBusy(true);
@@ -155,7 +179,7 @@ export default function BirthCertificate() {
           {isOfficer && (
             <div className="flex gap-3">
               {cert.status === 'Certificate Generated' && (
-                <button type="button" disabled={busy} className="btn-primary" onClick={readyForCollection}>{t('common.readyForCollection')}</button>
+                <button type="button" disabled={busy} className="btn-primary" onClick={() => setReceiptModalOpen(true)}>{t('common.readyForCollection')}</button>
               )}
               {cert.status === 'Ready for Collection' && (
                 <button type="button" disabled={busy} className="btn-primary" onClick={collect}>{t('common.collect')}</button>
@@ -167,6 +191,21 @@ export default function BirthCertificate() {
       {cert.status === 'Collected' && (
         <p className="mt-4 rounded-md bg-green-50 px-3 py-2 text-sm text-gov-green">✓ Collected on {new Date(cert.collected_at).toLocaleDateString()}.</p>
       )}
+
+      <Modal
+        open={receiptModalOpen}
+        onClose={() => { setReceiptModalOpen(false); setReceiptError(''); }}
+        title={t('common.readyForCollection')}
+        footer={
+          <>
+            <button type="button" className="btn-secondary" onClick={() => { setReceiptModalOpen(false); setReceiptError(''); }}>{t('common.cancel')}</button>
+            <button type="button" disabled={busy} className="btn-primary" onClick={confirmReadyForCollection}>{t('common.confirm')}</button>
+          </>
+        }
+      >
+        <ReceiptCapture value={receipt} onChange={setReceipt} />
+        {receiptError && <p className="mt-2 text-sm text-gov-red" role="alert">⚠ {receiptError}</p>}
+      </Modal>
     </div>
   );
 }

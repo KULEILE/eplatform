@@ -19,4 +19,20 @@ async function uploadPhoto(req, res, next) {
   }
 }
 
-module.exports = { uploadPhoto };
+/** POST /api/uploads/receipt — multipart upload, field name 'receipt'. Any authenticated user.
+ *  Unlike uploadPhoto (citizen-only — it's always the applicant's own ID photo), a receipt is
+ *  uploaded by whichever side of the counter is holding the proof of payment at that moment:
+ *  the citizen themselves when applying for a passport, or the home affairs officer when
+ *  recording a receipt the citizen handed over in person at the birth-certificate collection
+ *  step. Same convention as uploadPhoto: stores the file and hands back a reference string that
+ *  the caller then submits as part of its own request. */
+async function uploadReceipt(req, res, next) {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'A receipt file is required (field name "receipt").' });
+    res.status(201).json({ receiptImageReference: `receipts/${req.file.filename}` });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { uploadPhoto, uploadReceipt };

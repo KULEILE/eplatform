@@ -8,6 +8,7 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import Modal from '../../components/ui/Modal';
 import DistrictOfficeSelect from '../../components/DistrictOfficeSelect';
 import PhotoCapture from '../../components/PhotoCapture';
+import ReceiptCapture from '../../components/ReceiptCapture';
 
 const NEXT = {
   'Submitted': { action: 'start-review', labelKey: 'status.Under Review' },
@@ -28,6 +29,7 @@ export default function Passport() {
   const [passportType, setPassportType] = useState('Ordinary');
   const [preferredOfficeId, setPreferredOfficeId] = useState('');
   const [photoReference, setPhotoReference] = useState(null);
+  const [receipt, setReceipt] = useState({ paymentReference: '', receiptImageReference: '' });
   const [error, setError] = useState('');
   const [modal, setModal] = useState(null);
   const [reason, setReason] = useState('');
@@ -40,10 +42,15 @@ export default function Passport() {
     setError('');
     if (!preferredOfficeId) { setError(t('offices.chooseBranchRequired')); return; }
     if (!photoReference) { setError(t('photoCapture.required')); return; }
+    if (!receipt.paymentReference.trim() || !receipt.receiptImageReference) { setError(t('receiptCapture.required')); return; }
     try {
-      await api.post('/passport/apply', { passportType, preferredOfficeId, photoReference });
+      await api.post('/passport/apply', {
+        passportType, preferredOfficeId, photoReference,
+        paymentReference: receipt.paymentReference.trim(), receiptImageReference: receipt.receiptImageReference,
+      });
       setPreferredOfficeId('');
       setPhotoReference(null);
+      setReceipt({ paymentReference: '', receiptImageReference: '' });
       load();
     } catch (err) {
       setError(err.message || t('common.somethingWentWrong'));
@@ -80,6 +87,7 @@ export default function Passport() {
             </select>
           </div>
           <PhotoCapture value={photoReference} onChange={setPhotoReference} help={t('photoCapture.idHelp')} />
+          <ReceiptCapture value={receipt} onChange={setReceipt} help={t('passport.feeNotice')} />
           <DistrictOfficeSelect departmentKey="passport" value={preferredOfficeId} onChange={setPreferredOfficeId} />
           <button type="submit" className="btn-primary">{t('passport.apply')}</button>
         </form>
@@ -97,6 +105,17 @@ export default function Passport() {
           },
           { key: 'application_reference', header: t('applications.reference'), render: (r) => <span className="font-mono text-xs">{r.application_reference}</span> },
           ...(isOfficer ? [{ key: 'name', header: 'Citizen', render: (r) => `${r.first_name} ${r.last_name}` }] : []),
+          ...(isOfficer ? [{
+            key: 'receipt', header: t('receiptCapture.label'),
+            render: (r) => (r.receipt_image_reference
+              ? (
+                <a href={`/uploads/${r.receipt_image_reference}`} target="_blank" rel="noreferrer" className="block">
+                  <img src={`/uploads/${r.receipt_image_reference}`} alt={t('receiptCapture.previewAlt')} className="h-10 w-8 rounded border border-slate-200 object-cover" />
+                  <span className="block font-mono text-[10px] text-slate-400">{r.payment_reference}</span>
+                </a>
+              )
+              : <span className="text-slate-300">—</span>),
+          }] : []),
           { key: 'passport_type', header: t('passport.type'), render: (r) => t(`passport.${r.passport_type.toLowerCase()}`) },
           { key: 'status', header: t('common.status'), render: (r) => <StatusBadge status={r.status} /> },
           { key: 'passport_number', header: t('passport.passportNumber'), render: (r) => r.passport_number ? <span className="font-mono text-xs">{r.passport_number}</span> : '—' },

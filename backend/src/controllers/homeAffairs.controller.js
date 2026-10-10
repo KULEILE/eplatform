@@ -335,13 +335,20 @@ async function getBirthCertificate(req, res, next) {
 async function markCertificateReadyForCollection(req, res, next) {
   try {
     if (!['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
-    const { officeId } = req.body;
+    const { officeId, paymentReference, receiptImageReference } = req.body;
+    // Birth registration itself is free, but collecting the physical certificate is where the
+    // reissue/collection fee applies (see migration 033) — the officer records the reference and
+    // a photo of the receipt the citizen presented before the certificate can move to collection.
+    if (!paymentReference || !receiptImageReference) {
+      return res.status(400).json({ error: 'paymentReference and receiptImageReference are required before the certificate can be marked Ready for Collection.' });
+    }
     // COALESCE: an officer can override the branch here, but if they don't, the office already
     // set (from the citizen's choice at application time) is kept rather than cleared.
     const { rows } = await db.query(
-      `UPDATE birth_certificates SET status = 'Ready for Collection', collection_office_id = COALESCE($1, collection_office_id), ready_for_collection_at = NOW(), updated_at = NOW()
-       WHERE birth_certificate_id = $2 AND status = 'Certificate Generated' RETURNING *`,
-      [officeId || null, req.params.id]
+      `UPDATE birth_certificates SET status = 'Ready for Collection', collection_office_id = COALESCE($1, collection_office_id),
+              payment_reference = $2, receipt_image_reference = $3, ready_for_collection_at = NOW(), updated_at = NOW()
+       WHERE birth_certificate_id = $4 AND status = 'Certificate Generated' RETURNING *`,
+      [officeId || null, paymentReference, receiptImageReference, req.params.id]
     );
     if (rows.length === 0) return res.status(409).json({ error: 'Certificate is not in a state that can move to Ready for Collection.' });
     res.json({ birthCertificate: rows[0] });

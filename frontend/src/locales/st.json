@@ -110,6 +110,19 @@
     "tooLarge": "Setshwantsho seo se seholo haholo — ka kopo kgetha se ka tlase ho 5MB.",
     "required": "Ka kopo kenya setshwantsho pele o romela."
   },
+  "receiptCapture": {
+    "label": "Bopaki ba tefo",
+    "referenceLabel": "Nomoro ya tshupiso ya tefo",
+    "referencePlaceholder": "mohlala, nomoro ya thekiso/resiti",
+    "imageLabel": "Setshwantsho sa resiti ya hao",
+    "hint": "PNG, JPG kapa WEBP, ho fihla ho 5MB.",
+    "previewAlt": "Setshwantsho sa resiti",
+    "uploaded": "Resiti e rometswe",
+    "retake": "Kgetha setshwantsho se seng",
+    "wrongType": "Ka kopo kgetha setshwantsho sa PNG, JPG kapa WEBP.",
+    "tooLarge": "Setshwantsho seo se seholo haholo — ka kopo kgetha se ka tlase ho 5MB.",
+    "required": "Nomoro ya tshupiso ya tefo le setshwantsho sa resiti ya hao di a hlokahala."
+  },
   "auth": {
     "loginTitle": "Kena ho akhaonto ya hao ya mmuso",
     "createAccountTitle": "Etsa akhaonto ya mmuso",
@@ -472,6 +485,7 @@
     "diplomatic": "Ya Boemeli",
     "official": "Ya Molao",
     "reuseNotice": "Lesedi la hao le netefaditsweng la Home Affairs le tla sebediswa hape bakeng sa kopo ena.",
+    "feeNotice": "Tefo ya pasepoto e tlameha ho lefshwa pele o kopa — kenya nomoro ya hao ya tshupiso ya tefo mme o kenye setshwantsho sa resiti ya hao.",
     "passportNumber": "Nomoro ya pasepoto",
     "expiryDate": "Letsatsi la ho fela"
   },

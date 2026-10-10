@@ -110,6 +110,19 @@
     "tooLarge": "That image is too large — please choose one under 5MB.",
     "required": "Please add a photo before submitting."
   },
+  "receiptCapture": {
+    "label": "Proof of payment",
+    "referenceLabel": "Payment reference number",
+    "referencePlaceholder": "e.g. the transaction/receipt number",
+    "imageLabel": "Photo of your receipt",
+    "hint": "PNG, JPG or WEBP, up to 5MB.",
+    "previewAlt": "Receipt photo",
+    "uploaded": "Receipt uploaded",
+    "retake": "Choose a different photo",
+    "wrongType": "Please choose a PNG, JPG or WEBP image.",
+    "tooLarge": "That image is too large — please choose one under 5MB.",
+    "required": "A payment reference number and a photo of your receipt are both required."
+  },
   "auth": {
     "loginTitle": "Log in to your government account",
     "createAccountTitle": "Create a government account",
@@ -472,6 +485,7 @@
     "diplomatic": "Diplomatic",
     "official": "Official",
     "reuseNotice": "Your verified Home Affairs identity information will be reused for this application.",
+    "feeNotice": "The passport fee must be paid before you apply — enter your payment reference and attach a photo of your receipt.",
     "passportNumber": "Passport number",
     "expiryDate": "Expiry date"
   },

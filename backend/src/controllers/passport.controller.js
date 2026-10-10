@@ -9,9 +9,14 @@ const { recordAudit } = require('../utils/audit');
 async function apply(req, res, next) {
   try {
     if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required to apply for a passport.' });
-    const { passportType, preferredOfficeId, photoReference } = req.body;
+    const { passportType, preferredOfficeId, photoReference, paymentReference, receiptImageReference } = req.body;
     if (!preferredOfficeId) {
       return res.status(400).json({ error: 'preferredOfficeId is required — choose the branch where you will collect the passport.' });
+    }
+    // The passport fee is paid up front (unlike National ID, which is free — see migration 033),
+    // so proof of payment is required at application time rather than later in the workflow.
+    if (!paymentReference || !receiptImageReference) {
+      return res.status(400).json({ error: 'paymentReference and receiptImageReference are required — the passport fee must be paid before applying.' });
     }
     const { rows: inProgress } = await db.query(
       `SELECT 1 FROM passport_records WHERE citizen_id = $1 AND status NOT IN ('Rejected', 'Collected')`,
@@ -24,9 +29,9 @@ async function apply(req, res, next) {
     try {
       await client.query('BEGIN');
       const { rows } = await client.query(
-        `INSERT INTO passport_records (citizen_id, application_reference, passport_type, status, preferred_office_id, collection_office_id, photo_reference)
-         VALUES ($1,$2,$3,'Submitted',$4,$4,$5) RETURNING passport_record_id`,
-        [req.user.citizenId, referenceNumber, passportType || 'Ordinary', preferredOfficeId, photoReference || null]
+        `INSERT INTO passport_records (citizen_id, application_reference, passport_type, status, preferred_office_id, collection_office_id, photo_reference, payment_reference, receipt_image_reference)
+         VALUES ($1,$2,$3,'Submitted',$4,$4,$5,$6,$7) RETURNING passport_record_id`,
+        [req.user.citizenId, referenceNumber, passportType || 'Ordinary', preferredOfficeId, photoReference || null, paymentReference, receiptImageReference]
       );
       await indexApplication(client, {
         citizenId: req.user.citizenId, departmentKey: 'passport', serviceType: 'Passport Application',

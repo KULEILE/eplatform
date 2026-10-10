@@ -12,13 +12,19 @@ const DOCUMENTS_DIR = path.join(UPLOAD_DIR, 'documents');
 // of static serving because they're more sensitive, but a photo used the same way a physical ID
 // photo would be doesn't need that. See uploads.routes.js.
 const PHOTOS_DIR = path.join(UPLOAD_DIR, 'photos');
-[UPLOAD_DIR, LOGO_DIR, DOCUMENTS_DIR, PHOTOS_DIR].forEach((dir) => fs.mkdirSync(dir, { recursive: true }));
+// Photos of a payment receipt/slip the citizen uploads as proof of payment — same static-serving
+// convention as PHOTOS_DIR (see the comment above), since a receipt photo is no more sensitive
+// than an ID photo in this prototype's threat model.
+const RECEIPTS_DIR = path.join(UPLOAD_DIR, 'receipts');
+[UPLOAD_DIR, LOGO_DIR, DOCUMENTS_DIR, PHOTOS_DIR, RECEIPTS_DIR].forEach((dir) => fs.mkdirSync(dir, { recursive: true }));
 
 const LOGO_TYPES = new Set(['image/png', 'image/jpeg', 'image/svg+xml']);
 const PHOTO_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const RECEIPT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2MB
 const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024; // 8MB
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_RECEIPT_BYTES = 5 * 1024 * 1024; // 5MB
 
 function storageFor(dir) {
   return multer.diskStorage({
@@ -57,4 +63,15 @@ const uploadPhoto = multer({
   },
 });
 
-module.exports = { uploadLogo, uploadDocument, uploadPhoto, UPLOAD_DIR, LOGO_DIR, DOCUMENTS_DIR, PHOTOS_DIR };
+const uploadReceipt = multer({
+  storage: storageFor(RECEIPTS_DIR),
+  limits: { fileSize: MAX_RECEIPT_BYTES },
+  fileFilter: (req, file, cb) => {
+    if (!RECEIPT_TYPES.has(file.mimetype)) {
+      return cb(new Error('Receipt photo must be PNG, JPG or WEBP.'));
+    }
+    cb(null, true);
+  },
+});
+
+module.exports = { uploadLogo, uploadDocument, uploadPhoto, uploadReceipt, UPLOAD_DIR, LOGO_DIR, DOCUMENTS_DIR, PHOTOS_DIR, RECEIPTS_DIR };
