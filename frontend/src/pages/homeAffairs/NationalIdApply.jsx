@@ -5,6 +5,7 @@ import { api } from '../../api/client';
 import Loading from '../../components/ui/Loading';
 import DistrictOfficeSelect from '../../components/DistrictOfficeSelect';
 import PhotoCapture from '../../components/PhotoCapture';
+import BiometricCapture from '../../components/BiometricCapture';
 import { formatDateOnly } from '../../utils/format';
 
 export default function NationalIdApply() {
@@ -12,6 +13,7 @@ export default function NationalIdApply() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [photoReference, setPhotoReference] = useState(null);
+  const [biometricReference, setBiometricReference] = useState(null);
   const [preferredOfficeId, setPreferredOfficeId] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -22,9 +24,10 @@ export default function NationalIdApply() {
     e.preventDefault();
     setError('');
     if (!preferredOfficeId) { setError(t('offices.chooseBranchRequired')); return; }
+    if (!biometricReference) { setError(t('biometricCapture.required')); return; }
     setBusy(true);
     try {
-      const result = await api.post('/home-affairs/national-id/apply', { photoReference, preferredOfficeId });
+      const result = await api.post('/home-affairs/national-id/apply', { photoReference, biometricReference, preferredOfficeId });
       navigate(`/home-affairs/national-id/${result.nationalIdCardId}`);
     } catch (err) {
       setError(err.message || t('common.somethingWentWrong'));
@@ -63,11 +66,9 @@ export default function NationalIdApply() {
             label={t('homeAffairs.nationalIdForm.photoCapture')}
             help={t('photoCapture.idHelp')}
           />
-          <div className="mb-4 rounded-md border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500">
-            {t('homeAffairs.nationalIdForm.biometricCapture')} — will be enrolled automatically during card production.
-          </div>
+          <BiometricCapture value={biometricReference} onChange={setBiometricReference} />
           <DistrictOfficeSelect departmentKey="home_affairs" value={preferredOfficeId} onChange={setPreferredOfficeId} />
-          <button type="submit" disabled={busy || !photoReference} className="btn-primary w-full">
+          <button type="submit" disabled={busy || !photoReference || !biometricReference} className="btn-primary w-full">
             {busy ? t('common.loading') : t('homeAffairs.nationalIdForm.submit')}
           </button>
         </form>
