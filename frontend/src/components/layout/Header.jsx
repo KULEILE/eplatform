@@ -126,13 +126,17 @@ export default function Header() {
       <div className="bg-hero-gradient bg-gov-navy text-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <Link to={user ? '/dashboard' : '/'} className="flex items-center gap-3">
-            {logoUrl ? (
-              <img src={logoUrl} alt="" className="h-10 w-10 rounded-md bg-white object-contain p-1" />
-            ) : (
-              <span className="flex h-10 w-10 items-center justify-center rounded-md bg-white text-gov-navy" aria-hidden="true">
-                <BuildingLibraryIcon className="h-6 w-6" strokeWidth={1.75} />
-              </span>
-            )}
+            {/* Bundled into the app itself (frontend/public/images), not fetched from the
+                backend's uploads folder — Render's free tier uses temporary disk storage, so a
+                logo an admin uploads through Admin Settings gets wiped whenever the service
+                restarts (an admin-uploaded logoUrl can still override this below if reachable,
+                but the coat of arms is always there as the real default, not a placeholder icon). */}
+            <img
+              src={logoUrl || '/images/government-logo.png'}
+              alt=""
+              className="h-10 w-10 rounded-md bg-white object-contain p-1"
+              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/images/government-logo.png'; }}
+            />
             <span className="leading-tight">
               <span className="block text-base font-bold sm:text-lg">{settings.system_name || t('common.appNameFallback')}</span>
               <span className="hidden text-[11px] font-medium tracking-wide text-white/70 sm:block">{t('common.systemTagline')}</span>
