@@ -115,7 +115,7 @@
   "biometricCapture": {
     "hint": "E sebediswa ho ngolisa menwana ya hao bakeng sa ID ena ya Setjhaba.",
     "scanHint": "Beha letsoho lena le otlolohile 'me o le sekene — ngodiso ya nnete e nka tlhahlobo ya letsoho le leng le le leng, eseng setshwantsho se le seng.",
-    "captureHint": "PNG, JPG kapa WEBP, ho fihla ho 5MB. Sellathekeng, sena se bula khamera ya hao; komporong, kgetha setshwantsho se seng.",
+    "captureHint": "PNG, JPG kapa WEBP, ho fihla ho 5MB.",
     "previewAlt": "Tlhahlobo ya letsoho",
     "uploaded": "Tlhahlobo e ngolisitswe",
     "retake": "Sekena hape",
@@ -123,7 +123,11 @@
     "tooLarge": "Setshwantsho seo se seholo haholo — ka kopo kgetha se ka tlase ho 5MB.",
     "required": "Tlhahlobo ya matsoho ka bobedi e hlokahala pele o romela.",
     "leftHandLabel": "Tlhahlobo ya letsoho le letshehadi",
-    "rightHandLabel": "Tlhahlobo ya letsoho le letona"
+    "rightHandLabel": "Tlhahlobo ya letsoho le letona",
+    "startScan": "Qala ho sekena",
+    "captureNow": "Nka tlhahlobo",
+    "scanInProgressHint": "Tshwara letsoho la hao le sa sisinyehe ka hara foreimi, ebe o tobetsa Nka tlhahlobo.",
+    "cameraUnavailable": "Khamera ha e fumanehe setsebeng sena — ka kopo kgetha setshwantsho se seng."
   },
   "signaturePad": {
     "label": "Mosaeno wa moahi",

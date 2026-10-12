@@ -115,7 +115,7 @@
   "biometricCapture": {
     "hint": "Used to enrol your fingerprints for this National ID card.",
     "scanHint": "Place this hand flat and scan it — a real enrolment takes a scan of each hand, not a single photo.",
-    "captureHint": "PNG, JPG or WEBP, up to 5MB. On a phone, this opens your camera; on a computer, choose an existing photo.",
+    "captureHint": "PNG, JPG or WEBP, up to 5MB.",
     "previewAlt": "Biometric scan",
     "uploaded": "Scan recorded",
     "retake": "Scan again",
@@ -123,7 +123,11 @@
     "tooLarge": "That image is too large — please choose one under 5MB.",
     "required": "A biometric scan of both hands is required before submitting.",
     "leftHandLabel": "Left hand scan",
-    "rightHandLabel": "Right hand scan"
+    "rightHandLabel": "Right hand scan",
+    "startScan": "Start scan",
+    "captureNow": "Capture scan",
+    "scanInProgressHint": "Hold your hand steady in the frame, then tap Capture scan.",
+    "cameraUnavailable": "Camera not available on this device — choose an existing image instead."
   },
   "signaturePad": {
     "label": "Citizen's signature",

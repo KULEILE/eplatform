@@ -28,6 +28,14 @@ export default {
         'card-hover': '0 8px 20px -6px rgba(15,23,42,0.18), 0 2px 6px rgba(15,23,42,0.08)',
         header: '0 1px 0 rgba(255,255,255,0.08) inset, 0 4px 14px rgba(8,26,51,0.18)',
       },
+      // Sweeping line over the live camera feed in BiometricCapture.jsx, so a biometric scan
+      // reads as an active scan in progress rather than a static photo preview.
+      keyframes: {
+        'biometric-scan-sweep': {
+          '0%, 100%': { top: '0%' },
+          '50%': { top: '100%' },
+        },
+      },
     },
   },
   plugins: [],
