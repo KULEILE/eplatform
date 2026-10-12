@@ -22,13 +22,19 @@ export default function NationalIdList() {
     <div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-slate-900">{t('homeAffairs.nationalIdCard')}</h1>
-        {!isOfficer && <Link to="/home-affairs/national-id/apply" className="btn-primary">{t('homeAffairs.nationalIdForm.submit')}</Link>}
+        {!isOfficer && (
+          <div className="flex gap-3">
+            <Link to="/home-affairs/national-id/apply" className="btn-secondary">{t('homeAffairs.nationalIdForm.submit')}</Link>
+            <Link to="/home-affairs/national-id/renew-replace" className="btn-primary">{t('homeAffairs.nationalIdRenewReplace')}</Link>
+          </div>
+        )}
       </div>
       <DataTable
         rowKey="national_id_card_id"
         rows={rows}
         columns={[
           { key: 'card_number', header: 'Card number', render: (r) => <span className="font-mono text-xs">{r.card_number || '—'}</span> },
+          { key: 'application_type', header: t('homeAffairs.nationalIdRenewReplaceForm.field.applicationType'), render: (r) => t(`homeAffairs.nationalIdApplicationType.${r.application_type}`) },
           ...(isOfficer ? [{ key: 'name', header: 'Citizen', render: (r) => `${r.first_name} ${r.last_name}` }] : []),
           { key: 'production_status', header: t('common.status'), render: (r) => <StatusBadge status={r.production_status} /> },
           {

@@ -59,7 +59,8 @@
     "accessibility": "Accessibility",
     "footerRights": "© {{year}} Integrated Government Services. All rights reserved.",
     "copy": "Copy",
-    "copied": "Copied"
+    "copied": "Copied",
+    "citizen": "Citizen"
   },
   "nav": {
     "home": "Home",
@@ -264,7 +265,11 @@
     "Scheduled": "Scheduled",
     "Missed": "Missed",
     "Cancelled": "Cancelled",
-    "Background Check In Progress": "Background Check In Progress"
+    "Background Check In Progress": "Background Check In Progress",
+    "Requested": "Requested",
+    "Confirmed": "Confirmed",
+    "Registered": "Registered",
+    "Revoked": "Revoked"
   },
   "statusHelp": {
     "Draft": "You haven't submitted this yet.",
@@ -286,7 +291,9 @@
     "Ready for Collection": "Ready. Please visit the office shown to collect it.",
     "Collected": "Collected. This service is complete.",
     "Completed": "This service is complete.",
-    "Flagged for Correction": "A mismatch was found and is being corrected. You do not need to do anything yet."
+    "Flagged for Correction": "A mismatch was found and is being corrected. You do not need to do anything yet.",
+    "Requested": "Your booking request has been received and is waiting for an officer to confirm a date and officiant.",
+    "Confirmed": "Your booking is confirmed. Please attend on the confirmed date."
   },
   "homeAffairs": {
     "services": "Home Affairs services",
@@ -503,6 +510,163 @@
       "reportedByMe": "Reported by me",
       "reportedBy": "Reported by",
       "officerIntro": "Review and approve death registrations. Approving marks the citizen record as deceased."
+    },
+    "birthCertificateReissue": "Birth certificate reissue",
+    "birthCertificateReissueForm": {
+      "intro": "Request a new copy of your birth certificate if the original was lost, damaged, or never collected.",
+      "field": {
+        "birthRecordId": "Birth record ID",
+        "birthRecordIdHelp": "The reference number of your approved birth registration (see your birth certificate or My Applications).",
+        "reason": "Reason for reissue",
+        "details": "Additional details"
+      },
+      "certificateReady": "View certificate"
+    },
+    "reissueReason": {
+      "Lost": "Lost",
+      "Damaged": "Damaged",
+      "NeverCollected": "Never collected",
+      "Other": "Other"
+    },
+    "deathCertificateRequest": "Death certificate issuance",
+    "deathCertificateRequestForm": {
+      "intro": "Request an official death certificate for a death that has already been registered and approved.",
+      "field": {
+        "deathRecordId": "Death record ID",
+        "deathRecordIdHelp": "The reference number of the approved death registration.",
+        "relationship": "Your relationship to the deceased",
+        "reason": "Reason for the certificate",
+        "details": "Additional details"
+      },
+      "deceased": "Deceased"
+    },
+    "deathCertificateReason": {
+      "estate": "Estate / Inheritance",
+      "insurance": "Insurance claim",
+      "personal": "Personal record"
+    },
+    "nameChange": "Change of name or surname",
+    "nameChangeForm": {
+      "intro": "Request a formal, legal change of your first name or surname (for example after marriage, divorce, or by personal choice).",
+      "field": {
+        "requestedFirstName": "New first name",
+        "requestedLastName": "New surname",
+        "reasonCategory": "Reason category",
+        "reasonDetails": "Explain your reason"
+      },
+      "requestedName": "Requested name",
+      "approvalReference": "Approval reference"
+    },
+    "nameChangeReason": {
+      "marriage": "Marriage",
+      "divorce": "Divorce",
+      "preference": "Personal preference",
+      "religious": "Religious",
+      "correction": "Correction of an error"
+    },
+    "adoption": "Adoption registration",
+    "adoptionForm": {
+      "intro": "Register a court-ordered adoption so Home Affairs updates the child's guardian on record.",
+      "field": {
+        "childId": "Child's permanent identity number",
+        "childIdHelp": "The permanent identity number already on the child's citizen record.",
+        "courtOrderReference": "Court order reference",
+        "courtName": "Court name",
+        "adoptionDate": "Adoption date",
+        "reasonDetails": "Additional details"
+      },
+      "child": "Child"
+    },
+    "burialOrder": "Burial order",
+    "burialOrderForm": {
+      "intro": "Request the order authorising burial of a citizen whose death has already been registered and approved.",
+      "field": {
+        "deathRecordId": "Death record ID",
+        "deathRecordIdHelp": "The reference number of the approved death registration.",
+        "placeOfBurial": "Place of burial",
+        "cemeteryOrSite": "Cemetery or site",
+        "plannedBurialDate": "Planned burial date"
+      },
+      "orderNumber": "Order number"
+    },
+    "specialLicence": "Special marriage licence",
+    "specialLicenceForm": {
+      "intro": "Apply for a special marriage licence for a marriage that doesn't fit the standard registration process — for example a foreign-national spouse, an urgent licence, or a minor marrying with consent.",
+      "field": {
+        "spouse1Name": "Your full name",
+        "spouse1Id": "Your permanent identity number",
+        "spouse2Name": "Spouse's full name",
+        "spouse2Nationality": "Spouse's nationality",
+        "spouse2Id": "Spouse's permanent identity number",
+        "specialReason": "Reason the licence is special",
+        "reasonDetails": "Explain your circumstances"
+      },
+      "spouses": "Spouses",
+      "licenceNumber": "Licence number"
+    },
+    "specialLicenceReason": {
+      "foreign": "Foreign national spouse",
+      "urgent": "Urgent / expedited",
+      "minor": "Minor with consent"
+    },
+    "solemnisation": "Civil marriage solemnisation",
+    "solemnisationForm": {
+      "intro": "Book the marriage ceremony itself — a date, branch and officiant — separately from registering a marriage that has already taken place.",
+      "field": {
+        "spouse1Name": "Your full name",
+        "spouse2Name": "Spouse's full name",
+        "requestedDate": "Requested date",
+        "requestedTime": "Requested time"
+      },
+      "cancelled": "Booking cancelled.",
+      "confirm": "Confirm booking",
+      "markCompleted": "Mark ceremony completed"
+    },
+    "marriageOfficers": "Registration of marriage officers",
+    "marriageOfficersForm": {
+      "intro": "Register and manage the people authorised to perform civil, religious or traditional marriages.",
+      "officerOnly": "This page is for Home Affairs officers only.",
+      "field": {
+        "fullName": "Full name",
+        "officiantType": "Officiant type",
+        "authority": "Authority or denomination",
+        "notes": "Notes"
+      },
+      "register": "Register officer",
+      "licenceNumber": "Licence number",
+      "reinstate": "Reinstate",
+      "suspend": "Suspend",
+      "revoke": "Revoke"
+    },
+    "officiantType": {
+      "religious": "Religious",
+      "civil": "Civil",
+      "chief": "Traditional chief"
+    },
+    "nationalIdRenewReplace": "National ID renewal & replacement",
+    "nationalIdRenewReplaceForm": {
+      "intro": "Apply to renew an expiring National ID card, or replace one that was lost, stolen or damaged.",
+      "field": {
+        "applicationType": "Application type",
+        "replacementReason": "Reason for replacement",
+        "replacementDetails": "Additional details",
+        "photo": "Photo",
+        "photoHelp": "Optional — your previous photo will be reused if you skip this."
+      },
+      "renewal": "Renewal",
+      "replacement": "Replacement",
+      "previousCard": "Previous card number"
+    },
+    "nationalIdApplicationType": {
+      "New": "New",
+      "Renewal": "Renewal",
+      "Replacement": "Replacement"
+    },
+    "replacementReason": {
+      "lost": "Lost",
+      "stolen": "Stolen",
+      "damaged": "Damaged",
+      "expired": "Expired"
     }
   },
   "passport": {
@@ -703,5 +867,16 @@
     "accommodationRequested": "Support requested",
     "markCompleted": "Mark completed",
     "markMissed": "Mark missed"
+  },
+  "services": {
+    "submittedWithReference": "Submitted. Reference: {{reference}}",
+    "submitted": "Submitted.",
+    "resubmitted": "Resubmitted for review.",
+    "actionRecorded": "Action recorded.",
+    "myRequests": "My requests",
+    "submittedAt": "Submitted",
+    "startReview": "Start review",
+    "requestInfo": "Request more information",
+    "reason": "Reason"
   }
 }

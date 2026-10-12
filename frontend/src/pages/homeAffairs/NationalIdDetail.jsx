@@ -190,6 +190,16 @@ export default function NationalIdDetail() {
             </dd>
           </div>
           {record.collection_office_name && <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthCertificateView.collectionOffice')}</dt><dd className="font-medium">{record.collection_office_name}</dd></div>}
+          {record.application_type !== 'New' && (
+            <div>
+              <dt className="text-xs text-slate-500">{t('homeAffairs.nationalIdRenewReplaceForm.field.applicationType')}</dt>
+              <dd className="font-medium">
+                {t(`homeAffairs.nationalIdApplicationType.${record.application_type}`)}
+                {record.replacement_reason && ` — ${t(`homeAffairs.replacementReason.${record.replacement_reason.toLowerCase()}`)}`}
+                {record.previous_card_number && <span className="block text-xs text-slate-500">{t('homeAffairs.nationalIdRenewReplaceForm.previousCard')}: {record.previous_card_number}</span>}
+              </dd>
+            </div>
+          )}
         </dl>
         {record.production_status === 'Ready for Collection' && (
           <p className="mt-4 text-sm text-gov-amber">⚠ {t('homeAffairs.birthCertificateView.notCollectedWarning')}</p>

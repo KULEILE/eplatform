@@ -59,7 +59,8 @@
     "accessibility": "Phihlello",
     "footerRights": "© {{year}} Ditshebeletso tse Kopantsweng tsa Mmuso. Ditokelo tsohle di sirelehile.",
     "copy": "Kopitsa",
-    "copied": "E kopitsweng"
+    "copied": "E kopitsweng",
+    "citizen": "Moahi"
   },
   "nav": {
     "home": "Lapeng",
@@ -264,7 +265,11 @@
     "Scheduled": "E Rulahantswe",
     "Missed": "E Fositswe",
     "Cancelled": "E Hlakotswe",
-    "Background Check In Progress": "Tlhahlobo e Tswela Pele"
+    "Background Check In Progress": "Tlhahlobo e Tswela Pele",
+    "Requested": "E Kopiwe",
+    "Confirmed": "E Netefatswe",
+    "Registered": "E Ngodisitswe",
+    "Revoked": "E Hlakolwe"
   },
   "statusHelp": {
     "Draft": "Ha o e so e romele.",
@@ -286,7 +291,9 @@
     "Ready for Collection": "E loketse. Ka kopo etela ofisi e bontshitsweng ho e nka.",
     "Collected": "E nkuwe. Tshebeletso ena e phethilwe.",
     "Completed": "Tshebeletso ena e phethilwe.",
-    "Flagged for Correction": "Ho fumanwe phoso mme e a lokiswa. Ha ho letho leo o lokelang ho le etsa hajwale."
+    "Flagged for Correction": "Ho fumanwe phoso mme e a lokiswa. Ha ho letho leo o lokelang ho le etsa hajwale.",
+    "Requested": "Kopo ya hau ya beking e fihletse mme e emetse hore mohlanka a netefatse letsatsi le motho ea tla etsang kopanelo.",
+    "Confirmed": "Beking ya hau e netefaditswe. Ka kopo o tle ka letsatsi le netefaditsweng."
   },
   "homeAffairs": {
     "services": "Ditshebeletso tsa Home Affairs",
@@ -503,6 +510,163 @@
       "reportedByMe": "Tse tlalehiloeng ke nna",
       "reportedBy": "E tlalehilwe ke",
       "officerIntro": "Hlahloba mme o dumellane le dingodiso tsa lefu. Ho dumela ho tshwaya rekoto ya moahi e le e hlokahetseng."
+    },
+    "birthCertificateReissue": "Phetiso ya Setifikeiti sa Tswalo",
+    "birthCertificateReissueForm": {
+      "intro": "Kopa khopi e ntjha ya setifikeiti sa hau sa tswalo haeba se ne se lahlehile, se senyehile, kapa se ne se so ke se nkuwe.",
+      "field": {
+        "birthRecordId": "Nomoro ya Rekoto ya Tswalo",
+        "birthRecordIdHelp": "Nomoro ya tshupiso ya ngodiso ya hau ya tswalo e amohetsweng (sheba setifikeiti sa hau sa tswalo kapa Dikopo tsa Ka).",
+        "reason": "Lebaka la ho fumana bocha",
+        "details": "Dintlha tse eketsehileng"
+      },
+      "certificateReady": "Sheba setifikeiti"
+    },
+    "reissueReason": {
+      "Lost": "E Lahlehile",
+      "Damaged": "E Senyehile",
+      "NeverCollected": "Ha e so ke e nkuwe",
+      "Other": "Tse ding"
+    },
+    "deathCertificateRequest": "Phepeliso ya Setifikeiti sa Lefu",
+    "deathCertificateRequestForm": {
+      "intro": "Kopa setifikeiti sa semmuso sa lefu bakeng sa lefu le ngodisitsweng le amohetsweng.",
+      "field": {
+        "deathRecordId": "Nomoro ya Rekoto ya Lefu",
+        "deathRecordIdHelp": "Nomoro ya tshupiso ya ngodiso ya lefu e amohetsweng.",
+        "relationship": "Kamano ya hau le mofu",
+        "reason": "Lebaka la setifikeiti",
+        "details": "Dintlha tse eketsehileng"
+      },
+      "deceased": "Mofu"
+    },
+    "deathCertificateReason": {
+      "estate": "Lefa / Bofumanehi",
+      "insurance": "Kopo ya Inshorense",
+      "personal": "Rekoto ya Botho"
+    },
+    "nameChange": "Phetoho ya Lebitso kapa Fane",
+    "nameChangeForm": {
+      "intro": "Kopa phetoho ya semmuso ya lebitso la hau la pele kapa fane (mohlala kamora lenyalo, tlhalo, kapa ka boikhethelo ba hau).",
+      "field": {
+        "requestedFirstName": "Lebitso la pele le lecha",
+        "requestedLastName": "Fane e ntjha",
+        "reasonCategory": "Sehlopha sa lebaka",
+        "reasonDetails": "Hlalosa lebaka la hau"
+      },
+      "requestedName": "Lebitso le kopiwang",
+      "approvalReference": "Nomoro ya Tumello"
+    },
+    "nameChangeReason": {
+      "marriage": "Lenyalo",
+      "divorce": "Tlhalo",
+      "preference": "Boikhethelo ba Botho",
+      "religious": "Bodumedi",
+      "correction": "Tokiso ya Phoso"
+    },
+    "adoption": "Ngodiso ya Ho Nyamela",
+    "adoptionForm": {
+      "intro": "Ngodisa ho nyamela ho laetsweng ke lekhotla hore Litaba tsa Selehae e ntjhafatse mohlokomeli oa ngwana oa rekoto.",
+      "field": {
+        "childId": "Nomoro ya boitsebiso ya ngwana",
+        "childIdHelp": "Nomoro ya boitsebiso e seng e le teng rekoto ya moahi ya ngwana.",
+        "courtOrderReference": "Nomoro ya Taelo ya Lekhotla",
+        "courtName": "Lebitso la Lekhotla",
+        "adoptionDate": "Letsatsi la ho Nyamela",
+        "reasonDetails": "Dintlha tse eketsehileng"
+      },
+      "child": "Ngwana"
+    },
+    "burialOrder": "Taelo ya Patlo",
+    "burialOrderForm": {
+      "intro": "Kopa taelo e dumellang patlo ya moahi eo lefu la hae le ngodisitsweng le amohetsweng.",
+      "field": {
+        "deathRecordId": "Nomoro ya Rekoto ya Lefu",
+        "deathRecordIdHelp": "Nomoro ya tshupiso ya ngodiso ya lefu e amohetsweng.",
+        "placeOfBurial": "Sebaka sa Patlo",
+        "cemeteryOrSite": "Lebitla kapa Sebaka",
+        "plannedBurialDate": "Letsatsi le Reriweng la Patlo"
+      },
+      "orderNumber": "Nomoro ya Taelo"
+    },
+    "specialLicence": "Tumello e Ikgethang ya Lenyalo",
+    "specialLicenceForm": {
+      "intro": "Kopa tumello e ikgethang ya lenyalo bakeng sa lenyalo le sa lumellaneng le mokgwa o tloaelehileng wa ngodiso — mohlala molekane oa naha e nngwe, tumello e potlakileng, kapa ya monyane ka tumello.",
+      "field": {
+        "spouse1Name": "Lebitso la hau le feletseng",
+        "spouse1Id": "Nomoro ya hau ya boitsebiso",
+        "spouse2Name": "Lebitso la molekane le feletseng",
+        "spouse2Nationality": "Boahi ba molekane",
+        "spouse2Id": "Nomoro ya boitsebiso ya molekane",
+        "specialReason": "Lebaka la hore tumello e ikgethe",
+        "reasonDetails": "Hlalosa boemo ba hau"
+      },
+      "spouses": "Balekane",
+      "licenceNumber": "Nomoro ya Tumello"
+    },
+    "specialLicenceReason": {
+      "foreign": "Molekane oa Naha e Nngwe",
+      "urgent": "E Potlakileng",
+      "minor": "Monyane ka Tumello"
+    },
+    "solemnisation": "Kopano ya Lenyalo la Semmuso",
+    "solemnisationForm": {
+      "intro": "Beka kopano ya lenyalo ka boyona — letsatsi, lekala le motho ea tla etsang kopanelo — ho arohana le ngodiso ya lenyalo le se le etsahetse.",
+      "field": {
+        "spouse1Name": "Lebitso la hau le feletseng",
+        "spouse2Name": "Lebitso la molekane le feletseng",
+        "requestedDate": "Letsatsi le Kopiwang",
+        "requestedTime": "Nako e Kopiwang"
+      },
+      "cancelled": "Beking e hlakolwe.",
+      "confirm": "Netefatsa Beking",
+      "markCompleted": "Tshwaya Kopano e Phethelletse"
+    },
+    "marriageOfficers": "Ngodiso ya Baetsa-kopano ba Manyalo",
+    "marriageOfficersForm": {
+      "intro": "Ngodisa le ho laola batho ba dumelletsweng ho etsa manyalo a semmuso, a bodumedi kapa a moetlo.",
+      "officerOnly": "Leqepheng lena ke la bahlanka ba Litaba tsa Selehae feela.",
+      "field": {
+        "fullName": "Lebitso le Feletseng",
+        "officiantType": "Mofuta oa Moetsa-kopano",
+        "authority": "Matla kapa Bodumedi",
+        "notes": "Dintlha"
+      },
+      "register": "Ngodisa Mohlanka",
+      "licenceNumber": "Nomoro ya Tumello",
+      "reinstate": "Khutlisa",
+      "suspend": "Emisa",
+      "revoke": "Hlakola"
+    },
+    "officiantType": {
+      "religious": "Bodumedi",
+      "civil": "Semmuso",
+      "chief": "Morena oa Moetlo"
+    },
+    "nationalIdRenewReplace": "Phetiso le Nchafatso ya ID ya Naha",
+    "nationalIdRenewReplaceForm": {
+      "intro": "Kopa ho nchafatsa karete ya hau ya ID e felang nako, kapa ho fumana e nngwe bakeng sa e lahlehileng, e utswitsweng kapa e senyehileng.",
+      "field": {
+        "applicationType": "Mofuta oa Kopo",
+        "replacementReason": "Lebaka la Phetiso",
+        "replacementDetails": "Dintlha tse eketsehileng",
+        "photo": "Setshwantsho",
+        "photoHelp": "Ha e hlokahale — setshwantsho sa hau sa pele se tla sebediswa hape haeba o se tlole."
+      },
+      "renewal": "Nchafatso",
+      "replacement": "Phetiso",
+      "previousCard": "Nomoro ya Karete ya Pele"
+    },
+    "nationalIdApplicationType": {
+      "New": "E Ntjha",
+      "Renewal": "Nchafatso",
+      "Replacement": "Phetiso"
+    },
+    "replacementReason": {
+      "lost": "E Lahlehile",
+      "stolen": "E Utswitswe",
+      "damaged": "E Senyehile",
+      "expired": "E Felile Nako"
     }
   },
   "passport": {
@@ -703,5 +867,16 @@
     "accommodationRequested": "Tshehetso e kopilwe",
     "markCompleted": "Tshwaya e phethetswe",
     "markMissed": "Tshwaya e fositswe"
+  },
+  "services": {
+    "submittedWithReference": "E romelwe. Nomoro ya tshupiso: {{reference}}",
+    "submitted": "E romelwe.",
+    "resubmitted": "E boetse e romelwe hape bakeng sa tlhahlobo.",
+    "actionRecorded": "Ketso e ngodisitswe.",
+    "myRequests": "Dikopo tsa ka",
+    "submittedAt": "E Romelwe",
+    "startReview": "Qala tlhahlobo",
+    "requestInfo": "Kopa tlhahisoleseling e eketsehileng",
+    "reason": "Lebaka"
   }
 }

@@ -1,9 +1,13 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const hac = require('../controllers/homeAffairs.controller');
+const hac2 = require('../controllers/homeAffairsServices2.controller');
 
 const router = express.Router();
 router.use(requireAuth);
+
+// National ID — renewal & replacement (new service; reuses the national-id table/pipeline)
+router.post('/national-id/renew-replace', hac.applyNationalIdRenewalReplacement);
 
 // Birth registration
 router.post('/birth-registration', hac.createBirthRegistration);
@@ -62,5 +66,92 @@ router.post('/divorce-registration/:id/verify', hac.verifyDivorce);
 router.post('/divorce-registration/:id/approve', hac.approveDivorce);
 router.post('/divorce-registration/:id/reject', hac.rejectDivorce);
 router.get('/divorce-certificate/:id', hac.getDivorceCertificate);
+
+// Birth certificate reissue (new service)
+router.post('/birth-certificate-reissue', hac2.requestBirthCertificateReissue);
+router.get('/birth-certificate-reissue', hac2.listBirthCertificateReissues);
+router.get('/birth-certificate-reissue/:id', hac2.getBirthCertificateReissue);
+router.post('/birth-certificate-reissue/:id/start-review', hac2.startReviewReissue);
+router.post('/birth-certificate-reissue/:id/request-information', hac2.requestInformationReissue);
+router.post('/birth-certificate-reissue/:id/resubmit', hac2.resubmitReissue);
+router.post('/birth-certificate-reissue/:id/approve', hac2.approveReissue);
+router.post('/birth-certificate-reissue/:id/reject', hac2.rejectReissue);
+
+// Death certificate issuance (new service — distinct from death registration)
+router.post('/death-certificate-request', hac2.requestDeathCertificate);
+router.get('/death-certificate-request', hac2.listDeathCertificateRequests);
+router.get('/death-certificate-request/:id', hac2.getDeathCertificateRequest);
+router.post('/death-certificate-request/:id/start-review', hac2.startReviewDeathCertRequest);
+router.post('/death-certificate-request/:id/request-information', hac2.requestInformationDeathCertRequest);
+router.post('/death-certificate-request/:id/resubmit', hac2.resubmitDeathCertRequest);
+router.post('/death-certificate-request/:id/approve', hac2.approveDeathCertRequest);
+router.post('/death-certificate-request/:id/reject', hac2.rejectDeathCertRequest);
+
+// Change/alteration of name or surname (new service)
+router.post('/name-change', hac2.requestNameChange);
+router.get('/name-change', hac2.listNameChangeRequests);
+router.get('/name-change/:id', hac2.getNameChangeRequest);
+router.post('/name-change/:id/start-review', hac2.startReviewNameChange);
+router.post('/name-change/:id/request-information', hac2.requestInformationNameChange);
+router.post('/name-change/:id/resubmit', hac2.resubmitNameChange);
+router.post('/name-change/:id/approve', hac2.approveNameChange);
+router.post('/name-change/:id/reject', hac2.rejectNameChange);
+
+// Adoption registration (new service)
+router.post('/adoption', hac2.requestAdoption);
+router.get('/adoption', hac2.listAdoptions);
+router.get('/adoption/:id', hac2.getAdoption);
+router.post('/adoption/:id/start-review', hac2.startReviewAdoption);
+router.post('/adoption/:id/request-information', hac2.requestInformationAdoption);
+router.post('/adoption/:id/resubmit', hac2.resubmitAdoption);
+router.post('/adoption/:id/approve', hac2.approveAdoption);
+router.post('/adoption/:id/reject', hac2.rejectAdoption);
+
+// Issuing burial orders (new service)
+router.post('/burial-order', hac2.requestBurialOrder);
+router.get('/burial-order', hac2.listBurialOrders);
+router.get('/burial-order/:id', hac2.getBurialOrder);
+router.post('/burial-order/:id/start-review', hac2.startReviewBurialOrder);
+router.post('/burial-order/:id/request-information', hac2.requestInformationBurialOrder);
+router.post('/burial-order/:id/resubmit', hac2.resubmitBurialOrder);
+router.post('/burial-order/:id/approve', hac2.approveBurialOrder);
+router.post('/burial-order/:id/reject', hac2.rejectBurialOrder);
+
+// Special marriage licence (new service)
+router.post('/special-marriage-licence', hac2.requestSpecialMarriageLicence);
+router.get('/special-marriage-licence', hac2.listSpecialMarriageLicences);
+router.get('/special-marriage-licence/:id', hac2.getSpecialMarriageLicence);
+router.post('/special-marriage-licence/:id/start-review', hac2.startReviewSpecialLicence);
+router.post('/special-marriage-licence/:id/request-information', hac2.requestInformationSpecialLicence);
+router.post('/special-marriage-licence/:id/resubmit', hac2.resubmitSpecialLicence);
+router.post('/special-marriage-licence/:id/approve', hac2.approveSpecialLicence);
+router.post('/special-marriage-licence/:id/reject', hac2.rejectSpecialLicence);
+
+// Civil marriage solemnisation booking (new service)
+router.post('/marriage-solemnisation', hac2.requestSolemnisationBooking);
+router.get('/marriage-solemnisation', hac2.listSolemnisationBookings);
+router.get('/marriage-solemnisation/:id', hac2.getSolemnisationBooking);
+router.post('/marriage-solemnisation/:id/request-information', hac2.requestInformationSolemnisation);
+router.post('/marriage-solemnisation/:id/resubmit', hac2.resubmitSolemnisation);
+router.post('/marriage-solemnisation/:id/confirm', hac2.confirmSolemnisation);
+router.post('/marriage-solemnisation/:id/complete', hac2.completeSolemnisation);
+router.post('/marriage-solemnisation/:id/cancel', hac2.cancelSolemnisation);
+router.post('/marriage-solemnisation/:id/reject', hac2.rejectSolemnisation);
+
+// Registration of marriage officers (new service — internal registry, officer/admin only)
+router.post('/marriage-officers', hac2.createMarriageOfficer);
+router.get('/marriage-officers', hac2.listMarriageOfficers);
+router.get('/marriage-officers/:id', hac2.getMarriageOfficer);
+router.post('/marriage-officers/:id/status', hac2.updateMarriageOfficerStatus);
+
+// Identity enrolment for non-citizens/refugees (new service)
+router.post('/foreign-identity', hac2.applyForeignIdentity);
+router.get('/foreign-identity', hac2.listForeignIdentityEnrolments);
+router.get('/foreign-identity/:id', hac2.getForeignIdentityEnrolment);
+router.post('/foreign-identity/:id/start-review', hac2.startReviewForeignIdentity);
+router.post('/foreign-identity/:id/request-information', hac2.requestInformationForeignIdentity);
+router.post('/foreign-identity/:id/resubmit', hac2.resubmitForeignIdentity);
+router.post('/foreign-identity/:id/approve', hac2.approveForeignIdentity);
+router.post('/foreign-identity/:id/reject', hac2.rejectForeignIdentity);
 
 module.exports = router;

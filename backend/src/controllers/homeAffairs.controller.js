@@ -461,6 +461,75 @@ async function applyNationalId(req, res, next) {
   }
 }
 
+/** POST /api/home-affairs/national-id/renew-replace — new service: "National ID card renewal
+ *  & replacement". Deliberately reuses this same table/approval pipeline (NID_TRANSITIONS
+ *  below) rather than a parallel one, since a renewal or replacement is still, physically, a
+ *  new card application that goes through the same review -> approve -> produce -> collect
+ *  steps — see migration 037. Requires the citizen to already hold a previous card; a first
+ *  application still goes through applyNationalId above. */
+async function applyNationalIdRenewalReplacement(req, res, next) {
+  try {
+    if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required to apply for a National ID card.' });
+    const { applicationType, replacementReason, replacementDetails, preferredOfficeId, photoReference } = req.body;
+    if (!['Renewal', 'Replacement'].includes(applicationType)) {
+      return res.status(400).json({ error: "applicationType must be 'Renewal' or 'Replacement'." });
+    }
+    if (applicationType === 'Replacement' && !replacementReason) {
+      return res.status(400).json({ error: 'replacementReason is required for a Replacement application.' });
+    }
+    if (!preferredOfficeId) return res.status(400).json({ error: 'preferredOfficeId is required — choose the branch where you will collect the card.' });
+
+    const { rows: existingInProgress } = await db.query(
+      `SELECT 1 FROM national_id_cards WHERE citizen_id = $1 AND production_status NOT IN ('Rejected', 'Collected')`,
+      [req.user.citizenId]
+    );
+    if (existingInProgress.length > 0) return res.status(409).json({ error: 'You already have a National ID card application in progress.' });
+
+    const { rows: previousRows } = await db.query(
+      `SELECT * FROM national_id_cards WHERE citizen_id = $1 ORDER BY application_date DESC LIMIT 1`,
+      [req.user.citizenId]
+    );
+    if (previousRows.length === 0) {
+      return res.status(409).json({ error: 'No previous National ID card found. Use the standard National ID Application for a first-time card.' });
+    }
+    const previous = previousRows[0];
+    const { rows: citizenRows } = await db.query('SELECT permanent_identity_number FROM citizens WHERE citizen_id = $1', [req.user.citizenId]);
+
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(
+        // Biometrics/photo are carried forward from the previous card — the holder is the same
+        // person; a Replacement citizen can still supply a fresh photo if they wish to.
+        `INSERT INTO national_id_cards
+            (citizen_id, permanent_identity_number, application_date, production_status, photo_reference,
+             biometric_reference_left, biometric_reference_right, biometric_status, preferred_office_id, collection_office_id,
+             application_type, replacement_reason, replacement_details, previous_card_number)
+         VALUES ($1,$2, CURRENT_DATE, 'Application Submitted', $3, $4, $5, 'Enrolled', $6, $6, $7, $8, $9, $10) RETURNING national_id_card_id`,
+        [req.user.citizenId, citizenRows[0].permanent_identity_number, photoReference || previous.photo_reference,
+          previous.biometric_reference_left, previous.biometric_reference_right, preferredOfficeId,
+          applicationType, replacementReason || null, replacementDetails || null, previous.card_number || null]
+      );
+      const nationalIdCardId = rows[0].national_id_card_id;
+      const referenceNumber = generateReference('NIDA');
+      await indexApplication(client, {
+        citizenId: req.user.citizenId, departmentKey: 'home_affairs',
+        serviceType: applicationType === 'Renewal' ? 'National ID Renewal' : 'National ID Replacement',
+        referenceNumber, sourceTable: 'national_id_cards', sourceId: nationalIdCardId, status: 'Application Submitted',
+      });
+      await client.query('COMMIT');
+      await createNotification({ userId: req.user.userId, title: `National ID ${applicationType.toLowerCase()} submitted`, message: `Reference ${referenceNumber}.`, type: 'Application Submitted' });
+      res.status(201).json({ nationalIdCardId, referenceNumber, status: 'Application Submitted' });
+    } catch (err) {
+      await client.query('ROLLBACK'); throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+}
+
 /** GET /api/home-affairs/national-id — citizen: own. Officer: queue. */
 async function listNationalId(req, res, next) {
   try {
@@ -1272,7 +1341,7 @@ module.exports = {
   startReviewBirthRegistration, requestInformationBirthRegistration, resubmitBirthRegistration,
   verifyBirthRegistration, confirmVerificationBirthRegistration, approveBirthRegistration, rejectBirthRegistration,
   getBirthCertificate, markCertificateReadyForCollection, collectBirthCertificate,
-  applyNationalId, listNationalId, getNationalId, transitionNationalId,
+  applyNationalId, applyNationalIdRenewalReplacement, listNationalId, getNationalId, transitionNationalId,
   submitCorrection, listCorrections, decideCorrection,
   reportDeath, approveDeath, listDeathRegistrations, getDeathRegistration,
   createMarriageRegistration, listMarriageRegistrations, getMarriageRegistration,

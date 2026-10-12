@@ -36,6 +36,15 @@ import DivorceRegistrationList from './pages/homeAffairs/DivorceRegistrationList
 import DivorceRegistrationDetail from './pages/homeAffairs/DivorceRegistrationDetail';
 import DivorceCertificate from './pages/homeAffairs/DivorceCertificate';
 import DeathRegistration from './pages/homeAffairs/DeathRegistration';
+import NationalIdRenewReplace from './pages/homeAffairs/NationalIdRenewReplace';
+import BirthCertificateReissue from './pages/homeAffairs/BirthCertificateReissue';
+import DeathCertificateRequest from './pages/homeAffairs/DeathCertificateRequest';
+import NameChange from './pages/homeAffairs/NameChange';
+import Adoption from './pages/homeAffairs/Adoption';
+import BurialOrder from './pages/homeAffairs/BurialOrder';
+import SpecialMarriageLicence from './pages/homeAffairs/SpecialMarriageLicence';
+import MarriageSolemnisation from './pages/homeAffairs/MarriageSolemnisation';
+import MarriageOfficers from './pages/homeAffairs/MarriageOfficers';
 
 import Traffic from './pages/traffic/Traffic';
 import Finance from './pages/finance/Finance';
@@ -91,6 +100,15 @@ export default function App() {
         <Route path="/home-affairs/divorce-registration/:id" element={<ProtectedRoute><DivorceRegistrationDetail /></ProtectedRoute>} />
         <Route path="/home-affairs/divorce-certificate/:id" element={<ProtectedRoute><DivorceCertificate /></ProtectedRoute>} />
         <Route path="/home-affairs/death-registration" element={<ProtectedRoute><DeathRegistration /></ProtectedRoute>} />
+        <Route path="/home-affairs/national-id/renew-replace" element={<ProtectedRoute><NationalIdRenewReplace /></ProtectedRoute>} />
+        <Route path="/home-affairs/birth-certificate-reissue" element={<ProtectedRoute><BirthCertificateReissue /></ProtectedRoute>} />
+        <Route path="/home-affairs/death-certificate-request" element={<ProtectedRoute><DeathCertificateRequest /></ProtectedRoute>} />
+        <Route path="/home-affairs/name-change" element={<ProtectedRoute><NameChange /></ProtectedRoute>} />
+        <Route path="/home-affairs/adoption" element={<ProtectedRoute><Adoption /></ProtectedRoute>} />
+        <Route path="/home-affairs/burial-order" element={<ProtectedRoute><BurialOrder /></ProtectedRoute>} />
+        <Route path="/home-affairs/special-marriage-licence" element={<ProtectedRoute><SpecialMarriageLicence /></ProtectedRoute>} />
+        <Route path="/home-affairs/marriage-solemnisation" element={<ProtectedRoute><MarriageSolemnisation /></ProtectedRoute>} />
+        <Route path="/home-affairs/marriage-officers" element={<ProtectedRoute><MarriageOfficers /></ProtectedRoute>} />
 
         <Route path="/traffic" element={<ProtectedRoute><Traffic /></ProtectedRoute>} />
         <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />

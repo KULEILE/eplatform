@@ -23,6 +23,7 @@ const STATUS_KIND = {
   'Verified Identity': 'positive', 'Provisional': 'warning',
   'Scheduled': 'info', 'Missed': 'negative', 'Cancelled': 'neutral',
   'Background Check In Progress': 'info',
+  'Requested': 'info', 'Confirmed': 'positive', 'Registered': 'positive', 'Revoked': 'negative',
 };
 
 export default function StatusBadge({ status, kind }) {

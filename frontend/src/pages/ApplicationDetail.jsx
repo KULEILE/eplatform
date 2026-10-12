@@ -10,6 +10,15 @@ import EmptyState from '../components/ui/EmptyState';
 const SOURCE_ROUTE = {
   birth_records: (id) => `/home-affairs/birth-registration/${id}`,
   national_id_cards: (id) => `/home-affairs/national-id/${id}`,
+  // These new services (see migrations 037-041) don't have a dedicated :id detail route yet —
+  // their workflow page shows the citizen's own full list instead of a single-record view.
+  birth_certificate_reissue_requests: () => '/home-affairs/birth-certificate-reissue',
+  death_certificate_requests: () => '/home-affairs/death-certificate-request',
+  name_change_requests: () => '/home-affairs/name-change',
+  adoption_records: () => '/home-affairs/adoption',
+  burial_order_requests: () => '/home-affairs/burial-order',
+  special_marriage_licence_requests: () => '/home-affairs/special-marriage-licence',
+  marriage_solemnisation_bookings: () => '/home-affairs/marriage-solemnisation',
 };
 
 export default function ApplicationDetail() {
