@@ -11,9 +11,16 @@
  *   - "Busy background" — a best-effort heuristic (color variance in the region outside the
  *     detected face), not true background classification. It will not catch everything a human
  *     reviewer would, but it catches the obvious cases (cluttered room, patterned wallpaper).
+ *   - Head pose ("look straight at the camera") — a genuine geometric check using the 68-point
+ *     facial landmark model (tiny variant, ~77KB, also served locally from /models): it measures
+ *     whether the eyes are roughly level (not tilted) and whether the nose sits roughly midway
+ *     between them (not turned to one side). It catches a clearly turned or tilted head; it is
+ *     not a lab-grade 3D pose estimate, so small/natural variation is allowed through on purpose.
  *   - Hats / glasses — NOT implemented here. Reliably detecting those needs a trained facial
- *     attribute model or a paid cloud vision API, which is out of scope for this check. See the
- *     conversation this was scoped in for why.
+ *     attribute model or a paid cloud vision API, which is out of scope for this check. Instead,
+ *     the citizen confirms by checkbox (see PhotoCapture.jsx) that the photo has no such
+ *     obstruction — a self-declaration, not automated detection, same as this file is honest
+ *     that the background check is a heuristic.
  *
  * Fails OPEN, not closed: if the model can't load (offline, blocked asset, slow network) or
  * detection throws, this returns { ok: true, skipped: true } rather than blocking a legitimate
@@ -33,14 +40,53 @@ const MAX_CENTER_OFFSET_Y = 0.25;
 // a "busy" background rather than a plain wall/backdrop. Picked conservatively so uneven lighting
 // on a plain wall doesn't trip it.
 const BUSY_BACKGROUND_STD_DEV = 55;
+// Roll (head tilt): the vertical gap between the two eyes, as a fraction of the distance between
+// them. 0 = perfectly level. Above this reads as a tilted head.
+const MAX_EYE_TILT_RATIO = 0.18;
+// Yaw (head turned left/right): how far the nose sits from the horizontal midpoint between the
+// eyes, as a fraction of the eye-to-eye distance. 0 = nose exactly centered. Above this reads as
+// a head turned to one side rather than facing the camera.
+const MAX_NOSE_OFFSET_RATIO = 0.25;
 
 let modelLoadPromise = null;
 
 function loadModels() {
   if (!modelLoadPromise) {
-    modelLoadPromise = faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+    modelLoadPromise = Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
+    ]);
   }
   return modelLoadPromise;
+}
+
+function averagePoint(points) {
+  const n = points.length;
+  const sum = points.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
+  return { x: sum.x / n, y: sum.y / n };
+}
+
+/**
+ * Forward-facing check using the 68-point landmarks: eyes should be roughly level (small roll)
+ * and the nose should sit roughly midway between them (small yaw). Returns true when the face
+ * looks clearly turned or tilted rather than facing the camera.
+ */
+function isNotFacingForward(landmarks) {
+  const leftEye = averagePoint(landmarks.getLeftEye());
+  const rightEye = averagePoint(landmarks.getRightEye());
+  const nose = averagePoint(landmarks.getNose());
+
+  const eyeDist = Math.hypot(rightEye.x - leftEye.x, rightEye.y - leftEye.y);
+  if (eyeDist < 1) return false; // degenerate detection — don't block on it
+
+  const tiltRatio = Math.abs(rightEye.y - leftEye.y) / eyeDist;
+  if (tiltRatio > MAX_EYE_TILT_RATIO) return true;
+
+  const eyeMidX = (leftEye.x + rightEye.x) / 2;
+  const noseOffsetRatio = Math.abs(nose.x - eyeMidX) / eyeDist;
+  if (noseOffsetRatio > MAX_NOSE_OFFSET_RATIO) return true;
+
+  return false;
 }
 
 /**
@@ -56,10 +102,9 @@ export async function checkPhotoCompliance(imgEl) {
 
   let detections;
   try {
-    detections = await faceapi.detectAllFaces(
-      imgEl,
-      new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 })
-    );
+    detections = await faceapi
+      .detectAllFaces(imgEl, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+      .withFaceLandmarks(true); // true = use the tiny landmark net, to match TinyFaceDetector
   } catch {
     return { ok: true, skipped: true };
   }
@@ -71,7 +116,7 @@ export async function checkPhotoCompliance(imgEl) {
     return { ok: false, reason: 'multipleFaces' };
   }
 
-  const { x, y, width, height } = detections[0].box;
+  const { x, y, width, height } = detections[0].detection.box;
   const imgW = imgEl.naturalWidth || imgEl.width;
   const imgH = imgEl.naturalHeight || imgEl.height;
   if (!imgW || !imgH) return { ok: true, skipped: true };
@@ -87,6 +132,10 @@ export async function checkPhotoCompliance(imgEl) {
   const offsetY = Math.abs(faceCenterY - imgH / 2) / imgH;
   if (offsetX > MAX_CENTER_OFFSET_X || offsetY > MAX_CENTER_OFFSET_Y) {
     return { ok: false, reason: 'offCenter' };
+  }
+
+  if (detections[0].landmarks && isNotFacingForward(detections[0].landmarks)) {
+    return { ok: false, reason: 'notFacingForward' };
   }
 
   if (isBackgroundBusy(imgEl, { x, y, width, height }, imgW, imgH)) {

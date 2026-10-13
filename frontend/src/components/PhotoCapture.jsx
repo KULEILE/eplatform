@@ -24,9 +24,15 @@ const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
  * permit photos) — NOT on document scans (ownership proof, insurance proof, receipts), which
  * legitimately contain no face. When set, a selected image is run through a client-side face
  * check (see utils/faceCheck.js) before it's accepted/uploaded: it must show exactly one
- * reasonably-centered, reasonably-sized face, against a background that isn't obviously busy. A
- * photo that fails is rejected with a specific reason so the citizen can retake it, rather than
- * being silently accepted and only caught later by an officer.
+ * reasonably-centered, reasonably-sized face, facing the camera, against a background that isn't
+ * obviously busy. A photo that fails is rejected with a specific reason so the citizen can retake
+ * it, rather than being silently accepted and only caught later by an officer.
+ *
+ * `faceCheck` fields also require the citizen to tick a confirmation checkbox ("no hat, sunglasses
+ * or other obstruction") once the photo is uploaded, before the field counts as filled. This is a
+ * self-declaration, not automated detection — there's no free, reliable way to actually detect
+ * hats/glasses client-side (see faceCheck.js) — but it puts the requirement in front of the
+ * citizen explicitly rather than silently accepting a photo that an officer must then reject.
  */
 export default function PhotoCapture({ value, onChange, label, help, faceCheck = false }) {
   const { t } = useLanguage();
@@ -34,6 +40,11 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
   const [uploading, setUploading] = useState(false);
   const [checking, setChecking] = useState(false); // running the client-side face/background check
   const [error, setError] = useState('');
+  // When faceCheck is set, an uploaded photo is held here until the citizen ticks the obstruction
+  // confirmation checkbox — onChange(photoReference) only fires once both are true, so the field
+  // reads as "incomplete" (same as any other required field) until then.
+  const [pendingRef, setPendingRef] = useState(null);
+  const [confirmed, setConfirmed] = useState(!!value); // a value already on mount (e.g. resubmit prefill) counts as already confirmed
   const inputRef = useRef(null);
 
   function runComplianceCheck(objectUrl) {
@@ -85,24 +96,41 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
     fd.append('photo', file);
     try {
       const { photoReference } = await api.postForm('/uploads/photo', fd);
-      onChange(photoReference);
+      if (faceCheck) {
+        // Hold it back from the parent form until the citizen confirms below.
+        setPendingRef(photoReference);
+        setConfirmed(false);
+        onChange(null);
+      } else {
+        onChange(photoReference);
+      }
     } catch (err) {
       setError(err.message || t('common.somethingWentWrong'));
       setPreview(null);
+      setPendingRef(null);
       onChange(null);
     } finally {
       setUploading(false);
     }
   }
 
+  function onConfirmToggle(e) {
+    const checked = e.target.checked;
+    setConfirmed(checked);
+    onChange(checked ? (pendingRef || value) : null);
+  }
+
   function retake() {
     setPreview(null);
+    setPendingRef(null);
+    setConfirmed(false);
     onChange(null);
     setError('');
     if (inputRef.current) inputRef.current.value = '';
   }
 
-  const displaySrc = preview || (value ? `/uploads/${value}` : null);
+  const effectiveRef = pendingRef || value;
+  const displaySrc = preview || (effectiveRef ? `/uploads/${effectiveRef}` : null);
 
   return (
     <div className="mb-4 rounded-md border border-dashed border-slate-300 p-4 text-center">
@@ -114,9 +142,15 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
           <img src={displaySrc} alt={t('photoCapture.previewAlt')} className="h-32 w-28 rounded border border-slate-200 object-cover" />
           {uploading ? (
             <p className="text-sm text-slate-500">{t('common.loading')}</p>
-          ) : value ? (
+          ) : effectiveRef ? (
             <>
               <p className="text-sm text-gov-green">✓ {t('photoCapture.uploaded')}</p>
+              {faceCheck && (
+                <label className="flex max-w-xs items-start gap-2 text-left text-xs text-slate-600">
+                  <input type="checkbox" className="mt-0.5" checked={confirmed} onChange={onConfirmToggle} />
+                  <span>{t('photoCapture.obstructionConfirm')}</span>
+                </label>
+              )}
               <button type="button" className="btn-secondary !py-1 !text-xs" onClick={retake}>{t('photoCapture.retake')}</button>
             </>
           ) : null}

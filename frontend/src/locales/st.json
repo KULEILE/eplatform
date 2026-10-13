@@ -117,7 +117,9 @@
     "multipleFaces": "Ho fumanwe difahleho tse fetang e le nngwe setshwantshong seo. Ka kopo kgetha setshwantsho sa hao o le mong.",
     "tooFar": "Sefahleho sa hao se senyenyane haholo setshwantshong sena — ka kopo atamela kapa o sitise setshwantsho pele o romela.",
     "offCenter": "Ka kopo beha sefahleho sa hao bohareng ba setshwantsho pele o se romela.",
-    "busyBackground": "Semelo se ka morao se bonahala se tletse dintho. Ka kopo nka setshwantsho hape moo ho nang le semelo se bobebe, se tsitsitseng."
+    "notFacingForward": "Ka kopo shebana le khamera ka kotloloho, hlooho e lekane e sa sekamela lehlakoreng.",
+    "busyBackground": "Semelo se ka morao se bonahala se tletse dintho. Ka kopo nka setshwantsho hape moo ho nang le semelo se bobebe, se tsitsitseng.",
+    "obstructionConfirm": "Ke netefatsa hore setshwantsho sena se bontsha sefahleho le hlooho ya ka ka botlalo, ntle le katiba, mahalima a letsatsi, kapa ntho e nngwe e thibelang."
   },
   "biometricCapture": {
     "hint": "E sebediswa ho ngolisa menwana ya hao bakeng sa ID ena ya Setjhaba.",

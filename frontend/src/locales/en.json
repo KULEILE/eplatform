@@ -117,7 +117,9 @@
     "multipleFaces": "More than one face was found in that photo. Please choose a photo of yourself alone.",
     "tooFar": "Your face is too small in this photo — please move closer or crop in before uploading.",
     "offCenter": "Please center your face in the photo before uploading.",
-    "busyBackground": "The background looks busy or cluttered. Please retake the photo against a plain, even background."
+    "notFacingForward": "Please face the camera directly, with your head level and not turned to one side.",
+    "busyBackground": "The background looks busy or cluttered. Please retake the photo against a plain, even background.",
+    "obstructionConfirm": "I confirm this photo shows my full face and head clearly, with no hat, sunglasses, or other obstruction."
   },
   "biometricCapture": {
     "hint": "Used to enrol your fingerprints for this National ID card.",
