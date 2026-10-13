@@ -111,7 +111,13 @@
     "retake": "Choose a different photo",
     "wrongType": "Please choose a PNG, JPG or WEBP image.",
     "tooLarge": "That image is too large — please choose one under 5MB.",
-    "required": "Please add a photo before submitting."
+    "required": "Please add a photo before submitting.",
+    "checking": "Checking your photo...",
+    "noFace": "We couldn't find a face in that photo. Please choose a clear photo showing your face.",
+    "multipleFaces": "More than one face was found in that photo. Please choose a photo of yourself alone.",
+    "tooFar": "Your face is too small in this photo — please move closer or crop in before uploading.",
+    "offCenter": "Please center your face in the photo before uploading.",
+    "busyBackground": "The background looks busy or cluttered. Please retake the photo against a plain, even background."
   },
   "biometricCapture": {
     "hint": "Used to enrol your fingerprints for this National ID card.",

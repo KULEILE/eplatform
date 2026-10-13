@@ -221,7 +221,7 @@ function FieldInputs({ fields, form, onChange, departmentKey }) {
     <>
       {fields.map((f) => {
         if (f.type === 'photo') {
-          return <PhotoCapture key={f.name} value={form[f.name]} onChange={(v) => onChange(f.name, v)} label={f.label} help={f.help} />;
+          return <PhotoCapture key={f.name} value={form[f.name]} onChange={(v) => onChange(f.name, v)} label={f.label} help={f.help} faceCheck={!!f.faceCheck} />;
         }
         if (f.type === 'biometric') {
           return <BiometricCapture key={f.name} value={form[f.name]} onChange={(v) => onChange(f.name, v)} label={f.label} help={f.help} />;

@@ -70,6 +70,7 @@ export default function NationalIdApply() {
             onChange={setPhotoReference}
             label={t('homeAffairs.nationalIdForm.photoCapture')}
             help={t('photoCapture.idHelp')}
+            faceCheck
           />
           <p className="mb-2 text-sm font-medium text-slate-700">{t('homeAffairs.nationalIdForm.biometricCapture')}</p>
           <BiometricCapture

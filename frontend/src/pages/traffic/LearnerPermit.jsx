@@ -24,7 +24,7 @@ export default function LearnerPermit() {
     departmentKey: 'traffic',
     serviceTypes: ['Learner Permit'],
     extraFields: [
-      { name: 'photoReference', type: 'photo', required: true, label: t('traffic.drivingLicenceApplyForm.photo'), help: t('photoCapture.idHelp') },
+      { name: 'photoReference', type: 'photo', required: true, label: t('traffic.drivingLicenceApplyForm.photo'), help: t('photoCapture.idHelp'), faceCheck: true },
       { name: 'biometricReferenceLeft', type: 'biometric', required: true, label: t('biometricCapture.leftHandLabel'), help: t('biometricCapture.scanHint') },
       { name: 'biometricReferenceRight', type: 'biometric', required: true, label: t('biometricCapture.rightHandLabel'), help: t('biometricCapture.scanHint') },
       { name: 'preferredOfficeId', type: 'office', required: true },

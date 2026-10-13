@@ -67,7 +67,7 @@ export default function NationalIdRenewReplace() {
         )}
 
         <PhotoCapture value={form.photoReference} onChange={(ref) => update('photoReference', ref)}
-          label={t('homeAffairs.nationalIdRenewReplaceForm.field.photo')} help={t('homeAffairs.nationalIdRenewReplaceForm.field.photoHelp')} />
+          label={t('homeAffairs.nationalIdRenewReplaceForm.field.photo')} help={t('homeAffairs.nationalIdRenewReplaceForm.field.photoHelp')} faceCheck />
 
         <DistrictOfficeSelect departmentKey="home_affairs" value={form.preferredOfficeId} onChange={(id) => update('preferredOfficeId', id)} />
 

@@ -132,7 +132,7 @@ export default function Passport() {
               <option value="Official">{t('passport.official')}</option>
             </select>
           </div>
-          <PhotoCapture value={photoReference} onChange={setPhotoReference} help={t('photoCapture.idHelp')} />
+          <PhotoCapture value={photoReference} onChange={setPhotoReference} help={t('photoCapture.idHelp')} faceCheck />
           <ReceiptCapture value={receipt} onChange={setReceipt} help={t('passport.feeNotice')} />
           <DistrictOfficeSelect departmentKey="passport" value={preferredOfficeId} onChange={setPreferredOfficeId} />
           <button type="submit" className="btn-primary">{resubmitTarget ? t('common.resubmitForReview') : t('passport.apply')}</button>

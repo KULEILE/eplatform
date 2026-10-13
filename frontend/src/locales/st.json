@@ -111,7 +111,13 @@
     "retake": "Kgetha setshwantsho se seng",
     "wrongType": "Ka kopo kgetha setshwantsho sa PNG, JPG kapa WEBP.",
     "tooLarge": "Setshwantsho seo se seholo haholo — ka kopo kgetha se ka tlase ho 5MB.",
-    "required": "Ka kopo kenya setshwantsho pele o romela."
+    "required": "Ka kopo kenya setshwantsho pele o romela.",
+    "checking": "Re hlahloba setshwantsho sa hao...",
+    "noFace": "Ha re a fumana sefahleho setshwantshong seo. Ka kopo kgetha setshwantsho se hlakileng se bontshang sefahleho sa hao.",
+    "multipleFaces": "Ho fumanwe difahleho tse fetang e le nngwe setshwantshong seo. Ka kopo kgetha setshwantsho sa hao o le mong.",
+    "tooFar": "Sefahleho sa hao se senyenyane haholo setshwantshong sena — ka kopo atamela kapa o sitise setshwantsho pele o romela.",
+    "offCenter": "Ka kopo beha sefahleho sa hao bohareng ba setshwantsho pele o se romela.",
+    "busyBackground": "Semelo se ka morao se bonahala se tletse dintho. Ka kopo nka setshwantsho hape moo ho nang le semelo se bobebe, se tsitsitseng."
   },
   "biometricCapture": {
     "hint": "E sebediswa ho ngolisa menwana ya hao bakeng sa ID ena ya Setjhaba.",

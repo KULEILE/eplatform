@@ -1,6 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { api } from '../api/client';
+// Dynamically imported (see runComplianceCheck) rather than a static import at the top of the
+// file: this module pulls in @vladmandic/face-api, which bundles TensorFlow.js (~1.4MB). A
+// static import here would put that weight in the main app bundle, loaded on every single page —
+// login, dashboard, everything — even though only a handful of face-photo fields ever need it.
+// A dynamic import() lets the bundler split it into its own chunk, fetched only when a citizen
+// actually selects a photo on a faceCheck-enabled field.
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB — matches backend/src/middleware/upload.js's uploadPhoto limit
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -13,13 +19,38 @@ const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
  * field the backend already expected, just backed by a real image now instead of a fake string.
  *
  * Controlled component: value = photoReference (string|null), onChange(photoReference|null).
+ *
+ * `faceCheck`: set this on real ID-style face photos (National ID, passport, driving licence/
+ * permit photos) — NOT on document scans (ownership proof, insurance proof, receipts), which
+ * legitimately contain no face. When set, a selected image is run through a client-side face
+ * check (see utils/faceCheck.js) before it's accepted/uploaded: it must show exactly one
+ * reasonably-centered, reasonably-sized face, against a background that isn't obviously busy. A
+ * photo that fails is rejected with a specific reason so the citizen can retake it, rather than
+ * being silently accepted and only caught later by an officer.
  */
-export default function PhotoCapture({ value, onChange, label, help }) {
+export default function PhotoCapture({ value, onChange, label, help, faceCheck = false }) {
   const { t } = useLanguage();
   const [preview, setPreview] = useState(null); // local object URL, shown while/just after uploading
   const [uploading, setUploading] = useState(false);
+  const [checking, setChecking] = useState(false); // running the client-side face/background check
   const [error, setError] = useState('');
   const inputRef = useRef(null);
+
+  function runComplianceCheck(objectUrl) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const { checkPhotoCompliance } = await import('../utils/faceCheck');
+          resolve(await checkPhotoCompliance(img));
+        } catch {
+          resolve({ ok: true, skipped: true }); // fail open — never block on an infra hiccup
+        }
+      };
+      img.onerror = () => resolve({ ok: true, skipped: true });
+      img.src = objectUrl;
+    });
+  }
 
   async function onFileSelected(e) {
     const file = e.target.files?.[0];
@@ -33,7 +64,22 @@ export default function PhotoCapture({ value, onChange, label, help }) {
       setError(t('photoCapture.tooLarge'));
       return;
     }
-    setPreview(URL.createObjectURL(file));
+
+    const objectUrl = URL.createObjectURL(file);
+
+    if (faceCheck) {
+      setChecking(true);
+      const result = await runComplianceCheck(objectUrl);
+      setChecking(false);
+      if (!result.ok) {
+        setError(t(`photoCapture.${result.reason}`));
+        URL.revokeObjectURL(objectUrl);
+        if (inputRef.current) inputRef.current.value = '';
+        return;
+      }
+    }
+
+    setPreview(objectUrl);
     setUploading(true);
     const fd = new FormData();
     fd.append('photo', file);
@@ -75,6 +121,8 @@ export default function PhotoCapture({ value, onChange, label, help }) {
             </>
           ) : null}
         </div>
+      ) : checking ? (
+        <p className="text-sm text-slate-500">{t('photoCapture.checking')}</p>
       ) : (
         <>
           <input
