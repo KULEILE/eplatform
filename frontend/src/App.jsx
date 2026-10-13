@@ -46,7 +46,25 @@ import SpecialMarriageLicence from './pages/homeAffairs/SpecialMarriageLicence';
 import MarriageSolemnisation from './pages/homeAffairs/MarriageSolemnisation';
 import MarriageOfficers from './pages/homeAffairs/MarriageOfficers';
 
-import Traffic from './pages/traffic/Traffic';
+import TrafficHub from './pages/traffic/TrafficHub';
+import DrivingLicenceApply from './pages/traffic/DrivingLicenceApply';
+import DrivingLicenceRenew from './pages/traffic/DrivingLicenceRenew';
+import LearnerPermit from './pages/traffic/LearnerPermit';
+import DrivingLicenceReplace from './pages/traffic/DrivingLicenceReplace';
+import PublicDrivingPermit from './pages/traffic/PublicDrivingPermit';
+import DrivingTestBookings from './pages/traffic/DrivingTestBookings';
+import VehicleRegistration from './pages/traffic/VehicleRegistration';
+import VehicleRegistrationImported from './pages/traffic/VehicleRegistrationImported';
+import VehicleRegistrationSecondHand from './pages/traffic/VehicleRegistrationSecondHand';
+import VehicleTransfer from './pages/traffic/VehicleTransfer';
+import VehicleNumberPlate from './pages/traffic/VehicleNumberPlate';
+import TemporaryPermit from './pages/traffic/TemporaryPermit';
+import VehicleInspection from './pages/traffic/VehicleInspection';
+import TransportPermitNew from './pages/traffic/TransportPermitNew';
+import TransportPermitRenew from './pages/traffic/TransportPermitRenew';
+import VehicleLicenceDiscApply from './pages/traffic/VehicleLicenceDiscApply';
+import VehicleLicenceDiscRenew from './pages/traffic/VehicleLicenceDiscRenew';
+import DrivingInstructors from './pages/traffic/DrivingInstructors';
 import Finance from './pages/finance/Finance';
 import Pensions from './pages/pensions/Pensions';
 import Police from './pages/police/Police';
@@ -110,7 +128,25 @@ export default function App() {
         <Route path="/home-affairs/marriage-solemnisation" element={<ProtectedRoute><MarriageSolemnisation /></ProtectedRoute>} />
         <Route path="/home-affairs/marriage-officers" element={<ProtectedRoute><MarriageOfficers /></ProtectedRoute>} />
 
-        <Route path="/traffic" element={<ProtectedRoute><Traffic /></ProtectedRoute>} />
+        <Route path="/traffic" element={<ProtectedRoute><TrafficHub /></ProtectedRoute>} />
+        <Route path="/traffic/driving-licence/apply" element={<ProtectedRoute><DrivingLicenceApply /></ProtectedRoute>} />
+        <Route path="/traffic/driving-licence/renew" element={<ProtectedRoute><DrivingLicenceRenew /></ProtectedRoute>} />
+        <Route path="/traffic/learner-permit" element={<ProtectedRoute><LearnerPermit /></ProtectedRoute>} />
+        <Route path="/traffic/driving-licence/replace" element={<ProtectedRoute><DrivingLicenceReplace /></ProtectedRoute>} />
+        <Route path="/traffic/public-driving-permit" element={<ProtectedRoute><PublicDrivingPermit /></ProtectedRoute>} />
+        <Route path="/traffic/test-bookings" element={<ProtectedRoute><DrivingTestBookings /></ProtectedRoute>} />
+        <Route path="/traffic/vehicle-registration" element={<ProtectedRoute><VehicleRegistration /></ProtectedRoute>} />
+        <Route path="/traffic/vehicle-registration/imported" element={<ProtectedRoute><VehicleRegistrationImported /></ProtectedRoute>} />
+        <Route path="/traffic/vehicle-registration/second-hand" element={<ProtectedRoute><VehicleRegistrationSecondHand /></ProtectedRoute>} />
+        <Route path="/traffic/vehicle-transfer" element={<ProtectedRoute><VehicleTransfer /></ProtectedRoute>} />
+        <Route path="/traffic/number-plate" element={<ProtectedRoute><VehicleNumberPlate /></ProtectedRoute>} />
+        <Route path="/traffic/temporary-permit" element={<ProtectedRoute><TemporaryPermit /></ProtectedRoute>} />
+        <Route path="/traffic/inspections" element={<ProtectedRoute><VehicleInspection /></ProtectedRoute>} />
+        <Route path="/traffic/transport-permits/new" element={<ProtectedRoute><TransportPermitNew /></ProtectedRoute>} />
+        <Route path="/traffic/transport-permits/renew" element={<ProtectedRoute><TransportPermitRenew /></ProtectedRoute>} />
+        <Route path="/traffic/licence-disc/apply" element={<ProtectedRoute><VehicleLicenceDiscApply /></ProtectedRoute>} />
+        <Route path="/traffic/licence-disc/renew" element={<ProtectedRoute><VehicleLicenceDiscRenew /></ProtectedRoute>} />
+        <Route path="/traffic/instructors" element={<ProtectedRoute><DrivingInstructors /></ProtectedRoute>} />
         <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
         <Route path="/pensions" element={<ProtectedRoute><Pensions /></ProtectedRoute>} />
         <Route path="/police" element={<ProtectedRoute><PoliceHub /></ProtectedRoute>} />

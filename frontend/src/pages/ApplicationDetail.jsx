@@ -19,6 +19,12 @@ const SOURCE_ROUTE = {
   burial_order_requests: () => '/home-affairs/burial-order',
   special_marriage_licence_requests: () => '/home-affairs/special-marriage-licence',
   marriage_solemnisation_bookings: () => '/home-affairs/marriage-solemnisation',
+  // Traffic: traffic_records serves 13 different service types, each with its own apply page —
+  // there is no single deep link that fits all of them, so this points at the hub instead.
+  traffic_records: () => '/traffic',
+  driving_test_bookings: () => '/traffic/test-bookings',
+  vehicle_inspections: () => '/traffic/inspections',
+  transport_operating_permits: () => '/traffic/transport-permits/new',
 };
 
 export default function ApplicationDetail() {

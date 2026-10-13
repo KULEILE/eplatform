@@ -7,6 +7,7 @@ router.use(requireAuth);
 router.post('/apply', c.apply);
 router.get('/', c.list);
 router.get('/:id', c.getOne);
+router.post('/:id/resubmit', c.resubmit);
 router.post('/:id/request-information', c.requestInformation);
 router.post('/:id/reject', c.reject);
 router.post('/:id/:action', c.transition);

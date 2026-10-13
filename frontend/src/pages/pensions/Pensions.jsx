@@ -3,6 +3,7 @@ import DepartmentServicePage from '../../components/DepartmentServicePage';
 
 const config = {
   apiBase: '/pensions',
+  idColumn: 'pension_record_id',
   titleKey: 'pensions.title',
   serviceTypeNs: 'pensions',
   officerRoleKey: 'pensions_officer',

@@ -1,12 +1,51 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const c = require('../controllers/traffic.controller');
+const c2 = require('../controllers/trafficServices2.controller');
 
 const router = express.Router();
 router.use(requireAuth);
+
+// Driving theory/practical test bookings — registered BEFORE the generic '/:id' routes below so
+// '/test-bookings' is never swallowed by the single-segment '/:id' pattern.
+router.post('/test-bookings', c2.requestTestBooking);
+router.get('/test-bookings', c2.listTestBookings);
+router.get('/test-bookings/:id', c2.getTestBooking);
+router.post('/test-bookings/:id/schedule', c2.scheduleTestBooking);
+router.post('/test-bookings/:id/record-result', c2.recordTestResult);
+router.post('/test-bookings/:id/cancel', c2.cancelTestBooking);
+router.post('/test-bookings/:id/reject', c2.rejectTestBooking);
+
+// Roadworthiness test & Certificate of Fitness — its own sub-resource, same apply/list/get/
+// transition/resubmit/request-information/reject shape as traffic_records below.
+router.post('/inspections/apply', c2.vehicleInspectionsController.apply);
+router.get('/inspections', c2.vehicleInspectionsController.list);
+router.get('/inspections/:id', c2.vehicleInspectionsController.getOne);
+router.post('/inspections/:id/resubmit', c2.vehicleInspectionsController.resubmit);
+router.post('/inspections/:id/request-information', c2.vehicleInspectionsController.requestInformation);
+router.post('/inspections/:id/reject', c2.vehicleInspectionsController.reject);
+router.post('/inspections/:id/:action', c2.vehicleInspectionsController.transition);
+
+// Transport operating permits (new or renewal).
+router.post('/transport-permits/apply', c2.transportPermitsController.apply);
+router.get('/transport-permits', c2.transportPermitsController.list);
+router.get('/transport-permits/:id', c2.transportPermitsController.getOne);
+router.post('/transport-permits/:id/resubmit', c2.transportPermitsController.resubmit);
+router.post('/transport-permits/:id/request-information', c2.transportPermitsController.requestInformation);
+router.post('/transport-permits/:id/reject', c2.transportPermitsController.reject);
+router.post('/transport-permits/:id/:action', c2.transportPermitsController.transition);
+
+// Driving instructor & examiner certification — admin registry, no citizen applicant.
+router.post('/instructors', c2.createDrivingInstructor);
+router.get('/instructors', c2.listDrivingInstructors);
+router.get('/instructors/:id', c2.getDrivingInstructor);
+router.post('/instructors/:id/status', c2.updateDrivingInstructorStatus);
+
+// Original five service types plus the eight added in migration 042, all on traffic_records.
 router.post('/apply', c.apply);
 router.get('/', c.list);
 router.get('/:id', c.getOne);
+router.post('/:id/resubmit', c.resubmit);
 router.post('/:id/request-information', c.requestInformation);
 router.post('/:id/reject', c.reject);
 router.post('/:id/:action', c.transition);

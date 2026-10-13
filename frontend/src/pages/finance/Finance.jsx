@@ -3,6 +3,7 @@ import DepartmentServicePage from '../../components/DepartmentServicePage';
 
 const config = {
   apiBase: '/finance',
+  idColumn: 'finance_record_id',
   titleKey: 'finance.title',
   serviceTypeNs: 'finance',
   officerRoleKey: 'finance_officer',

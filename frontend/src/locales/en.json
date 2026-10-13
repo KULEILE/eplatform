@@ -269,7 +269,9 @@
     "Requested": "Requested",
     "Confirmed": "Confirmed",
     "Registered": "Registered",
-    "Revoked": "Revoked"
+    "Revoked": "Revoked",
+    "Passed": "Passed",
+    "Failed": "Failed"
   },
   "statusHelp": {
     "Draft": "You haven't submitted this yet.",
@@ -691,7 +693,199 @@
     "Vehicle Transfer": "Vehicle Transfer",
     "Learner Permit": "Learner Permit",
     "licenceNumber": "Licence number",
-    "vehicleRegistrationNumber": "Vehicle registration number"
+    "vehicleRegistrationNumber": "Vehicle registration number",
+    "hubIntro": "Driving licences, vehicle registration and transport permit services.",
+    "hub": {
+      "drivingLicenceApply": "Driving Licence Application",
+      "drivingLicenceRenew": "Driving Licence Renewal",
+      "learnerPermit": "Learner Permit",
+      "drivingLicenceReplace": "Driving Licence Replacement",
+      "publicDrivingPermit": "Public Driving Permit",
+      "testBookings": "Driving Theory / Practical Test",
+      "vehicleRegistration": "Vehicle Registration",
+      "vehicleRegistrationImported": "Vehicle Registration (Imported / SADC)",
+      "vehicleRegistrationSecondHand": "Vehicle Registration (Second-Hand, Local)",
+      "vehicleTransfer": "Vehicle Transfer",
+      "numberPlate": "Vehicle Number Plate",
+      "temporaryPermit": "Temporary Permit (Awaiting Registration)",
+      "inspection": "Roadworthiness Test & Certificate of Fitness",
+      "transportPermitNew": "Transport Operating Permit",
+      "transportPermitRenew": "Transport Operating Permit Renewal",
+      "licenceDiscApply": "Vehicle Licence Disc",
+      "licenceDiscRenew": "Vehicle Licence Disc Renewal",
+      "instructors": "Driving Instructor & Examiner Certification",
+      "applicationTracking": "My Applications"
+    },
+    "Driving Licence Replacement": "Driving Licence Replacement",
+    "Public Driving Permit": "Public Driving Permit",
+    "Vehicle Registration (Imported/SADC)": "Vehicle Registration (Imported/SADC)",
+    "Vehicle Registration (Second-Hand Local)": "Vehicle Registration (Second-Hand Local)",
+    "Vehicle Number Plate": "Vehicle Number Plate",
+    "Temporary Permit (Awaiting Registration)": "Temporary Permit (Awaiting Registration)",
+    "Vehicle Licence Disc Application": "Vehicle Licence Disc Application",
+    "Vehicle Licence Disc Renewal": "Vehicle Licence Disc Renewal",
+    "Roadworthiness Test & Certificate of Fitness": "Roadworthiness Test & Certificate of Fitness",
+    "New": "New",
+    "Renewal": "Renewal",
+    "drivingLicenceApplyForm": {
+      "title": "Driving Licence Application",
+      "photo": "Photo"
+    },
+    "drivingLicenceRenewForm": {
+      "title": "Driving Licence Renewal"
+    },
+    "learnerPermitForm": {
+      "title": "Learner Permit"
+    },
+    "drivingLicenceReplaceForm": {
+      "title": "Driving Licence Replacement",
+      "field": {
+        "reason": "Reason for replacement",
+        "previousLicenceNumber": "Previous licence number"
+      }
+    },
+    "replacementReason": {
+      "lost": "Lost",
+      "stolen": "Stolen",
+      "damaged": "Damaged",
+      "other": "Other"
+    },
+    "publicDrivingPermitForm": {
+      "title": "Public Driving Permit",
+      "field": {
+        "existingLicenceNumber": "Existing driving licence number",
+        "existingLicenceNumberHelp": "A Public Driving Permit is issued against a driving licence you already hold — it does not replace it."
+      }
+    },
+    "vehicleForm": {
+      "field": {
+        "make": "Vehicle make",
+        "model": "Vehicle model",
+        "chassisNumber": "Chassis number",
+        "chassisNumberHelp": "Uniquely identifies the vehicle and prevents duplicate registration.",
+        "engineNumber": "Engine number",
+        "ownershipProof": "Proof of purchase / ownership",
+        "ownershipProofHelp": "A photo of the purchase receipt, bill of sale, or ownership document."
+      }
+    },
+    "vehicleRegistrationForm": {
+      "title": "Vehicle Registration"
+    },
+    "vehicleRegistrationImportedForm": {
+      "title": "Vehicle Registration (Imported / SADC)",
+      "field": {
+        "originCountry": "Country the vehicle was imported from",
+        "importProof": "Proof of purchase / import document",
+        "importProofHelp": "A photo of the import/customs document or purchase receipt."
+      }
+    },
+    "vehicleRegistrationSecondHandForm": {
+      "title": "Vehicle Registration (Second-Hand, Local)"
+    },
+    "vehicleTransferForm": {
+      "title": "Vehicle Transfer",
+      "field": {
+        "vehicleRegistrationNumber": "Vehicle registration number",
+        "newOwner": "New owner's permanent identity number",
+        "transferProof": "Proof of sale / transfer",
+        "transferProofHelp": "A photo of the signed sale agreement or transfer document."
+      }
+    },
+    "numberPlateForm": {
+      "title": "Vehicle Number Plate",
+      "field": {
+        "reason": "Reason for request",
+        "personalisedText": "Personalised plate text",
+        "personalisedTextHelp": "Required only if your reason is ‘Personalised’."
+      }
+    },
+    "plateRequestReason": {
+      "new": "New",
+      "lost": "Lost",
+      "damaged": "Damaged",
+      "personalised": "Personalised"
+    },
+    "temporaryPermitForm": {
+      "title": "Temporary Permit (Awaiting Registration)",
+      "field": {
+        "validUntil": "Valid until"
+      }
+    },
+    "licenceDiscApplyForm": {
+      "title": "Vehicle Licence Disc",
+      "field": {
+        "insuranceProof": "Proof of insurance",
+        "insuranceProofHelp": "A photo of your current certificate of insurance."
+      }
+    },
+    "licenceDiscRenewForm": {
+      "title": "Vehicle Licence Disc Renewal",
+      "field": {
+        "previousDiscNumber": "Previous licence disc number"
+      }
+    },
+    "inspectionForm": {
+      "title": "Roadworthiness Test & Certificate of Fitness"
+    },
+    "transportPermitForm": {
+      "title": "Transport Operating Permit",
+      "field": {
+        "category": "Permit category",
+        "route": "Operating route / area"
+      }
+    },
+    "permitCategory": {
+      "A": "Category A — Goods",
+      "B": "Category B — Goods",
+      "C": "Category C — Passengers",
+      "D": "Category D",
+      "E": "Category E",
+      "F": "Category F — Goods & Passengers"
+    },
+    "transportPermitRenewForm": {
+      "title": "Transport Operating Permit Renewal",
+      "field": {
+        "previousPermitNumber": "Previous permit number"
+      }
+    },
+    "testBookings": "Driving Theory / Practical Test",
+    "testBookingsForm": {
+      "intro": "A Theory test requires an approved Learner Permit. A Practical test additionally requires a passed Theory test.",
+      "field": {
+        "testType": "Test type",
+        "requestedDate": "Preferred date",
+        "confirmedDate": "Confirmed test date"
+      },
+      "cancelled": "Booking cancelled.",
+      "schedule": "Schedule",
+      "recordPass": "Record pass",
+      "recordFail": "Record fail",
+      "result": "Result"
+    },
+    "testType": {
+      "theory": "Theory",
+      "practical": "Practical"
+    },
+    "instructors": "Driving Instructor & Examiner Certification",
+    "instructorsForm": {
+      "officerOnly": "This registry is managed by Traffic officers only.",
+      "intro": "Certification of driving instructors and practical test examiners.",
+      "field": {
+        "fullName": "Full name",
+        "certificationType": "Certification type",
+        "drivingSchool": "Driving school / authority",
+        "notes": "Notes"
+      },
+      "register": "Register",
+      "certificateNumber": "Certificate number",
+      "reinstate": "Reinstate",
+      "suspend": "Suspend",
+      "revoke": "Revoke"
+    },
+    "certificationType": {
+      "instructor": "Instructor",
+      "examiner": "Examiner"
+    }
   },
   "finance": {
     "title": "Finance",

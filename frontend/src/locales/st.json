@@ -269,7 +269,9 @@
     "Requested": "E Kopiwe",
     "Confirmed": "E Netefatswe",
     "Registered": "E Ngodisitswe",
-    "Revoked": "E Hlakolwe"
+    "Revoked": "E Hlakolwe",
+    "Passed": "O Phasitse",
+    "Failed": "O Hlolehile"
   },
   "statusHelp": {
     "Draft": "Ha o e so e romele.",
@@ -691,7 +693,199 @@
     "Vehicle Transfer": "Phetisetso ya Koloi",
     "Learner Permit": "Tumello ya Moithuti",
     "licenceNumber": "Nomoro ya laesense",
-    "vehicleRegistrationNumber": "Nomoro ya ngodiso ya koloi"
+    "vehicleRegistrationNumber": "Nomoro ya ngodiso ya koloi",
+    "hubIntro": "Litsebeletso tsa laesense ea ho khanna, ngoliso ea koloi le lipampiri tsa ho tsamaisa.",
+    "hub": {
+      "drivingLicenceApply": "Kopo ea Laesense ea ho Khanna",
+      "drivingLicenceRenew": "Nchafatso ea Laesense ea ho Khanna",
+      "learnerPermit": "Laesense ea Seithuti",
+      "drivingLicenceReplace": "Nchafatso ea Laesense e Lahlehileng",
+      "publicDrivingPermit": "Laesense ea ho Khanna Lipalangoang tsa Sechaba",
+      "testBookings": "Tlhahlobo ea Thiori / Ketso ea ho Khanna",
+      "vehicleRegistration": "Ngoliso ea Koloi",
+      "vehicleRegistrationImported": "Ngoliso ea Koloi (e Tliselitsoeng / SADC)",
+      "vehicleRegistrationSecondHand": "Ngoliso ea Koloi e Sebelisitsoeng (Lefatseng)",
+      "vehicleTransfer": "Phetisetso ea Koloi",
+      "numberPlate": "Poleiti ea Nomoro ea Koloi",
+      "temporaryPermit": "Tumello ea Nakoana (e Ntse e Emela Ngoliso)",
+      "inspection": "Tlhahlobo ea Koloi le Setifikeiti sa Tsela",
+      "transportPermitNew": "Tumello ea ho Tsamaisa Lipalangoang",
+      "transportPermitRenew": "Nchafatso ea Tumello ea ho Tsamaisa Lipalangoang",
+      "licenceDiscApply": "Disk ea Laesense ea Koloi",
+      "licenceDiscRenew": "Nchafatso ea Disk ea Laesense ea Koloi",
+      "instructors": "Boitlhahiso ba Barupeli le Bahlahlobi ba ho Khanna",
+      "applicationTracking": "Likopo tsa Ka"
+    },
+    "Driving Licence Replacement": "Nchafatso ea Laesense e Lahlehileng",
+    "Public Driving Permit": "Laesense ea ho Khanna Lipalangoang tsa Sechaba",
+    "Vehicle Registration (Imported/SADC)": "Ngoliso ea Koloi (e Tliselitsoeng / SADC)",
+    "Vehicle Registration (Second-Hand Local)": "Ngoliso ea Koloi e Sebelisitsoeng (Lefatseng)",
+    "Vehicle Number Plate": "Poleiti ea Nomoro ea Koloi",
+    "Temporary Permit (Awaiting Registration)": "Tumello ea Nakoana (e Ntse e Emela Ngoliso)",
+    "Vehicle Licence Disc Application": "Kopo ea Disk ea Laesense ea Koloi",
+    "Vehicle Licence Disc Renewal": "Nchafatso ea Disk ea Laesense ea Koloi",
+    "Roadworthiness Test & Certificate of Fitness": "Tlhahlobo ea Koloi le Setifikeiti sa Tsela",
+    "New": "E Ncha",
+    "Renewal": "Nchafatso",
+    "drivingLicenceApplyForm": {
+      "title": "Kopo ea Laesense ea ho Khanna",
+      "photo": "Setšoantšo"
+    },
+    "drivingLicenceRenewForm": {
+      "title": "Nchafatso ea Laesense ea ho Khanna"
+    },
+    "learnerPermitForm": {
+      "title": "Laesense ea Seithuti"
+    },
+    "drivingLicenceReplaceForm": {
+      "title": "Nchafatso ea Laesense e Lahlehileng",
+      "field": {
+        "reason": "Lebaka la nchafatso",
+        "previousLicenceNumber": "Nomoro ea laesense ea pele"
+      }
+    },
+    "replacementReason": {
+      "lost": "E Lahlehile",
+      "stolen": "E Utsoitsoe",
+      "damaged": "E Senyehile",
+      "other": "Tse Ling"
+    },
+    "publicDrivingPermitForm": {
+      "title": "Laesense ea ho Khanna Lipalangoang tsa Sechaba",
+      "field": {
+        "existingLicenceNumber": "Nomoro ea laesense eo u e nang le eona",
+        "existingLicenceNumberHelp": "Laesense ea Lipalangoang tsa Sechaba e fuoa ho latela laesense eo u e nang le eona — ha e e nkele sebaka."
+      }
+    },
+    "vehicleForm": {
+      "field": {
+        "make": "Mofuta oa koloi",
+        "model": "Sebopeho sa koloi",
+        "chassisNumber": "Nomoro ea chassis",
+        "chassisNumberHelp": "E bonts'a koloi ka ho khetheha le ho thibela ngoliso e menahaneng.",
+        "engineNumber": "Nomoro ea enjene",
+        "ownershipProof": "Bopaki ba ho reka / ho ba mong",
+        "ownershipProofHelp": "Setšoantšo sa resiti ea thekiso kapa tokomane ea ho ba mong."
+      }
+    },
+    "vehicleRegistrationForm": {
+      "title": "Ngoliso ea Koloi"
+    },
+    "vehicleRegistrationImportedForm": {
+      "title": "Ngoliso ea Koloi (e Tliselitsoeng / SADC)",
+      "field": {
+        "originCountry": "Naha eo koloi e tliselitsoeng ho tsoa ho eona",
+        "importProof": "Bopaki ba ho reka / tokomane ea ho tlisa",
+        "importProofHelp": "Setšoantšo sa tokomane ea customs kapa resiti ea thekiso."
+      }
+    },
+    "vehicleRegistrationSecondHandForm": {
+      "title": "Ngoliso ea Koloi e Sebelisitsoeng (Lefatseng)"
+    },
+    "vehicleTransferForm": {
+      "title": "Phetisetso ea Koloi",
+      "field": {
+        "vehicleRegistrationNumber": "Nomoro ea ngoliso ea koloi",
+        "newOwner": "Nomoro ea boitsebiso ea mong'a koloi e mocha",
+        "transferProof": "Bopaki ba thekiso / phetisetso",
+        "transferProofHelp": "Setšoantšo sa tumellano ea thekiso e saenneng."
+      }
+    },
+    "numberPlateForm": {
+      "title": "Poleiti ea Nomoro ea Koloi",
+      "field": {
+        "reason": "Lebaka la kopo",
+        "personalisedText": "Mantsoe a poleiti e khethehileng",
+        "personalisedTextHelp": "E hlokahala feela haeba lebaka la hau le ‘E Khethehileng’."
+      }
+    },
+    "plateRequestReason": {
+      "new": "E Ncha",
+      "lost": "E Lahlehile",
+      "damaged": "E Senyehile",
+      "personalised": "E Khethehileng"
+    },
+    "temporaryPermitForm": {
+      "title": "Tumello ea Nakoana (e Ntse e Emela Ngoliso)",
+      "field": {
+        "validUntil": "E sebetsa ho fihlela"
+      }
+    },
+    "licenceDiscApplyForm": {
+      "title": "Disk ea Laesense ea Koloi",
+      "field": {
+        "insuranceProof": "Bopaki ba inshorense",
+        "insuranceProofHelp": "Setšoantšo sa setifikeiti sa hau sa inshorense."
+      }
+    },
+    "licenceDiscRenewForm": {
+      "title": "Nchafatso ea Disk ea Laesense ea Koloi",
+      "field": {
+        "previousDiscNumber": "Nomoro ea disk ea pele"
+      }
+    },
+    "inspectionForm": {
+      "title": "Tlhahlobo ea Koloi le Setifikeiti sa Tsela"
+    },
+    "transportPermitForm": {
+      "title": "Tumello ea ho Tsamaisa Lipalangoang",
+      "field": {
+        "category": "Sehlopha sa tumello",
+        "route": "Tsela / sebaka sa ts'ebetso"
+      }
+    },
+    "permitCategory": {
+      "A": "Sehlopha A — Thepa",
+      "B": "Sehlopha B — Thepa",
+      "C": "Sehlopha C — Baeti",
+      "D": "Sehlopha D",
+      "E": "Sehlopha E",
+      "F": "Sehlopha F — Thepa le Baeti"
+    },
+    "transportPermitRenewForm": {
+      "title": "Nchafatso ea Tumello ea ho Tsamaisa Lipalangoang",
+      "field": {
+        "previousPermitNumber": "Nomoro ea tumello ea pele"
+      }
+    },
+    "testBookings": "Tlhahlobo ea Thiori / Ketso ea ho Khanna",
+    "testBookingsForm": {
+      "intro": "Tlhahlobo ea Thiori e hloka Laesense ea Seithuti e amohetsoeng. Tlhahlobo ea Ketso e hloka hape ho phasa tlhahlobo ea Thiori.",
+      "field": {
+        "testType": "Mofuta oa tlhahlobo",
+        "requestedDate": "Letsatsi le khethoang",
+        "confirmedDate": "Letsatsi la tlhahlobo le netefatsitsoeng"
+      },
+      "cancelled": "Peeletso e hlakotsoe.",
+      "schedule": "Beha nako",
+      "recordPass": "Ngola o phasitse",
+      "recordFail": "Ngola o hlolehile",
+      "result": "Sephetho"
+    },
+    "testType": {
+      "theory": "Thiori",
+      "practical": "Ketso"
+    },
+    "instructors": "Boitlhahiso ba Barupeli le Bahlahlobi ba ho Khanna",
+    "instructorsForm": {
+      "officerOnly": "Lenane lena le laoloa ke Baofisiri ba Traffic feela.",
+      "intro": "Boitlhahiso ba barupeli ba ho khanna le bahlahlobi ba tlhahlobo ea ketso.",
+      "field": {
+        "fullName": "Lebitso le felletseng",
+        "certificationType": "Mofuta oa boitlhahiso",
+        "drivingSchool": "Sekolo sa ho khanna / boholong",
+        "notes": "Lintlha"
+      },
+      "register": "Ngolisa",
+      "certificateNumber": "Nomoro ea setifikeiti",
+      "reinstate": "Khutlisa",
+      "suspend": "Emisa",
+      "revoke": "Hlakola"
+    },
+    "certificationType": {
+      "instructor": "Morupeli",
+      "examiner": "Mohlahlobi"
+    }
   },
   "finance": {
     "title": "Ditjhelete",

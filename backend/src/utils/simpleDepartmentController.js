@@ -112,7 +112,13 @@ function makeDepartmentController({
         // t.extra(record, req) may return { setSql: 'col = $3, col2 = $4', params: [v3, v4] }
         // referencing additional placeholders starting at $3 — used e.g. to assign a licence
         // number on approval without hardcoding department-specific columns in this factory.
+        // It may instead return { error: 'message' } to abort the transition before anything is
+        // written — used e.g. to require the citizen's signature before a 'collect' transition.
         const extra = t.extra ? t.extra(record, req) : null;
+        if (extra && extra.error) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: extra.error });
+        }
         const setSql = extra ? `, ${extra.setSql}` : '';
         const params = [t.to, record[idColumn], ...(extra ? extra.params : [])];
         await client.query(
@@ -127,6 +133,45 @@ function makeDepartmentController({
             type: t.to === 'Ready for Collection' ? 'Ready for Collection' : t.to === 'Approved' || t.to === 'Completed' ? 'Approval' : 'Status Change' });
         }
         res.json({ recordId: record[idColumn], status: t.to });
+      } catch (err) {
+        await client.query('ROLLBACK'); throw err;
+      } finally {
+        client.release();
+      }
+    } catch (err) { next(err); }
+  }
+
+  // Citizen-only: fixes up whichever extraInsertFields the officer flagged as missing/wrong and
+  // moves the record back to 'Submitted' for another look. Previously this department shape had
+  // no resubmit path at all — once an officer called requestInformation() there was no way for
+  // the citizen to actually act on it. Only touches columns the caller actually sent (so a
+  // partial resubmission doesn't null out fields the citizen didn't need to change).
+  async function resubmit(req, res, next) {
+    try {
+      const client = await db.getClient();
+      try {
+        await client.query('BEGIN');
+        const { rows } = await client.query(`SELECT * FROM ${table} WHERE ${idColumn} = $1 FOR UPDATE`, [req.params.id]);
+        if (rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Record not found.' }); }
+        const record = rows[0];
+        if (record.citizen_id !== req.user.citizenId) {
+          await client.query('ROLLBACK');
+          return res.status(403).json({ error: 'Not your application.' });
+        }
+        if (record.status !== 'Additional Information Required') {
+          await client.query('ROLLBACK');
+          return res.status(409).json({ error: 'This application is not awaiting additional information.' });
+        }
+        const toUpdate = extraInsertFields.filter((f) => req.body[f.fromBody] !== undefined);
+        const setSql = toUpdate.map((f, i) => `${f.column} = $${i + 2}`).join(', ');
+        const params = [record[idColumn], ...toUpdate.map((f) => req.body[f.fromBody])];
+        await client.query(
+          `UPDATE ${table} SET status = 'Submitted', updated_at = NOW()${setSql ? `, ${setSql}` : ''} WHERE ${idColumn} = $1`,
+          params
+        );
+        await syncApplicationStatus(client, { sourceTable: table, sourceId: record[idColumn], status: 'Submitted', note: 'Citizen resubmitted with additional information.' });
+        await client.query('COMMIT');
+        res.json({ recordId: record[idColumn], status: 'Submitted' });
       } catch (err) {
         await client.query('ROLLBACK'); throw err;
       } finally {
@@ -170,7 +215,7 @@ function makeDepartmentController({
     } catch (err) { next(err); }
   }
 
-  return { apply, list, getOne, transition, requestInformation, reject };
+  return { apply, list, getOne, transition, resubmit, requestInformation, reject };
 }
 
 module.exports = { makeDepartmentController };
