@@ -27,6 +27,7 @@ export default function Passport() {
   const { t } = useLanguage();
   const isOfficer = ['passport_officer', 'system_administrator'].includes(user.roleKey);
   const [records, setRecords] = useState(null);
+  const [applicationType, setApplicationType] = useState('New');
   const [passportType, setPassportType] = useState('Ordinary');
   const [preferredOfficeId, setPreferredOfficeId] = useState('');
   const [photoReference, setPhotoReference] = useState(null);
@@ -54,6 +55,7 @@ export default function Passport() {
 
   function cancelResubmit() {
     setResubmitTarget(null);
+    setApplicationType('New');
     setPassportType('Ordinary');
     setPreferredOfficeId('');
     setPhotoReference(null);
@@ -74,6 +76,8 @@ export default function Passport() {
       };
       if (resubmitTarget) {
         await api.post(`/passport/${resubmitTarget.passport_record_id}/resubmit`, payload);
+      } else if (applicationType === 'Renewal') {
+        await api.post('/passport/renew', payload);
       } else {
         await api.post('/passport/apply', payload);
       }
@@ -124,6 +128,16 @@ export default function Passport() {
           ) : (
             <p className="mb-3 text-sm text-slate-600">ℹ {t('passport.reuseNotice')}</p>
           )}
+          {!resubmitTarget && (
+            <div className="mb-4 max-w-xs">
+              <label htmlFor="applicationType" className="form-label">{t('passport.applicationTypeLabel')}</label>
+              <select id="applicationType" className="form-input" value={applicationType} onChange={(e) => setApplicationType(e.target.value)}>
+                <option value="New">{t('passport.applicationType.New')}</option>
+                <option value="Renewal">{t('passport.applicationType.Renewal')}</option>
+              </select>
+              {applicationType === 'Renewal' && <p className="mt-1 text-xs text-slate-500">ℹ {t('passport.renewalNotice')}</p>}
+            </div>
+          )}
           <div className="mb-4 max-w-xs">
             <label htmlFor="passportType" className="form-label">{t('passport.type')}</label>
             <select id="passportType" className="form-input" value={passportType} onChange={(e) => setPassportType(e.target.value)}>
@@ -135,7 +149,9 @@ export default function Passport() {
           <PhotoCapture value={photoReference} onChange={setPhotoReference} help={t('photoCapture.idHelp')} faceCheck />
           <ReceiptCapture value={receipt} onChange={setReceipt} help={t('passport.feeNotice')} />
           <DistrictOfficeSelect departmentKey="passport" value={preferredOfficeId} onChange={setPreferredOfficeId} />
-          <button type="submit" className="btn-primary">{resubmitTarget ? t('common.resubmitForReview') : t('passport.apply')}</button>
+          <button type="submit" className="btn-primary">
+            {resubmitTarget ? t('common.resubmitForReview') : applicationType === 'Renewal' ? t('passport.renew') : t('passport.apply')}
+          </button>
         </form>
       )}
 
@@ -150,6 +166,7 @@ export default function Passport() {
               : <span className="text-slate-300">—</span>),
           },
           { key: 'application_reference', header: t('applications.reference'), render: (r) => <span className="font-mono text-xs">{r.application_reference}</span> },
+          { key: 'application_type', header: t('passport.applicationTypeLabel'), render: (r) => t(`passport.applicationType.${r.application_type || 'New'}`) },
           ...(isOfficer ? [{ key: 'name', header: 'Citizen', render: (r) => `${r.first_name} ${r.last_name}` }] : []),
           ...(isOfficer ? [{
             key: 'receipt', header: t('receiptCapture.label'),

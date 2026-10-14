@@ -682,6 +682,13 @@
   "passport": {
     "title": "Passport Services",
     "apply": "Apply for a passport",
+    "renew": "Renew passport",
+    "applicationTypeLabel": "Application type",
+    "applicationType": {
+      "New": "New",
+      "Renewal": "Renewal"
+    },
+    "renewalNotice": "Your previous passport details will be reused where possible. The passport fee is payable again for a renewal.",
     "type": "Passport type",
     "ordinary": "Ordinary",
     "diplomatic": "Diplomatic",

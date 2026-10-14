@@ -682,6 +682,13 @@
   "passport": {
     "title": "Ditshebeletso tsa Pasepoto",
     "apply": "Kopa pasepoto",
+    "renew": "Nchafatsa pasepoto",
+    "applicationTypeLabel": "Mofuta wa kopo",
+    "applicationType": {
+      "New": "E ntjha",
+      "Renewal": "Ho nchafatsa"
+    },
+    "renewalNotice": "Lintlha tsa pasepoto ya hao ya pele di tla sebediswa hape moo ho kgonehang. Tefo ya pasepoto e lefshwa hape bakeng sa ho nchafatsa.",
     "type": "Mofuta wa pasepoto",
     "ordinary": "E tlwaelehileng",
     "diplomatic": "Ya Boemeli",

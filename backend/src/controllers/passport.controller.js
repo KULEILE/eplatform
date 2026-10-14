@@ -50,6 +50,69 @@ async function apply(req, res, next) {
   }
 }
 
+/** POST /api/passport/renew — new service: passport renewal. Deliberately reuses this same
+ *  table/approval pipeline (TRANSITIONS below) rather than a parallel one, since a renewal is
+ *  still, physically, a new passport application that goes through the same review -> approve ->
+ *  produce -> collect steps — see migration 047 (mirrors how National ID renewal/replacement was
+ *  added in migration 037). Requires the citizen to already hold a previous passport record; a
+ *  first application still goes through apply above. The fee is paid again, same as a new
+ *  application — see the same requirement in apply(). */
+async function applyRenewal(req, res, next) {
+  try {
+    if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required to apply for a passport.' });
+    const { passportType, preferredOfficeId, photoReference, paymentReference, receiptImageReference } = req.body;
+    if (!preferredOfficeId) {
+      return res.status(400).json({ error: 'preferredOfficeId is required — choose the branch where you will collect the passport.' });
+    }
+    if (!paymentReference || !receiptImageReference) {
+      return res.status(400).json({ error: 'paymentReference and receiptImageReference are required — the passport fee must be paid before renewing.' });
+    }
+    const { rows: inProgress } = await db.query(
+      `SELECT 1 FROM passport_records WHERE citizen_id = $1 AND status NOT IN ('Rejected', 'Collected')`,
+      [req.user.citizenId]
+    );
+    if (inProgress.length > 0) return res.status(409).json({ error: 'You already have a passport application in progress.' });
+
+    const { rows: previousRows } = await db.query(
+      `SELECT * FROM passport_records WHERE citizen_id = $1 ORDER BY created_at DESC LIMIT 1`,
+      [req.user.citizenId]
+    );
+    if (previousRows.length === 0) {
+      return res.status(409).json({ error: 'No previous passport found. Use the standard Passport Application for a first-time passport.' });
+    }
+    const previous = previousRows[0];
+
+    const referenceNumber = generateReference('PA');
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(
+        // The photo can be carried forward from the previous passport, same as National ID
+        // renewal — the holder is the same person, but a fresh photo can still be supplied.
+        `INSERT INTO passport_records
+            (citizen_id, application_reference, passport_type, status, preferred_office_id, collection_office_id,
+             photo_reference, payment_reference, receipt_image_reference, application_type, previous_passport_number)
+         VALUES ($1,$2,$3,'Submitted',$4,$4,$5,$6,$7,'Renewal',$8) RETURNING passport_record_id`,
+        [req.user.citizenId, referenceNumber, passportType || previous.passport_type, preferredOfficeId,
+          photoReference || previous.photo_reference, paymentReference, receiptImageReference, previous.passport_number || null]
+      );
+      await indexApplication(client, {
+        citizenId: req.user.citizenId, departmentKey: 'passport', serviceType: 'Passport Renewal',
+        referenceNumber, sourceTable: 'passport_records', sourceId: rows[0].passport_record_id, status: 'Submitted',
+      });
+      await client.query('COMMIT');
+      await createNotification({ userId: req.user.userId, title: 'Passport renewal submitted', message: `Reference ${referenceNumber}.`, type: 'Application Submitted' });
+      res.status(201).json({ passportRecordId: rows[0].passport_record_id, referenceNumber, status: 'Submitted' });
+    } catch (err) {
+      await client.query('ROLLBACK'); throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function list(req, res, next) {
   try {
     if (req.user.roleKey === 'passport_officer' || req.user.roleKey === 'system_administrator') {
@@ -247,4 +310,4 @@ async function reject(req, res, next) {
   }
 }
 
-module.exports = { apply, list, getOne, transition, requestInformation, reject, resubmit };
+module.exports = { apply, applyRenewal, list, getOne, transition, requestInformation, reject, resubmit };

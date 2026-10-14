@@ -6,6 +6,7 @@ const router = express.Router();
 router.use(requireAuth);
 
 router.post('/apply', pc.apply);
+router.post('/renew', pc.applyRenewal);
 router.get('/', pc.list);
 router.get('/:id', pc.getOne);
 router.post('/:id/request-information', pc.requestInformation);
