@@ -1,4 +1,6 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { useLanguage } from '../../context/LanguageContext';
 import DepartmentServicePage from '../../components/DepartmentServicePage';
 
 const config = {
@@ -18,5 +20,18 @@ const config = {
 };
 
 export default function Finance() {
-  return <DepartmentServicePage config={config} />;
+  const { t } = useLanguage();
+  return (
+    <div>
+      <div className="mb-6 flex flex-wrap gap-4 text-sm">
+        <Link to="/finance/government-employment" className="font-medium text-gov-navy hover:underline">
+          🏛 {t('finance.employment.panelTitle')} / {t('finance.retirement.title')}
+        </Link>
+        <Link to="/finance/corrections" className="font-medium text-gov-navy hover:underline">
+          ✏ {t('finance.correction')}
+        </Link>
+      </div>
+      <DepartmentServicePage config={config} />
+    </div>
+  );
 }

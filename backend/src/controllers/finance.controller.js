@@ -1,4 +1,54 @@
+const db = require('../config/db');
 const { makeDepartmentController } = require('../utils/simpleDepartmentController');
+const { getDepartmentId } = require('../utils/lookup');
+const { recordAudit } = require('../utils/audit');
+const { createNotification } = require('../utils/notify');
+
+const RETIREMENT_SERVICE_TYPE = 'Government Employee Retirement Declaration';
+const EMPLOYEE_CATEGORIES = ['General Civil Servant', 'Uniformed/Disciplined Services'];
+const RETIREMENT_REASONS = ['Standard', 'Ill-health', 'Medical Boarding', 'Compulsory Retirement', 'Redundancy', 'Other'];
+
+/** A retirement declaration needs a reason category, a reason-details note when the reason is
+ *  'Other', the supporting document (an opaque upload — never parsed for content, same as every
+ *  other document in this system), and the citizen must currently be on record as an active
+ *  government employee (if Finance has them wrong, that's what the corrections mechanism is
+ *  for — see corrections.controller.js — not a path to self-declare retirement). */
+async function beforeApply(req) {
+  if (req.body.serviceType !== RETIREMENT_SERVICE_TYPE) return null;
+  const { retirementReason, retirementReasonDetails, retirementDocumentReference } = req.body;
+  if (!RETIREMENT_REASONS.includes(retirementReason)) {
+    return { status: 400, error: `retirementReason must be one of: ${RETIREMENT_REASONS.join(', ')}` };
+  }
+  if (retirementReason === 'Other' && !retirementReasonDetails) {
+    return { status: 400, error: "retirementReasonDetails is required when retirementReason is 'Other'." };
+  }
+  if (!retirementDocumentReference) {
+    return { status: 400, error: 'A supporting document (retirement letter/certificate) is required.' };
+  }
+  const { rows } = await db.query('SELECT government_employment_status FROM citizens WHERE citizen_id = $1', [req.user.citizenId]);
+  if (rows.length === 0 || rows[0].government_employment_status !== 'Active') {
+    return {
+      status: 409,
+      error: 'Our records do not show you as an active government employee, so there is nothing to retire from. If this is incorrect, please submit a correction request.',
+    };
+  }
+  return null;
+}
+
+/** On approval ('Completed') of a retirement declaration, the citizen's employment record moves
+ *  to Retired — this is what actually grants Civil Service Pension eligibility later (see
+ *  pensions.controller.js), never the declaration's submission itself. */
+async function afterTransition(client, record, toStatus, req) {
+  if (record.service_type !== RETIREMENT_SERVICE_TYPE || toStatus !== 'Completed') return;
+  await client.query(
+    `UPDATE citizens SET government_employment_status = 'Retired', retirement_reason = $1, retirement_reason_details = $2, updated_at = NOW() WHERE citizen_id = $3`,
+    [record.retirement_reason, record.retirement_reason_details, record.citizen_id]
+  );
+  await recordAudit({
+    userId: req.user.userId, departmentId: await getDepartmentId('finance'), action: 'GOVERNMENT_EMPLOYEE_RETIRED',
+    targetType: 'citizen', targetId: record.citizen_id, reason: record.retirement_reason,
+  });
+}
 
 const controller = makeDepartmentController({
   table: 'finance_records',
@@ -6,8 +56,15 @@ const controller = makeDepartmentController({
   deptKey: 'finance',
   officerRoleKey: 'finance_officer',
   refPrefix: 'FIN',
-  serviceTypes: ['Supplier Registration Validation', 'Payment Information Update', 'Tax Identity Confirmation', 'Financial Records Correction'],
+  serviceTypes: ['Supplier Registration Validation', 'Payment Information Update', 'Tax Identity Confirmation', 'Financial Records Correction', RETIREMENT_SERVICE_TYPE],
+  extraInsertFields: [
+    { column: 'retirement_reason', fromBody: 'retirementReason' },
+    { column: 'retirement_reason_details', fromBody: 'retirementReasonDetails' },
+    { column: 'retirement_document_reference', fromBody: 'retirementDocumentReference' },
+  ],
   finalStatuses: ['Rejected', 'Completed'],
+  beforeApply,
+  afterTransition,
   statusFlow: {
     'start-review': { from: 'Submitted', to: 'Under Review' },
     'verify-identity': { from: 'Under Review', to: 'Identity Verified' },
@@ -15,9 +72,63 @@ const controller = makeDepartmentController({
     'process': { from: 'Documents Checked', to: 'Processing' },
     'complete': {
       from: 'Processing', to: 'Completed',
-      extra: () => ({ setSql: `validated_information_note = $3`, params: ['Identity and supporting information validated against Home Affairs and departmental records.'] }),
+      extra: (record) => record.service_type === RETIREMENT_SERVICE_TYPE
+        ? null
+        : { setSql: `validated_information_note = $3`, params: ['Identity and supporting information validated against Home Affairs and departmental records.'] },
     },
   },
 });
 
-module.exports = controller;
+// ============================================================================================
+// GOVERNMENT EMPLOYMENT RECORD — Finance, as the department that funds every other department's
+// payroll, is the authority on who is currently an active government employee. These two actions
+// are deliberately NOT part of the application workflow above: declaring someone an employee is
+// an officer-initiated record action, not a citizen application, and both only ever act on one
+// specific citizen looked up by identity number — never a browsable directory of everyone.
+// ============================================================================================
+
+/** GET /api/finance/government-employment/:permanentIdentityNumber — officer only. */
+async function lookupGovernmentEmployment(req, res, next) {
+  try {
+    if (!['finance_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
+    const { rows } = await db.query(
+      `SELECT citizen_id, first_name, last_name, permanent_identity_number,
+              government_employment_status, employee_category, retirement_reason, retirement_reason_details
+       FROM citizens WHERE permanent_identity_number = $1`,
+      [req.params.permanentIdentityNumber]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'No citizen record matches that permanent identity number.' });
+    res.json({ citizen: rows[0] });
+  } catch (err) { next(err); }
+}
+
+/** POST /api/finance/government-employment/declare  body: { permanentIdentityNumber, employeeCategory }
+ *  Officer only. Marks a citizen as an active government employee — the "hiring" side; retiring
+ *  only ever happens through the citizen's own retirement declaration above, approved by an
+ *  officer, never through this direct action. */
+async function declareGovernmentEmployee(req, res, next) {
+  try {
+    if (!['finance_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
+    const { permanentIdentityNumber, employeeCategory } = req.body;
+    if (!EMPLOYEE_CATEGORIES.includes(employeeCategory)) {
+      return res.status(400).json({ error: `employeeCategory must be one of: ${EMPLOYEE_CATEGORIES.join(', ')}` });
+    }
+    const { rows } = await db.query('SELECT citizen_id, government_employment_status FROM citizens WHERE permanent_identity_number = $1', [permanentIdentityNumber]);
+    if (rows.length === 0) return res.status(404).json({ error: 'No citizen record matches that permanent identity number.' });
+    if (rows[0].government_employment_status === 'Active') {
+      return res.status(409).json({ error: 'This citizen is already recorded as an active government employee.' });
+    }
+    await db.query(
+      `UPDATE citizens SET government_employment_status = 'Active', employee_category = $1, retirement_reason = NULL, retirement_reason_details = NULL, updated_at = NOW() WHERE citizen_id = $2`,
+      [employeeCategory, rows[0].citizen_id]
+    );
+    await recordAudit({ userId: req.user.userId, departmentId: await getDepartmentId('finance'), action: 'GOVERNMENT_EMPLOYEE_DECLARED', targetType: 'citizen', targetId: rows[0].citizen_id, reason: employeeCategory });
+    const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [rows[0].citizen_id])).rows[0];
+    if (userRow) {
+      await createNotification({ userId: userRow.user_id, title: 'Government employment recorded', message: `You have been recorded as an active government employee (${employeeCategory}). If this is incorrect, please submit a correction request.`, type: 'System' });
+    }
+    res.json({ citizenId: rows[0].citizen_id, governmentEmploymentStatus: 'Active', employeeCategory });
+  } catch (err) { next(err); }
+}
+
+module.exports = { ...controller, lookupGovernmentEmployment, declareGovernmentEmployee };

@@ -659,69 +659,12 @@ async function transitionNationalId(req, res, next) {
 }
 
 // ============================================================================================
-// CORRECTIONS (FR12) & DEATH REGISTRATION
+// DEATH REGISTRATION
+// (Corrections (FR12) moved to corrections.controller.js — it was always meant to be generic
+// across departments, per the comment on the `corrections` table in migration 020, but the
+// code only ever worked for Home Affairs. Finance needed it too — see
+// finance.controller.js/government employment — so it's now actually generic.)
 // ============================================================================================
-
-/** POST /api/home-affairs/correction  body: { fieldName, currentValue, requestedValue, reason } */
-async function submitCorrection(req, res, next) {
-  try {
-    if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required to submit a correction request.' });
-    const { fieldName, currentValue, requestedValue, reason } = req.body;
-    if (!fieldName || !requestedValue || !reason) return res.status(400).json({ error: 'fieldName, requestedValue and reason are required.' });
-    const departmentId = await getDepartmentId('home_affairs');
-    const { rows } = await db.query(
-      `INSERT INTO corrections (citizen_id, requested_by_user_id, department_id, field_name, current_value, requested_value, reason)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [req.user.citizenId, req.user.userId, departmentId, fieldName, currentValue || null, requestedValue, reason]
-    );
-    res.status(201).json({ correction: rows[0] });
-  } catch (err) {
-    next(err);
-  }
-}
-
-/** GET /api/home-affairs/correction — officer queue, or citizen's own */
-async function listCorrections(req, res, next) {
-  try {
-    if (['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey)) {
-      const { rows } = await db.query(
-        `SELECT co.*, c.first_name, c.last_name FROM corrections co JOIN citizens c ON c.citizen_id = co.citizen_id
-         JOIN departments d ON d.department_id = co.department_id WHERE d.department_key = 'home_affairs' ORDER BY co.created_at DESC`
-      );
-      return res.json({ corrections: rows });
-    }
-    if (!req.user.citizenId) return res.json({ corrections: [] });
-    const { rows } = await db.query('SELECT * FROM corrections WHERE citizen_id = $1 ORDER BY created_at DESC', [req.user.citizenId]);
-    res.json({ corrections: rows });
-  } catch (err) {
-    next(err);
-  }
-}
-
-/** POST /api/home-affairs/correction/:id/decide  body: { approve: boolean } */
-async function decideCorrection(req, res, next) {
-  try {
-    if (!['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
-    const { approve } = req.body;
-    const status = approve ? 'Approved' : 'Rejected';
-    const { rows } = await db.query(
-      `UPDATE corrections SET status = $1, reviewed_by_user_id = $2, reviewed_at = NOW(), updated_at = NOW() WHERE correction_id = $3 RETURNING *`,
-      [status, req.user.userId, req.params.id]
-    );
-    if (rows.length === 0) return res.status(404).json({ error: 'Correction request not found.' });
-    if (approve) {
-      // For the prototype, only the "first_name"/"last_name"/"place_of_birth" fields can be applied automatically.
-      const c = rows[0];
-      if (['first_name', 'last_name', 'place_of_birth'].includes(c.field_name)) {
-        await db.query(`UPDATE citizens SET ${c.field_name} = $1, updated_at = NOW() WHERE citizen_id = $2`, [c.requested_value, c.citizen_id]);
-      }
-    }
-    await recordAudit({ userId: req.user.userId, departmentId: await getDepartmentId('home_affairs'), action: `CORRECTION_${status.toUpperCase()}`, targetType: 'correction', targetId: Number(req.params.id) });
-    res.json({ correction: rows[0] });
-  } catch (err) {
-    next(err);
-  }
-}
 
 /** POST /api/home-affairs/death-registration  body: { citizenId, dateOfDeath, placeOfDeath } */
 async function reportDeath(req, res, next) {
@@ -767,6 +710,19 @@ async function approveDeath(req, res, next) {
       const record = rows[0];
       await client.query(`UPDATE death_records SET status = 'Approved', handling_officer_id = $1, approved_at = NOW(), updated_at = NOW() WHERE death_record_id = $2`, [req.user.userId, record.death_record_id]);
       await client.query(`UPDATE citizens SET is_deceased = TRUE, date_of_death = $1, updated_at = NOW() WHERE citizen_id = $2`, [record.date_of_death, record.citizen_id]);
+      // Every pension of the deceased stops automatically in this same step — not just a
+      // notification for an officer to act on later. 'Rejected' records never took effect and
+      // 'Stopped (Deceased)' ones are already stopped, so both are left alone; everything else
+      // (including an ongoing 'Completed' pension) is stopped now.
+      const { rows: stoppedPensions } = await client.query(
+        `UPDATE pension_records SET status = 'Stopped (Deceased)', life_status = 'Deceased', updated_at = NOW()
+         WHERE citizen_id = $1 AND status NOT IN ('Rejected', 'Stopped (Deceased)') RETURNING pension_record_id`,
+        [record.citizen_id]
+      );
+      for (const stopped of stoppedPensions) {
+        // eslint-disable-next-line no-await-in-loop
+        await syncApplicationStatus(client, { sourceTable: 'pension_records', sourceId: stopped.pension_record_id, status: 'Stopped (Deceased)', completed: true, note: 'Stopped automatically — death registration approved.' });
+      }
       // Controlled notification to Pensions (per the report's design: a death registration
       // creates a notification for authorised pension officials, it does not expose the case elsewhere).
       const { rows: pensionOfficers } = await client.query(
@@ -774,7 +730,13 @@ async function approveDeath(req, res, next) {
       );
       for (const officer of pensionOfficers) {
         // eslint-disable-next-line no-await-in-loop
-        await createNotification({ userId: officer.user_id, title: 'Death registration recorded', message: `A death has been registered for a citizen with an active pension record (ref ${record.registration_reference}). Please review beneficiary status.`, type: 'System' });
+        await createNotification({
+          userId: officer.user_id, title: 'Death registration recorded',
+          message: stoppedPensions.length > 0
+            ? `A death has been registered (ref ${record.registration_reference}). ${stoppedPensions.length} pension record(s) for this citizen have been stopped automatically.`
+            : `A death has been registered for a citizen (ref ${record.registration_reference}). No active pension record was found.`,
+          type: 'System',
+        });
       }
       await client.query('COMMIT');
       await recordAudit({ userId: req.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'DEATH_REGISTRATION_APPROVED', targetType: 'death_record', targetId: record.death_record_id });
@@ -1342,7 +1304,6 @@ module.exports = {
   verifyBirthRegistration, confirmVerificationBirthRegistration, approveBirthRegistration, rejectBirthRegistration,
   getBirthCertificate, markCertificateReadyForCollection, collectBirthCertificate,
   applyNationalId, applyNationalIdRenewalReplacement, listNationalId, getNationalId, transitionNationalId,
-  submitCorrection, listCorrections, decideCorrection,
   reportDeath, approveDeath, listDeathRegistrations, getDeathRegistration,
   createMarriageRegistration, listMarriageRegistrations, getMarriageRegistration,
   startReviewMarriage, requestInformationMarriage, resubmitMarriage, verifyMarriage, approveMarriage, rejectMarriage,

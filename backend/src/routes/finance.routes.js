@@ -6,6 +6,12 @@ const router = express.Router();
 router.use(requireAuth);
 router.post('/apply', c.apply);
 router.get('/', c.list);
+
+// Government employment record (see finance.controller.js) — registered before the generic
+// '/:id' routes below so 'government-employment' is never mistaken for a record id/action.
+router.get('/government-employment/:permanentIdentityNumber', c.lookupGovernmentEmployment);
+router.post('/government-employment/declare', c.declareGovernmentEmployee);
+
 router.get('/:id', c.getOne);
 router.post('/:id/resubmit', c.resubmit);
 router.post('/:id/request-information', c.requestInformation);

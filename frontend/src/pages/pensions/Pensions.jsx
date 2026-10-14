@@ -7,7 +7,7 @@ const config = {
   titleKey: 'pensions.title',
   serviceTypeNs: 'pensions',
   officerRoleKey: 'pensions_officer',
-  serviceTypes: ['New Pension Enrolment', 'Proof of Life Verification', 'Beneficiary Correction', 'Pension Status Enquiry', 'Pension Age Eligibility Claim'],
+  serviceTypes: ['New Pension Enrolment', 'Proof of Life Verification', 'Beneficiary Correction', 'Pension Status Enquiry', 'Pension Age Eligibility Claim', 'Civil Service Pension Claim'],
   transitions: {
     'Submitted': { action: 'start-review', labelKey: 'status.Under Review' },
     'Under Review': { action: 'verify-identity', labelKey: 'status.Identity Verified' },

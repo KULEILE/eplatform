@@ -66,6 +66,8 @@ import VehicleLicenceDiscApply from './pages/traffic/VehicleLicenceDiscApply';
 import VehicleLicenceDiscRenew from './pages/traffic/VehicleLicenceDiscRenew';
 import DrivingInstructors from './pages/traffic/DrivingInstructors';
 import Finance from './pages/finance/Finance';
+import GovernmentEmployment from './pages/finance/GovernmentEmployment';
+import FinanceCorrections from './pages/finance/Corrections';
 import Pensions from './pages/pensions/Pensions';
 import Police from './pages/police/Police';
 import PoliceHub from './pages/police/PoliceHub';
@@ -148,6 +150,8 @@ export default function App() {
         <Route path="/traffic/licence-disc/renew" element={<ProtectedRoute><VehicleLicenceDiscRenew /></ProtectedRoute>} />
         <Route path="/traffic/instructors" element={<ProtectedRoute><DrivingInstructors /></ProtectedRoute>} />
         <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
+        <Route path="/finance/government-employment" element={<ProtectedRoute><GovernmentEmployment /></ProtectedRoute>} />
+        <Route path="/finance/corrections" element={<ProtectedRoute><FinanceCorrections /></ProtectedRoute>} />
         <Route path="/pensions" element={<ProtectedRoute><Pensions /></ProtectedRoute>} />
         <Route path="/police" element={<ProtectedRoute><PoliceHub /></ProtectedRoute>} />
         <Route path="/police/identity-verification" element={<ProtectedRoute roles={['police_officer', 'system_administrator']}><Police /></ProtectedRoute>} />

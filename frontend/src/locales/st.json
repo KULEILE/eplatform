@@ -262,6 +262,7 @@
     "Processing": "E a sebediswa",
     "Approved": "E Dumelletswe",
     "Rejected": "E Hanilwe",
+    "Stopped (Deceased)": "E Emisitswe (O Hlokahetse)",
     "Certificate Generated": "Setifikeiti se Hlahisitswe",
     "Card Production": "Karete e a Etswa",
     "Passport Produced": "Pasepoto e Entswe",
@@ -906,10 +907,47 @@
     "title": "Ditjhelete",
     "apply": "Qala tshebeletso",
     "serviceType": "Mofuta wa tshebeletso",
+    "correction": "Tokiso ya Phoso",
     "Supplier Registration Validation": "Netefatso ya Ngodiso ya Mofani",
     "Payment Information Update": "Nchafatso ya Lesedi la Tefo",
     "Tax Identity Confirmation": "Netefatso ya Boitsebiso ba Lekgetho",
-    "Financial Records Correction": "Tokiso ya Direkoto tsa Ditjhelete"
+    "Financial Records Correction": "Tokiso ya Direkoto tsa Ditjhelete",
+    "Government Employee Retirement Declaration": "Phatlalatso ya Ho Tlohela Mosebetsi wa Mmuso",
+    "retirement": {
+      "title": "Phatlalatso ya Ho Tlohela Mosebetsi wa Mmuso",
+      "reasonLabel": "Lebaka la ho tlohela mosebetsi",
+      "detailsLabel": "Dintlha tse ding",
+      "detailsHelp": "E hlokahala haeba o kgethile 'E nngwe'.",
+      "documentLabel": "Lengolo/setifikeiti sa ho tlohela mosebetsi",
+      "documentHelp": "Kenya lengolo kapa setifikeiti sa semmuso se netefatsang ho tlohela ha hao mosebetsi.",
+      "mistakeNotice": "O phatlalalitswe e le mosebeletsi wa mmuso ka phoso?"
+    },
+    "retirementReason": {
+      "Standard": "E tlwaelehileng (o fihletse dilemo tsa ho tlohela mosebetsi)",
+      "Ill-health": "Bokudi",
+      "Medical Boarding": "Ho Tlohela ka Lebaka la Bongaka",
+      "Compulsory Retirement": "Ho Tlohela ka Tlamehano (molemong wa setjhaba)",
+      "Redundancy": "Ho Fokotswa Mosebetsi / Ho Felisoa ha Mosebetsi",
+      "Other": "E nngwe"
+    },
+    "employment": {
+      "panelTitle": "Rekoto ya Mosebetsi wa Mmuso",
+      "panelHelp": "Ditjhelete ke bona matla a ho tseba hore na ke mang ya leng mosebeletsi wa mmuso hajwale — moahi ha a ke a ikemele ho phatlalatsa sena. Sheba moahi a le mong ka nomoro ya boitsebiso.",
+      "lookupLabel": "Nomoro ya boitsebiso e sa fetoheng ya moahi",
+      "statusLabel": "Boemo ba mosebetsi",
+      "categoryLabel": "Mofuta wa mosebeletsi",
+      "declareAction": "Phatlalatsa e le mosebeletsi wa mmuso ya sebetsang",
+      "declared": "O ngodisitswe e le mosebeletsi wa mmuso ya sebetsang."
+    },
+    "employmentStatus": {
+      "Not Applicable": "Ha se mosebeletsi wa mmuso",
+      "Active": "Mosebeletsi wa mmuso ya sebetsang",
+      "Retired": "Mosebeletsi wa mmuso ya tlohetseng mosebetsi"
+    },
+    "employeeCategory": {
+      "General Civil Servant": "Mosebeletsi wa Mmuso o Tlwaelehileng (dilemo tsa ho tlohela mosebetsi 60)",
+      "Uniformed/Disciplined Services": "Ditshebeletso tse Apereng Yunifomo — sepolesa, masole, ditshebeletso tsa tshwaro (dilemo tsa ho tlohela mosebetsi 55)"
+    }
   },
   "pensions": {
     "title": "Pentjhene",
@@ -920,7 +958,17 @@
     "Beneficiary Correction": "Tokiso ya Mohlohleledi",
     "Pension Status Enquiry": "Potso ya Boemo ba Pentjhene",
     "lifeStatus": "Boemo ba bophelo",
-    "Pension Age Eligibility Claim": "Kopo ya Tokelo ya Pensheneng ka Dilemo"
+    "Pension Age Eligibility Claim": "Kopo ya Tokelo ya Pensheneng ka Dilemo",
+    "Civil Service Pension Claim": "Kopo ya Pentjhene ya Mosebeletsi wa Mmuso"
+  },
+  "correction": {
+    "formTitle": "Kopa tokiso",
+    "field": "Lebala",
+    "currentValue": "Boleng ba hajwale",
+    "currentValueHelp": "Ha ho hlokahale — seo rekoto e se bontshang hajwale, haeba o se tseba.",
+    "requestedValue": "Boleng bo nepahetseng",
+    "reason": "Ka kopo hlalosa phoso",
+    "submit": "Romela kopo ya tokiso"
   },
   "police": {
     "title": "Sepolesa",

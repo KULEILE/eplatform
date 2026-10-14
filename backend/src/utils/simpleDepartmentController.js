@@ -28,6 +28,12 @@ function makeDepartmentController({
   // age check against the citizen's own verified date of birth) can reject the request up
   // front with a clear reason, without every department having to reimplement apply().
   beforeApply,
+  // Optional: async (client, record, toStatus, req) => void — runs inside the same transaction,
+  // right after the status UPDATE on this department's own table, for a side effect that has to
+  // land on a DIFFERENT table (e.g. approving a retirement declaration also updates the
+  // citizen's government_employment_status). t.extra() cannot do this — it only contributes
+  // extra SET clauses to the single UPDATE this factory already issues against `table`.
+  afterTransition,
 }) {
   async function apply(req, res, next) {
     try {
@@ -125,6 +131,7 @@ function makeDepartmentController({
           `UPDATE ${table} SET status = $1, updated_at = NOW() ${setSql} WHERE ${idColumn} = $2`,
           params
         );
+        if (afterTransition) await afterTransition(client, record, t.to, req);
         await syncApplicationStatus(client, { sourceTable: table, sourceId: record[idColumn], status: t.to, completed: finalStatuses.includes(t.to) });
         await client.query('COMMIT');
         const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.citizen_id])).rows[0];

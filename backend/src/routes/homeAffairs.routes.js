@@ -32,10 +32,7 @@ router.get('/national-id', hac.listNationalId);
 router.get('/national-id/:id', hac.getNationalId);
 router.post('/national-id/:id/:action', hac.transitionNationalId);
 
-// Corrections (FR12)
-router.post('/correction', hac.submitCorrection);
-router.get('/correction', hac.listCorrections);
-router.post('/correction/:id/decide', hac.decideCorrection);
+// Corrections (FR12) moved to /api/corrections — see corrections.routes.js
 
 // Death registration
 router.post('/death-registration', hac.reportDeath);

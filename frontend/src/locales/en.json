@@ -262,6 +262,7 @@
     "Processing": "Processing",
     "Approved": "Approved",
     "Rejected": "Rejected",
+    "Stopped (Deceased)": "Stopped (Deceased)",
     "Certificate Generated": "Certificate Generated",
     "Card Production": "Card Production",
     "Passport Produced": "Passport Produced",
@@ -906,10 +907,47 @@
     "title": "Finance",
     "apply": "Start a service",
     "serviceType": "Service type",
+    "correction": "Error Correction",
     "Supplier Registration Validation": "Supplier Registration Validation",
     "Payment Information Update": "Payment Information Update",
     "Tax Identity Confirmation": "Tax Identity Confirmation",
-    "Financial Records Correction": "Financial Records Correction"
+    "Financial Records Correction": "Financial Records Correction",
+    "Government Employee Retirement Declaration": "Government Employee Retirement Declaration",
+    "retirement": {
+      "title": "Government Employee Retirement Declaration",
+      "reasonLabel": "Reason for retirement",
+      "detailsLabel": "Additional details",
+      "detailsHelp": "Required if you selected 'Other'.",
+      "documentLabel": "Retirement letter/certificate",
+      "documentHelp": "Upload the official letter or certificate confirming your retirement.",
+      "mistakeNotice": "Declared a government employee by mistake?"
+    },
+    "retirementReason": {
+      "Standard": "Standard (reached retirement age)",
+      "Ill-health": "Ill-health",
+      "Medical Boarding": "Medical Boarding",
+      "Compulsory Retirement": "Compulsory Retirement (public interest)",
+      "Redundancy": "Redundancy / Abolition of Post",
+      "Other": "Other"
+    },
+    "employment": {
+      "panelTitle": "Government Employment Record",
+      "panelHelp": "Finance is the authority on who is currently an active government employee — a citizen never self-declares this. Look up one citizen at a time by identity number.",
+      "lookupLabel": "Citizen's permanent identity number",
+      "statusLabel": "Employment status",
+      "categoryLabel": "Employee category",
+      "declareAction": "Declare as active government employee",
+      "declared": "Recorded as an active government employee."
+    },
+    "employmentStatus": {
+      "Not Applicable": "Not a government employee",
+      "Active": "Active government employee",
+      "Retired": "Retired government employee"
+    },
+    "employeeCategory": {
+      "General Civil Servant": "General Civil Servant (standard retirement age 60)",
+      "Uniformed/Disciplined Services": "Uniformed/Disciplined Services — police, soldiers, correctional services (standard retirement age 55)"
+    }
   },
   "pensions": {
     "title": "Pensions",
@@ -920,7 +958,17 @@
     "Beneficiary Correction": "Beneficiary Correction",
     "Pension Status Enquiry": "Pension Status Enquiry",
     "lifeStatus": "Life status",
-    "Pension Age Eligibility Claim": "Pension Age Eligibility Claim"
+    "Pension Age Eligibility Claim": "Pension Age Eligibility Claim",
+    "Civil Service Pension Claim": "Civil Service Pension Claim"
+  },
+  "correction": {
+    "formTitle": "Request a correction",
+    "field": "Field",
+    "currentValue": "Current value",
+    "currentValueHelp": "Optional — what the record currently shows, if known.",
+    "requestedValue": "Correct value",
+    "reason": "Please explain the error",
+    "submit": "Submit correction request"
   },
   "police": {
     "title": "Police",

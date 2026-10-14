@@ -23,6 +23,7 @@ const officesRoutes = require('./routes/offices.routes');
 const districtsRoutes = require('./routes/districts.routes');
 const uploadsRoutes = require('./routes/uploads.routes');
 const appointmentsRoutes = require('./routes/appointments.routes');
+const correctionsRoutes = require('./routes/corrections.routes');
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use('/api/offices', officesRoutes);
 app.use('/api/districts', districtsRoutes);
 app.use('/api/uploads', uploadsRoutes);
 app.use('/api/appointments', appointmentsRoutes);
+app.use('/api/corrections', correctionsRoutes);
 
 app.use((req, res) => res.status(404).json({ error: `No route for ${req.method} ${req.path}` }));
 app.use(errorHandler);

@@ -18,6 +18,7 @@ const STATUS_KIND = {
   'Rejected': 'negative', 'Certificate Generated': 'positive', 'Card Production': 'info',
   'Passport Produced': 'info', 'Ready for Collection': 'positive', 'Collected': 'positive',
   'Completed': 'positive', 'Flagged for Correction': 'warning', 'Application Submitted': 'info',
+  'Stopped (Deceased)': 'negative',
   'Active': 'positive', 'Suspended': 'warning', 'Deactivated': 'negative',
   'Match Found': 'positive', 'No Match': 'neutral', 'Possible Mismatch': 'warning',
   'Verified Identity': 'positive', 'Provisional': 'warning',
