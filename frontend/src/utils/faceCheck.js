@@ -8,9 +8,10 @@
  *   - Face presence/count and rough framing (centered, reasonably sized in-frame) — a genuine,
  *     reliable browser-side check using a small face-detection model (TinyFaceDetector, ~190KB,
  *     served from /models so there's no dependency on a third-party CDN at runtime).
- *   - "Busy background" — a best-effort heuristic (color variance in the region outside the
- *     detected face), not true background classification. It will not catch everything a human
- *     reviewer would, but it catches the obvious cases (cluttered room, patterned wallpaper).
+ *   - "Busy background" — a best-effort heuristic (color variance sampled from above and beside
+ *     the detected face — never below the chin, see isBackgroundBusy below), not true background
+ *     classification. It will not catch everything a human reviewer would, but it catches the
+ *     obvious cases (cluttered room, patterned wallpaper).
  *   - Head pose ("look straight at the camera") — a genuine geometric check using the 68-point
  *     facial landmark model (tiny variant, ~77KB, also served locally from /models): it measures
  *     whether the eyes are roughly level (not tilted) and whether the nose sits roughly midway
@@ -145,6 +146,21 @@ export async function checkPhotoCompliance(imgEl) {
   return { ok: true };
 }
 
+/**
+ * Samples "background" pixels to measure how plain/uniform the backdrop is. Only ever samples
+ * above and immediately beside the head — NEVER at or below chin height.
+ *
+ * Earlier this excluded just a padded rectangle sized to the FACE (padX = 40% of face width) and
+ * treated everything outside that rectangle as background, including the area below the chin.
+ * That's wrong: in a head-and-shoulders ID photo, the area below the chin is shoulders/clothing,
+ * not backdrop, and shoulders are routinely much wider than the face — a 40%-padded face-width
+ * rectangle doesn't come close to covering them. So a perfectly plain wall behind someone wearing
+ * a shirt that contrasts with the wall (e.g. a dark shirt against a light wall) would have shirt
+ * pixels and wall pixels both counted as "background", producing a large color variance that read
+ * as a "busy"/patterned background even though the actual wall was plain. Restricting sampling to
+ * above/beside the head sidesteps the problem entirely — clothing is never touched, regardless of
+ * how wide the shoulders are or how much it contrasts with the wall.
+ */
 function isBackgroundBusy(imgEl, faceBox, imgW, imgH) {
   const canvas = document.createElement('canvas');
   // Downscale for speed — this only needs a rough estimate, not pixel-perfect analysis.
@@ -166,18 +182,21 @@ function isBackgroundBusy(imgEl, faceBox, imgW, imgH) {
   const fy = faceBox.y * scale;
   const fw = faceBox.width * scale;
   const fh = faceBox.height * scale;
-  // Exclude a padded region around the face so hair/shoulders aren't counted as "background".
+  // Narrow side margin excluded next to the face/hair (not shoulder-width — doesn't need to be,
+  // since rows at or below the chin are skipped outright below).
   const padX = fw * 0.4;
+  // How far above the face hair plausibly extends.
   const padY = fh * 0.6;
   const exMinX = fx - padX;
   const exMaxX = fx + fw + padX;
   const exMinY = fy - padY;
-  const exMaxY = fy + fh + padY * 1.8; // extra allowance below the face for shoulders
+  const chinY = fy + fh; // nothing at or below this row is ever sampled — see comment above.
 
   const samples = [];
   for (let py = 0; py < canvas.height; py += 2) {
+    if (py >= chinY) break; // below the chin: shoulders/clothing territory, not backdrop
     for (let px = 0; px < canvas.width; px += 2) {
-      if (px >= exMinX && px <= exMaxX && py >= exMinY && py <= exMaxY) continue;
+      if (px >= exMinX && px <= exMaxX && py >= exMinY) continue; // hair/face column
       const i = (py * canvas.width + px) * 4;
       samples.push([data[i], data[i + 1], data[i + 2]]);
     }
