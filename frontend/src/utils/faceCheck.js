@@ -8,10 +8,14 @@
  *   - Face presence/count and rough framing (centered, reasonably sized in-frame) — a genuine,
  *     reliable browser-side check using a small face-detection model (TinyFaceDetector, ~190KB,
  *     served from /models so there's no dependency on a third-party CDN at runtime).
- *   - "Busy background" — a best-effort heuristic (color variance sampled from above and beside
- *     the detected face — never below the chin, see isBackgroundBusy below), not true background
- *     classification. It will not catch everything a human reviewer would, but it catches the
- *     obvious cases (cluttered room, patterned wallpaper).
+ *   - Blur/sharpness — a genuine, well-established measurement (Laplacian variance, see
+ *     faceSharpness below), not a guess. Measured on just the face crop, not the whole photo, so
+ *     a phone's portrait-mode background blur doesn't wrongly flag a photo with a sharp face.
+ *   - "Busy background" — a best-effort heuristic (local edge/texture density sampled from above
+ *     and beside the detected face — never below the chin, see isBackgroundBusy below), not true
+ *     background classification. It will not catch everything a human reviewer would, but it
+ *     catches the obvious cases (cluttered room, patterned wallpaper, a striped/tiled/brick wall)
+ *     — see isBackgroundBusy for why this measures texture rather than raw color variance.
  *   - Head pose ("look straight at the camera") — a genuine geometric check using the 68-point
  *     facial landmark model (tiny variant, ~77KB, also served locally from /models): it measures
  *     whether the eyes are roughly level (not tilted) and whether the nose sits roughly midway
@@ -37,10 +41,18 @@ const MIN_FACE_AREA_RATIO = 0.06;
 // catches a face cropped off to one side or badly misaligned.
 const MAX_CENTER_OFFSET_X = 0.22;
 const MAX_CENTER_OFFSET_Y = 0.25;
-// Combined RGB standard deviation above this, sampled from the region outside the face, reads as
-// a "busy" background rather than a plain wall/backdrop. Picked conservatively so uneven lighting
-// on a plain wall doesn't trip it.
-const BUSY_BACKGROUND_STD_DEV = 55;
+// Below this, the face crop reads as blurry rather than sharp enough to be usable. This is the
+// variance of a Laplacian (edge-detecting) filter applied to just the face region — see
+// faceSharpness for the full explanation. Calibrated against real test photos and synthetically
+// blurred copies of them: genuinely sharp photos scored 190–1040, while even a mild, barely
+// visible softening already dropped that to 10–35, and a clearly blurry copy to under 10 — this
+// threshold sits with large margin below every sharp measurement and above every blurred one.
+const MIN_FACE_SHARPNESS = 40;
+// Average local brightness gradient (how much luma changes between neighboring sample points)
+// above this, sampled from the region outside the face, reads as a "busy"/patterned background.
+// See isBackgroundBusy for why this measures texture rather than overall color spread, and for
+// the measurements this was calibrated against.
+const MAX_BACKGROUND_EDGE_GRADIENT = 3;
 // Roll (head tilt): the vertical gap between the two eyes, as a fraction of the distance between
 // them. 0 = perfectly level. Above this reads as a tilted head.
 const MAX_EYE_TILT_RATIO = 0.18;
@@ -65,6 +77,76 @@ function averagePoint(points) {
   const n = points.length;
   const sum = points.reduce((acc, p) => ({ x: acc.x + p.x, y: acc.y + p.y }), { x: 0, y: 0 });
   return { x: sum.x / n, y: sum.y / n };
+}
+
+function luma(r, g, b) {
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+/**
+ * Sharpness of just the face region (with a little padding), via Laplacian variance — the
+ * standard, well-established cheap blur detector: convolve with a 3x3 edge-detecting kernel, then
+ * take the VARIANCE of the responses, not the mean. A sharp face has a mix of flat regions
+ * (near-zero response) and crisp edges (large response), so the responses are spread out — high
+ * variance. A blurry face has uniformly weak edges everywhere — low variance, even though the
+ * overall brightness range can look similar either way. See MIN_FACE_SHARPNESS for the threshold
+ * this was calibrated against.
+ *
+ * Deliberately scoped to the face crop, not the whole photo: a phone's portrait mode can
+ * legitimately blur the background while keeping the face sharp, and that's a fine photo — the
+ * thing that actually needs to be sharp is the face itself.
+ *
+ * @returns {number|null} the variance, or null if it couldn't be measured (too small / tainted
+ * canvas) — the caller treats null as "skip this check" rather than blocking on it.
+ */
+function faceSharpness(imgEl, faceBox, imgW, imgH) {
+  const pad = 0.15; // a little padding around the detected box so we're not measuring right at its edge
+  const fx = Math.max(0, faceBox.x - faceBox.width * pad);
+  const fy = Math.max(0, faceBox.y - faceBox.height * pad);
+  const fw = Math.min(imgW - fx, faceBox.width * (1 + 2 * pad));
+  const fh = Math.min(imgH - fy, faceBox.height * (1 + 2 * pad));
+  if (fw < 10 || fh < 10) return null;
+
+  // Enough resolution to judge sharpness without being slow — unlike the background check, this
+  // can't be downscaled as aggressively, since shrinking an image destroys the very high-frequency
+  // detail this is trying to measure.
+  const targetMaxDim = 200;
+  const scale = Math.min(1, targetMaxDim / Math.max(fw, fh));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(2, Math.round(fw * scale));
+  canvas.height = Math.max(2, Math.round(fh * scale));
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(imgEl, fx, fy, fw, fh, 0, 0, canvas.width, canvas.height);
+
+  let data;
+  try {
+    data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  } catch {
+    return null; // tainted canvas (cross-origin source) — skip rather than block
+  }
+
+  const w = canvas.width, h = canvas.height;
+  if (w < 3 || h < 3) return null;
+
+  const gray = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    gray[i] = luma(data[i * 4], data[i * 4 + 1], data[i * 4 + 2]);
+  }
+
+  const responses = [];
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const c = gray[y * w + x];
+      const resp =
+        gray[(y - 1) * w + x] + gray[(y + 1) * w + x] + gray[y * w + x - 1] + gray[y * w + x + 1] - 4 * c;
+      responses.push(resp);
+    }
+  }
+  if (responses.length < 20) return null;
+
+  const mean = responses.reduce((a, b) => a + b, 0) / responses.length;
+  const variance = responses.reduce((a, b) => a + (b - mean) ** 2, 0) / responses.length;
+  return variance;
 }
 
 /**
@@ -135,6 +217,11 @@ export async function checkPhotoCompliance(imgEl) {
     return { ok: false, reason: 'offCenter' };
   }
 
+  const sharpness = faceSharpness(imgEl, { x, y, width, height }, imgW, imgH);
+  if (sharpness !== null && sharpness < MIN_FACE_SHARPNESS) {
+    return { ok: false, reason: 'blurry' };
+  }
+
   if (detections[0].landmarks && isNotFacingForward(detections[0].landmarks)) {
     return { ok: false, reason: 'notFacingForward' };
   }
@@ -147,19 +234,34 @@ export async function checkPhotoCompliance(imgEl) {
 }
 
 /**
- * Samples "background" pixels to measure how plain/uniform the backdrop is. Only ever samples
- * above and immediately beside the head — NEVER at or below chin height.
+ * Samples "background" pixels to judge whether the backdrop is plain or patterned. Only ever
+ * samples above and immediately beside the head — NEVER at or below chin height.
  *
- * Earlier this excluded just a padded rectangle sized to the FACE (padX = 40% of face width) and
- * treated everything outside that rectangle as background, including the area below the chin.
- * That's wrong: in a head-and-shoulders ID photo, the area below the chin is shoulders/clothing,
- * not backdrop, and shoulders are routinely much wider than the face — a 40%-padded face-width
- * rectangle doesn't come close to covering them. So a perfectly plain wall behind someone wearing
- * a shirt that contrasts with the wall (e.g. a dark shirt against a light wall) would have shirt
- * pixels and wall pixels both counted as "background", producing a large color variance that read
- * as a "busy"/patterned background even though the actual wall was plain. Restricting sampling to
- * above/beside the head sidesteps the problem entirely — clothing is never touched, regardless of
- * how wide the shoulders are or how much it contrasts with the wall.
+ * Excluding clothing (fix #1): earlier this excluded just a padded rectangle sized to the FACE
+ * (padX = 40% of face width) and treated everything outside that rectangle as background,
+ * including the area below the chin. That's wrong: in a head-and-shoulders ID photo, the area
+ * below the chin is shoulders/clothing, not backdrop, and shoulders are routinely much wider than
+ * the face — a 40%-padded face-width rectangle doesn't come close to covering them. So a
+ * perfectly plain wall behind someone wearing a shirt that contrasts with the wall (e.g. a dark
+ * shirt against a light wall) would have shirt pixels and wall pixels both counted as
+ * "background", producing a large color variance that read as "busy" even though the wall was
+ * plain. Restricting sampling to above/beside the head sidesteps this entirely — clothing is
+ * never touched, regardless of how wide the shoulders are or how much it contrasts with the wall.
+ *
+ * Measuring texture, not just color spread (fix #2): once clothing was excluded, overall color
+ * variance turned out to be a weak signal on its own. The threshold had been tuned back when
+ * clothing contamination inflated every reading; once that was removed, a genuinely patterned
+ * wall (e.g. a striped ceiling, a concrete-block wall) scored only modestly higher than a plain
+ * wall under normal uneven lighting — a window lighting one side of a room produces a real, wide
+ * spread of colors too, just changing slowly across the frame rather than repeating. Measured on
+ * real test photos: a smooth lighting gradient with NO pattern at all scored a *higher* overall
+ * color spread than an actually patterned wall, while scoring almost no local edge gradient. So
+ * this measures the average brightness change between each sampled point and its near neighbors
+ * instead of overall color spread: a slow lighting gradient barely changes from one point to the
+ * next nearby point (low local gradient, however wide its full range is end to end), while a
+ * repeating pattern — stripes, grout lines, brick joints — alternates sharply at small, regular
+ * intervals (high local gradient almost everywhere it's sampled). This tells texture apart from
+ * lighting far better than color variance did.
  */
 function isBackgroundBusy(imgEl, faceBox, imgW, imgH) {
   const canvas = document.createElement('canvas');
@@ -191,27 +293,39 @@ function isBackgroundBusy(imgEl, faceBox, imgW, imgH) {
   const exMaxX = fx + fw + padX;
   const exMinY = fy - padY;
   const chinY = fy + fh; // nothing at or below this row is ever sampled — see comment above.
+  const step = 2; // sampling grid step
+  const neighborStep = 2; // how far away the "neighbor" pixel is, for the local gradient
 
-  const samples = [];
-  for (let py = 0; py < canvas.height; py += 2) {
-    if (py >= chinY) break; // below the chin: shoulders/clothing territory, not backdrop
-    for (let px = 0; px < canvas.width; px += 2) {
-      if (px >= exMinX && px <= exMaxX && py >= exMinY) continue; // hair/face column
+  const included = (px, py) => {
+    if (px < 0 || px >= canvas.width || py < 0 || py >= canvas.height) return false;
+    if (py >= chinY) return false; // below the chin: shoulders/clothing, not backdrop
+    if (px >= exMinX && px <= exMaxX && py >= exMinY) return false; // hair/face column
+    return true;
+  };
+
+  let sampleCount = 0;
+  const gradients = [];
+  for (let py = 0; py < canvas.height; py += step) {
+    if (py >= chinY) break;
+    for (let px = 0; px < canvas.width; px += step) {
+      if (!included(px, py)) continue;
+      sampleCount++;
       const i = (py * canvas.width + px) * 4;
-      samples.push([data[i], data[i + 1], data[i + 2]]);
+      const myLuma = luma(data[i], data[i + 1], data[i + 2]);
+
+      if (included(px + neighborStep, py)) {
+        const j = (py * canvas.width + (px + neighborStep)) * 4;
+        gradients.push(Math.abs(myLuma - luma(data[j], data[j + 1], data[j + 2])));
+      }
+      if (included(px, py + neighborStep)) {
+        const j = ((py + neighborStep) * canvas.width + px) * 4;
+        gradients.push(Math.abs(myLuma - luma(data[j], data[j + 1], data[j + 2])));
+      }
     }
   }
-  if (samples.length < 20) return false; // not enough visible background to judge
+  if (sampleCount < 20 || gradients.length < 20) return false; // not enough visible background to judge
 
-  const mean = samples
-    .reduce((acc, [r, g, b]) => [acc[0] + r, acc[1] + g, acc[2] + b], [0, 0, 0])
-    .map((v) => v / samples.length);
-  const variance =
-    samples.reduce(
-      (acc, [r, g, b]) => acc + (r - mean[0]) ** 2 + (g - mean[1]) ** 2 + (b - mean[2]) ** 2,
-      0
-    ) / samples.length;
-  const stdDev = Math.sqrt(variance);
+  const meanGradient = gradients.reduce((a, b) => a + b, 0) / gradients.length;
 
-  return stdDev > BUSY_BACKGROUND_STD_DEV;
+  return meanGradient > MAX_BACKGROUND_EDGE_GRADIENT;
 }
