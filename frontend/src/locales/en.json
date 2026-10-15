@@ -117,9 +117,20 @@
     "multipleFaces": "More than one face was found in that photo. Please choose a photo of yourself alone.",
     "tooFar": "Your face is too small in this photo — please move closer or crop in before uploading.",
     "offCenter": "Please center your face in the photo before uploading.",
+    "blurry": "This photo is too blurry. Please hold the camera steady, make sure it's in focus, and retake the photo.",
     "notFacingForward": "Please face the camera directly, with your head level and not turned to one side.",
     "busyBackground": "The background looks busy or cluttered. Please retake the photo against a plain, even background.",
-    "obstructionConfirm": "I confirm this photo shows my full face and head clearly, with no hat, sunglasses, or other obstruction."
+    "obstructionConfirm": "I confirm this photo shows my full face and head clearly, with no hat, sunglasses, or other obstruction.",
+    "instructions": {
+      "title": "Photo Capture Instructions",
+      "noHat": "Remove any hat, cap, or head covering (an item worn daily for religious reasons is allowed, as long as your full face is clearly visible)",
+      "noGlasses": "Remove sunglasses or dark/tinted glasses",
+      "noHeadphones": "Remove headphones or earphones",
+      "lookStraight": "Look straight at the camera, with a neutral expression and your head level",
+      "plainBackground": "Stand against a plain, evenly lit background — not a patterned wall or a cluttered room",
+      "steady": "Hold the camera steady so the photo is in focus, not blurry",
+      "continue": "Continue"
+    }
   },
   "biometricCapture": {
     "hint": "Used to enrol your fingerprints for this National ID card.",

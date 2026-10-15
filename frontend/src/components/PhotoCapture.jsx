@@ -176,7 +176,6 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
       ) : faceCheck && !instructionsAcknowledged ? (
         <div className="rounded-md bg-amber-50 p-3 text-left text-sm text-slate-700">
           <p className="mb-2 font-semibold text-slate-800">{t('photoCapture.instructions.title')}</p>
-          <p className="mb-2 text-xs">{t('photoCapture.instructions.intro')}</p>
           <ul className="mb-3 list-disc space-y-1 pl-4 text-xs">
             <li>{t('photoCapture.instructions.noHat')}</li>
             <li>{t('photoCapture.instructions.noGlasses')}</li>

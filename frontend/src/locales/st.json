@@ -117,9 +117,20 @@
     "multipleFaces": "Ho fumanwe difahleho tse fetang e le nngwe setshwantshong seo. Ka kopo kgetha setshwantsho sa hao o le mong.",
     "tooFar": "Sefahleho sa hao se senyenyane haholo setshwantshong sena — ka kopo atamela kapa o sitise setshwantsho pele o romela.",
     "offCenter": "Ka kopo beha sefahleho sa hao bohareng ba setshwantsho pele o se romela.",
+    "blurry": "Setshwantsho sena ha se hlake hantle. Ka kopo tshwara khamera ka tsitsipano, netefatsa hore se hlakile, mme o nke setshwantsho hape.",
     "notFacingForward": "Ka kopo shebana le khamera ka kotloloho, hlooho e lekane e sa sekamela lehlakoreng.",
     "busyBackground": "Semelo se ka morao se bonahala se tletse dintho. Ka kopo nka setshwantsho hape moo ho nang le semelo se bobebe, se tsitsitseng.",
-    "obstructionConfirm": "Ke netefatsa hore setshwantsho sena se bontsha sefahleho le hlooho ya ka ka botlalo, ntle le katiba, mahalima a letsatsi, kapa ntho e nngwe e thibelang."
+    "obstructionConfirm": "Ke netefatsa hore setshwantsho sena se bontsha sefahleho le hlooho ya ka ka botlalo, ntle le katiba, mahalima a letsatsi, kapa ntho e nngwe e thibelang.",
+    "instructions": {
+      "title": "Ditaelo tsa ho Nka Setshwantsho",
+      "noHat": "Tlosa katiba, kepisi, kapa ntho efe kapa efe e koahelang hlooho (ntho e aparwang letsatsi le letsatsi ka lebaka la bodumedi ya dumelletswe, hafeela sefahleho sa hao ka botlalo se bonahala)",
+      "noGlasses": "Tlosa diaparo tsa mahlo tse fifetseng kapa tse thibelang leseli",
+      "noHeadphones": "Tlosa diaparo tsa ditsebe (headphones) kapa ditsebe tse nyenyane tsa molumo",
+      "lookStraight": "Sheba khamera ka kotloloho, hlooho e lekane, sefahleho se sa fetohe",
+      "plainBackground": "Ema moo ho nang le semelo se bobebe, se kganyang hantle — eseng lebota le nang le mefuta ya mebala kapa phaposi e tletseng dintho",
+      "steady": "Tshwara khamera ka tsitsipano hore setshwantsho se hlakile, se se fifala",
+      "continue": "Tswela pele"
+    }
   },
   "biometricCapture": {
     "hint": "E sebediswa ho ngolisa menwana ya hao bakeng sa ID ena ya Setjhaba.",
