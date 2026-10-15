@@ -33,6 +33,17 @@ const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
  * self-declaration, not automated detection — there's no free, reliable way to actually detect
  * hats/glasses client-side (see faceCheck.js) — but it puts the requirement in front of the
  * citizen explicitly rather than silently accepting a photo that an officer must then reject.
+ *
+ * `faceCheck` fields also show a short instructions screen BEFORE the citizen reaches the camera/
+ * file picker (remove hat, sunglasses, headphones; plain background; hold steady), not just the
+ * confirmation checkbox after. There's no way to inject anything into the phone's own native
+ * camera UI once it opens, so this is a gate screen shown just before that point, with a
+ * "continue" action that then reveals the actual input — this is prevention (stop the mistake
+ * before it happens), the obstruction checkbox below is self-declaration (confirm it didn't), and
+ * the officer reviewing the application is the final real check — three honest, cheap layers,
+ * none of them pretending to be automated hat/glasses detection (see faceCheck.js for why that
+ * isn't realistic to build for free). Shown again every time the citizen goes to pick a new photo
+ * (including after a retake), since that's exactly when the reminder matters most.
  */
 export default function PhotoCapture({ value, onChange, label, help, faceCheck = false }) {
   const { t } = useLanguage();
@@ -45,6 +56,10 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
   // reads as "incomplete" (same as any other required field) until then.
   const [pendingRef, setPendingRef] = useState(null);
   const [confirmed, setConfirmed] = useState(!!value); // a value already on mount (e.g. resubmit prefill) counts as already confirmed
+  // Gates the camera/file input behind the instructions screen on faceCheck fields — see the class
+  // doc comment above. Irrelevant (never read) on non-faceCheck fields, which go straight to the
+  // input as before.
+  const [instructionsAcknowledged, setInstructionsAcknowledged] = useState(false);
   const inputRef = useRef(null);
 
   function runComplianceCheck(objectUrl) {
@@ -124,6 +139,7 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
     setPreview(null);
     setPendingRef(null);
     setConfirmed(false);
+    setInstructionsAcknowledged(false); // show the instructions again — see class doc comment
     onChange(null);
     setError('');
     if (inputRef.current) inputRef.current.value = '';
@@ -157,6 +173,26 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
         </div>
       ) : checking ? (
         <p className="text-sm text-slate-500">{t('photoCapture.checking')}</p>
+      ) : faceCheck && !instructionsAcknowledged ? (
+        <div className="rounded-md bg-amber-50 p-3 text-left text-sm text-slate-700">
+          <p className="mb-2 font-semibold text-slate-800">{t('photoCapture.instructions.title')}</p>
+          <p className="mb-2 text-xs">{t('photoCapture.instructions.intro')}</p>
+          <ul className="mb-3 list-disc space-y-1 pl-4 text-xs">
+            <li>{t('photoCapture.instructions.noHat')}</li>
+            <li>{t('photoCapture.instructions.noGlasses')}</li>
+            <li>{t('photoCapture.instructions.noHeadphones')}</li>
+            <li>{t('photoCapture.instructions.lookStraight')}</li>
+            <li>{t('photoCapture.instructions.plainBackground')}</li>
+            <li>{t('photoCapture.instructions.steady')}</li>
+          </ul>
+          <button
+            type="button"
+            className="btn-primary !py-1 !text-xs"
+            onClick={() => setInstructionsAcknowledged(true)}
+          >
+            {t('photoCapture.instructions.continue')}
+          </button>
+        </div>
       ) : (
         <>
           <input
