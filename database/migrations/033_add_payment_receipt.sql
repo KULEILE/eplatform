@@ -1,16 +1,21 @@
 -- 033_add_payment_receipt.sql
 --
--- First slice of payment-receipt support (see passport fee schedule and National ID's official
--- "free" status — researched against the real Government of Lesotho fee pages). Scoped to the
--- two services that already have a clean place to attach it:
+-- First slice of payment-receipt support, originally scoped to both Passport and Birth
+-- Certificate collection.
 --
---   * Passport application — citizen must supply proof of payment when they apply, since the
---     passport fee is paid up front (M130-M630+ depending on type).
---   * Birth certificate collection — the registration itself is free, but reissuing/collecting
---     the physical certificate is where a fee commonly applies in practice, and this is also
---     the one home-affairs document that already has a real "Ready for Collection" gate to
---     attach the requirement to (marriage/divorce certificates have no physical collection step
---     in this system yet, so a receipt requirement has nowhere to attach for those two).
+-- CORRECTED after a closer check against Lesotho's actual published Home Affairs/gov.ls service
+-- pages: there is no fee anywhere for birth certificate registration or collection — that was an
+-- unverified assumption made when this migration was first written, not a real Lesotho fee. The
+-- app code (see backend/src/controllers/homeAffairs.controller.js,
+-- markCertificateReadyForCollection) no longer requires payment_reference/receipt_image_reference
+-- for the standard collection flow; those two columns on birth_certificates are kept here,
+-- unused, rather than dropped, since a *replacement* copy of an already-collected certificate
+-- (lost/damaged) may legitimately carry a fee — that's a separate feature, not yet built, and
+-- should only reuse these columns once that fee is actually confirmed.
+--
+--   * Passport application — citizen must supply proof of payment when they apply; this one IS
+--     real — Lesotho's published fee pages list a genuine passport application/replacement fee
+--     (e.g. M430 for a lost/damaged passport replacement).
 --
 -- National ID is deliberately NOT touched here — the official fee schedule lists first-time
 -- enrolment, renewal and replacement as free for citizens.

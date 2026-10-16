@@ -362,20 +362,22 @@ async function getBirthCertificate(req, res, next) {
 async function markCertificateReadyForCollection(req, res, next) {
   try {
     if (!['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
-    const { officeId, paymentReference, receiptImageReference } = req.body;
-    // Birth registration itself is free, but collecting the physical certificate is where the
-    // reissue/collection fee applies (see migration 033) — the officer records the reference and
-    // a photo of the receipt the citizen presented before the certificate can move to collection.
-    if (!paymentReference || !receiptImageReference) {
-      return res.status(400).json({ error: 'paymentReference and receiptImageReference are required before the certificate can be marked Ready for Collection.' });
-    }
+    const { officeId } = req.body;
+    // Birth certificate collection is free in Lesotho — verified against the Ministry of Home
+    // Affairs' and gov.ls's published service pages, which list no fee for birth certificate
+    // registration or collection (unlike a Passport, which genuinely does carry an application/
+    // replacement fee — see passport.controller.js). No payment or receipt is required here.
+    // (A payment_reference/receipt_image_reference pair still exists on this table from an
+    // earlier, incorrect assumption that a collection fee applied — those columns are simply
+    // left unused by this standard flow now; see migration 033's updated comment.)
+    //
     // COALESCE: an officer can override the branch here, but if they don't, the office already
     // set (from the citizen's choice at application time) is kept rather than cleared.
     const { rows } = await db.query(
       `UPDATE birth_certificates SET status = 'Ready for Collection', collection_office_id = COALESCE($1, collection_office_id),
-              payment_reference = $2, receipt_image_reference = $3, ready_for_collection_at = NOW(), updated_at = NOW()
-       WHERE birth_certificate_id = $4 AND status = 'Certificate Generated' RETURNING *`,
-      [officeId || null, paymentReference, receiptImageReference, req.params.id]
+              ready_for_collection_at = NOW(), updated_at = NOW()
+       WHERE birth_certificate_id = $2 AND status = 'Certificate Generated' RETURNING *`,
+      [officeId || null, req.params.id]
     );
     if (rows.length === 0) return res.status(409).json({ error: 'Certificate is not in a state that can move to Ready for Collection.' });
     res.json({ birthCertificate: rows[0] });
