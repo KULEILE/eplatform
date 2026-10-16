@@ -34,9 +34,65 @@ export default function ServiceWorkflowPage({
   const isOfficer = ['home_affairs_officer', 'system_administrator'].includes(user.roleKey);
   return isOfficer
     ? <OfficerQueue t={t} apiBase={apiBase} idField={idField} listKey={listKey} columns={columns} resultFields={resultFields}
-        referenceField={referenceField} initialStatus={initialStatus} reviewableStatus={reviewableStatus} title={title} intro={intro} />
+        referenceField={referenceField} initialStatus={initialStatus} reviewableStatus={reviewableStatus} title={title} intro={intro} fields={fields} />
     : <CitizenView t={t} apiBase={apiBase} idField={idField} listKey={listKey} singleKey={singleKey} referenceField={referenceField}
         fields={fields} columns={columns} resultFields={resultFields} title={title} intro={intro} />;
+}
+
+// fields[].name is camelCase (matches the JS payload the citizen submits); the row data that
+// comes back from the database uses the column's own snake_case name. Shared by the citizen's
+// resubmit-prefill below and the officer's detail view, so both read a submitted value the same
+// way.
+function snakeCaseKey(name) {
+  return name.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`);
+}
+
+function formatFieldValueForDisplay(field, row) {
+  const raw = row[snakeCaseKey(field.name)];
+  if (raw === null || raw === undefined || raw === '') return null;
+  if (field.type === 'date') return formatDateOnly(raw);
+  if (field.type === 'select' && Array.isArray(field.options)) {
+    const match = field.options.find((o) => String(o.value) === String(raw));
+    if (match) return match.label;
+  }
+  return String(raw);
+}
+
+/**
+ * What an officer sees before approving/rejecting/requesting-more-information used to be just a
+ * reference number, the citizen's name, and whatever one extra column that service's page chose
+ * to add (e.g. the deceased's name for Burial Order) — never the actual content the citizen
+ * submitted (where the burial is planned, the court order reference, the special-licence reason,
+ * and so on). The officer was being asked to decide without seeing what they were deciding on.
+ * This reuses the same `fields` the citizen's own form is built from, so every service gets this
+ * for free — a field can opt out with `hideFromOfficerDetail` when it's an internal lookup ID
+ * that's already represented more usefully elsewhere (see deathRecordId in BurialOrder.jsx /
+ * DeathCertificateRequest.jsx, where the deceased's name is already its own column).
+ */
+function DetailModal({ t, open, onClose, row, fields }) {
+  const visibleFields = fields.filter((f) => !f.hideFromOfficerDetail);
+  return (
+    <Modal open={open} onClose={onClose} title={t('common.viewDetails')}
+      footer={<button type="button" className="btn-secondary" onClick={onClose}>{t('common.close')}</button>}
+    >
+      {row && (
+        <dl className="space-y-3">
+          {visibleFields.map((f) => (
+            <div key={f.name}>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">{f.label}</dt>
+              <dd className="text-sm text-slate-800">{formatFieldValueForDisplay(f, row) || t('services.notProvided')}</dd>
+            </div>
+          ))}
+          {row.rejection_reason && (
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('services.reason')}</dt>
+              <dd className="text-sm text-gov-red">{row.rejection_reason}</dd>
+            </div>
+          )}
+        </dl>
+      )}
+    </Modal>
+  );
 }
 
 function renderResultFields(resultFields, row) {
@@ -113,7 +169,7 @@ function CitizenView({ t, apiBase, idField, listKey, singleKey, referenceField, 
   function startResubmit(row) {
     setResubmitTarget(row[idField]);
     const prefilled = {};
-    resubmitFields.forEach((f) => { prefilled[f.name] = row[f.name.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`)] ?? ''; });
+    resubmitFields.forEach((f) => { prefilled[f.name] = row[snakeCaseKey(f.name)] ?? ''; });
     setResubmitForm(prefilled);
     setError(''); setSuccess('');
   }
@@ -178,13 +234,14 @@ function CitizenView({ t, apiBase, idField, listKey, singleKey, referenceField, 
   );
 }
 
-function OfficerQueue({ t, apiBase, idField, listKey, columns, resultFields, referenceField, initialStatus, reviewableStatus, title, intro }) {
+function OfficerQueue({ t, apiBase, idField, listKey, columns, resultFields, referenceField, initialStatus, reviewableStatus, title, intro, fields }) {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(null);
   const [reasonTarget, setReasonTarget] = useState(null); // { id, action: 'request-information'|'reject' }
   const [reason, setReason] = useState('');
+  const [detailRow, setDetailRow] = useState(null); // the row currently shown in the "View details" modal, or null
 
   function load() { api.get(apiBase).then((d) => setRows(d[listKey])).catch(() => setRows([])); }
   useEffect(() => { load(); }, []);
@@ -214,6 +271,9 @@ function OfficerQueue({ t, apiBase, idField, listKey, columns, resultFields, ref
       key: 'actions', header: t('common.actions'),
       render: (r) => (
         <div className="flex flex-wrap gap-2">
+          <button type="button" className="text-xs font-semibold text-slate-600 underline" onClick={() => setDetailRow(r)}>
+            {t('common.viewDetails')}
+          </button>
           {r.status === initialStatus && (
             <button type="button" disabled={busy === r[idField]} className="text-xs font-semibold text-gov-navy underline"
               onClick={() => act(r[idField], 'start-review')}>{t('services.startReview')}</button>
@@ -259,6 +319,8 @@ function OfficerQueue({ t, apiBase, idField, listKey, columns, resultFields, ref
           </FormField>
         </form>
       </Modal>
+
+      <DetailModal t={t} open={!!detailRow} onClose={() => setDetailRow(null)} row={detailRow} fields={fields} />
     </div>
   );
 }

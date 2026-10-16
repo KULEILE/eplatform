@@ -554,8 +554,10 @@
     "deathCertificateRequestForm": {
       "intro": "Request an official death certificate for a death that has already been registered and approved.",
       "field": {
-        "deathRecordId": "Death record ID",
-        "deathRecordIdHelp": "The reference number of the approved death registration.",
+        "deathRecordId": "Deceased (approved death registration)",
+        "deathRecordIdHelp": "Choose from your own approved death registrations.",
+        "deathRecordIdLoading": "Loading your approved death registrations…",
+        "deathRecordIdEmpty": "You have no approved death registrations yet. Register the death first, then come back here.",
         "relationship": "Your relationship to the deceased",
         "reason": "Reason for the certificate",
         "details": "Additional details"
@@ -603,8 +605,10 @@
     "burialOrderForm": {
       "intro": "Request the order authorising burial of a citizen whose death has already been registered and approved.",
       "field": {
-        "deathRecordId": "Death record ID",
-        "deathRecordIdHelp": "The reference number of the approved death registration.",
+        "deathRecordId": "Deceased (approved death registration)",
+        "deathRecordIdHelp": "Choose from your own approved death registrations.",
+        "deathRecordIdLoading": "Loading your approved death registrations…",
+        "deathRecordIdEmpty": "You have no approved death registrations yet. Register the death first, then come back here.",
         "placeOfBurial": "Place of burial",
         "cemeteryOrSite": "Cemetery or site",
         "plannedBurialDate": "Planned burial date"
@@ -1145,6 +1149,7 @@
     "submittedAt": "Submitted",
     "startReview": "Start review",
     "requestInfo": "Request more information",
-    "reason": "Reason"
+    "reason": "Reason",
+    "notProvided": "Not provided"
   }
 }

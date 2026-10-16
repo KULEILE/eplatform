@@ -554,8 +554,10 @@
     "deathCertificateRequestForm": {
       "intro": "Kopa setifikeiti sa semmuso sa lefu bakeng sa lefu le ngodisitsweng le amohetsweng.",
       "field": {
-        "deathRecordId": "Nomoro ya Rekoto ya Lefu",
-        "deathRecordIdHelp": "Nomoro ya tshupiso ya ngodiso ya lefu e amohetsweng.",
+        "deathRecordId": "Mofu (ngodiso ya lefu e amohetsweng)",
+        "deathRecordIdHelp": "Kgetha ho tse ding tsa dingodiso tsa hao tsa lefu tse amohetsweng.",
+        "deathRecordIdLoading": "Re laola diingodiso tsa hao tsa lefu tse amohetsweng…",
+        "deathRecordIdEmpty": "Ha o na ngodiso ya lefu e amohetsweng hajwale. Ngodisa lefu pele, mme o kgutlele mona.",
         "relationship": "Kamano ya hau le mofu",
         "reason": "Lebaka la setifikeiti",
         "details": "Dintlha tse eketsehileng"
@@ -603,8 +605,10 @@
     "burialOrderForm": {
       "intro": "Kopa taelo e dumellang patlo ya moahi eo lefu la hae le ngodisitsweng le amohetsweng.",
       "field": {
-        "deathRecordId": "Nomoro ya Rekoto ya Lefu",
-        "deathRecordIdHelp": "Nomoro ya tshupiso ya ngodiso ya lefu e amohetsweng.",
+        "deathRecordId": "Mofu (ngodiso ya lefu e amohetsweng)",
+        "deathRecordIdHelp": "Kgetha ho tse ding tsa dingodiso tsa hao tsa lefu tse amohetsweng.",
+        "deathRecordIdLoading": "Re laola diingodiso tsa hao tsa lefu tse amohetsweng…",
+        "deathRecordIdEmpty": "Ha o na ngodiso ya lefu e amohetsweng hajwale. Ngodisa lefu pele, mme o kgutlele mona.",
         "placeOfBurial": "Sebaka sa Patlo",
         "cemeteryOrSite": "Lebitla kapa Sebaka",
         "plannedBurialDate": "Letsatsi le Reriweng la Patlo"
@@ -1145,6 +1149,7 @@
     "submittedAt": "E Romelwe",
     "startReview": "Qala tlhahlobo",
     "requestInfo": "Kopa tlhahisoleseling e eketsehileng",
-    "reason": "Lebaka"
+    "reason": "Lebaka",
+    "notProvided": "Ha ho a fanwe"
   }
 }
