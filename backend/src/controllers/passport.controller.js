@@ -134,8 +134,16 @@ async function list(req, res, next) {
 
 async function getOne(req, res, next) {
   try {
+    // Joins the citizen's own bio-data (name, sex, date/place of birth, permanent ID) — needed
+    // to render the actual passport document (see pages/passport/PassportDocument.jsx), not just
+    // the application's workflow status, which is all this used to return.
     const { rows } = await db.query(
-      `SELECT pr.*, o.name AS collection_office_name FROM passport_records pr LEFT JOIN offices o ON o.office_id = pr.collection_office_id WHERE pr.passport_record_id = $1`,
+      `SELECT pr.*, o.name AS collection_office_name,
+              c.first_name, c.middle_name, c.last_name, c.sex, c.date_of_birth, c.place_of_birth, c.permanent_identity_number
+       FROM passport_records pr
+       LEFT JOIN offices o ON o.office_id = pr.collection_office_id
+       JOIN citizens c ON c.citizen_id = pr.citizen_id
+       WHERE pr.passport_record_id = $1`,
       [req.params.id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Passport application not found.' });

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../api/client';
@@ -188,6 +189,7 @@ export default function Passport() {
               const next = NEXT[r.status];
               return (
                 <div className="flex flex-wrap gap-2">
+                  <Link to={`/passport/${r.passport_record_id}`} className="text-sm font-medium text-gov-navy hover:underline">{t('common.view')}</Link>
                   {next && (
                     <button
                       type="button"
@@ -208,17 +210,20 @@ export default function Passport() {
             },
           }] : [{
             key: 'actions', header: t('common.actions'),
-            render: (r) => (['Additional Information Required', 'Rejected'].includes(r.status)
-              ? (
-                <button
-                  type="button"
-                  className="text-sm font-medium text-gov-navy hover:underline"
-                  onClick={() => { startResubmit(r); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                >
-                  {t('common.editAndResubmit')}
-                </button>
-              )
-              : <span className="text-slate-300">—</span>),
+            render: (r) => (
+              <div className="flex flex-wrap gap-2">
+                <Link to={`/passport/${r.passport_record_id}`} className="text-sm font-medium text-gov-navy hover:underline">{t('common.view')}</Link>
+                {['Additional Information Required', 'Rejected'].includes(r.status) && (
+                  <button
+                    type="button"
+                    className="text-sm font-medium text-gov-navy hover:underline"
+                    onClick={() => { startResubmit(r); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  >
+                    {t('common.editAndResubmit')}
+                  </button>
+                )}
+              </div>
+            ),
           }]),
         ]}
       />

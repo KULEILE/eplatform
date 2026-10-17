@@ -42,6 +42,10 @@ export default function DeathCertificateRequest() {
       referenceField="request_reference"
       fields={fields}
       columns={[{ key: 'deceased', header: t('homeAffairs.deathCertificateRequestForm.deceased'), render: (r) => `${r.deceased_first_name || ''} ${r.deceased_last_name || ''}`.trim() || '—' }]}
+      resultFields={[{
+        field: 'certificate_number', label: t('homeAffairs.deathCertificateRequestForm.viewCertificate'),
+        linkTo: (value, row) => `/home-affairs/death-certificate/${row.death_certificate_request_id}`,
+      }]}
     />
   );
 }

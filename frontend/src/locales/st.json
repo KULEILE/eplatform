@@ -7,6 +7,7 @@
     "cancel": "Hlakola",
     "submit": "Romela",
     "back": "Morao",
+    "view": "Sheba",
     "next": "E latelang",
     "close": "Koala",
     "yes": "E",
@@ -562,12 +563,33 @@
         "reason": "Lebaka la setifikeiti",
         "details": "Dintlha tse eketsehileng"
       },
-      "deceased": "Mofu"
+      "deceased": "Mofu",
+      "viewCertificate": "Sheba setifikeiti"
     },
     "deathCertificateReason": {
       "estate": "Lefa / Bofumanehi",
       "insurance": "Kopo ya Inshorense",
       "personal": "Rekoto ya Botho"
+    },
+    "deathCertificateView": {
+      "title": "Setifikeiti sa Lefu",
+      "demoNotice": "Tokomane ya mohlala — bakeng sa teko feela. Hase tokomane ya molao.",
+      "certificateTitle": "Setifikeiti sa Lefu",
+      "notReadyTitle": "Ha e so lokiswe",
+      "notReadyMessage": "Setifikeiti sena ha se so dumellwe, kahoo ha ho letho le ka shejwang. Hlola hape ha kopo e se e dumetswe.",
+      "field": {
+        "entryNo": "Nomoro ya Kemiso",
+        "idNumber": "Nomoro ya boitsebiso",
+        "name": "Mabitso",
+        "surname": "Fane",
+        "sex": "Bong",
+        "dateOfBirth": "Letsatsi la tswalo",
+        "dateOfDeath": "Letsatsi la lefu",
+        "placeOfDeath": "Sebaka sa lefu",
+        "deathRegistrationReference": "Nomoro ya ngodiso ya lefu"
+      },
+      "certifiedStatement": "Sena se netefatsa hore dintlha tse ka hodimo di ngodisitswe jwalo ka kemiso Bukeng ya Diqoso tsa Malefu e tshwarwang ke Lekala la Litaba tsa Selehae.",
+      "requestedBy": "E kopuwe ke"
     },
     "nameChange": "Phetoho ya Lebitso kapa Fane",
     "nameChangeForm": {
@@ -712,7 +734,32 @@
     "reuseNotice": "Lesedi la hao le netefaditsweng la Home Affairs le tla sebediswa hape bakeng sa kopo ena.",
     "feeNotice": "Tefo ya pasepoto e tlameha ho lefshwa pele o kopa — kenya nomoro ya hao ya tshupiso ya tefo mme o kenye setshwantsho sa resiti ya hao.",
     "passportNumber": "Nomoro ya pasepoto",
-    "expiryDate": "Letsatsi la ho fela"
+    "expiryDate": "Letsatsi la ho fela",
+    "document": {
+      "title": "Pasepoto",
+      "cardTitle": "Pasepoto",
+      "demoNotice": "Tokomane ya mohlala — bakeng sa teko feela. E seng tokomane ya molao ya maeto.",
+      "photoPlaceholder": "Ha ho setshwantsho se boletsweng",
+      "photoCaptured": "Setshwantsho sa mokopi",
+      "signaturePlaceholder": "Tekeno",
+      "nationalityValue": "MOSOTHO",
+      "openFullSize": "Bula ka boholo bo felletseng",
+      "mrzDisclaimer": "Mola wa pontsho feela — hase mola wa tshebetso wa machine-readable.",
+      "field": {
+        "type": "Mofuta",
+        "passportNo": "Nomoro ya Pasepoto",
+        "surname": "Fane",
+        "givenNames": "Mabitso",
+        "nationality": "Setjhaba",
+        "sex": "Bong",
+        "dateOfBirth": "Letsatsi la tswalo",
+        "placeOfBirth": "Sebaka sa tswalo",
+        "dateOfIssue": "Letsatsi la fanwa",
+        "dateOfExpiry": "Letsatsi la ho fela",
+        "authority": "Boholong",
+        "nationalIdNo": "Nomoro ya ID ya Naha"
+      }
+    }
   },
   "traffic": {
     "title": "Traffic",

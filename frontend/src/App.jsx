@@ -39,6 +39,7 @@ import DeathRegistration from './pages/homeAffairs/DeathRegistration';
 import NationalIdRenewReplace from './pages/homeAffairs/NationalIdRenewReplace';
 import BirthCertificateReissue from './pages/homeAffairs/BirthCertificateReissue';
 import DeathCertificateRequest from './pages/homeAffairs/DeathCertificateRequest';
+import DeathCertificate from './pages/homeAffairs/DeathCertificate';
 import NameChange from './pages/homeAffairs/NameChange';
 import Adoption from './pages/homeAffairs/Adoption';
 import BurialOrder from './pages/homeAffairs/BurialOrder';
@@ -75,6 +76,7 @@ import PoliceClearanceApply from './pages/police/PoliceClearanceApply';
 import PoliceClearanceList from './pages/police/PoliceClearanceList';
 import PoliceClearanceCertificate from './pages/police/PoliceClearanceCertificate';
 import Passport from './pages/passport/Passport';
+import PassportDocument from './pages/passport/PassportDocument';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminSettings from './pages/admin/AdminSettings';
@@ -123,6 +125,7 @@ export default function App() {
         <Route path="/home-affairs/national-id/renew-replace" element={<ProtectedRoute><NationalIdRenewReplace /></ProtectedRoute>} />
         <Route path="/home-affairs/birth-certificate-reissue" element={<ProtectedRoute><BirthCertificateReissue /></ProtectedRoute>} />
         <Route path="/home-affairs/death-certificate-request" element={<ProtectedRoute><DeathCertificateRequest /></ProtectedRoute>} />
+        <Route path="/home-affairs/death-certificate/:id" element={<ProtectedRoute><DeathCertificate /></ProtectedRoute>} />
         <Route path="/home-affairs/name-change" element={<ProtectedRoute><NameChange /></ProtectedRoute>} />
         <Route path="/home-affairs/adoption" element={<ProtectedRoute><Adoption /></ProtectedRoute>} />
         <Route path="/home-affairs/burial-order" element={<ProtectedRoute><BurialOrder /></ProtectedRoute>} />
@@ -159,6 +162,7 @@ export default function App() {
         <Route path="/police/clearance/apply" element={<ProtectedRoute><PoliceClearanceApply /></ProtectedRoute>} />
         <Route path="/police/clearance/:id/certificate" element={<ProtectedRoute><PoliceClearanceCertificate /></ProtectedRoute>} />
         <Route path="/passport" element={<ProtectedRoute><Passport /></ProtectedRoute>} />
+        <Route path="/passport/:id" element={<ProtectedRoute><PassportDocument /></ProtectedRoute>} />
 
         <Route path="/admin" element={<ProtectedRoute roles={['system_administrator']}><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute roles={['system_administrator']}><AdminSettings /></ProtectedRoute>} />

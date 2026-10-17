@@ -314,12 +314,15 @@ function approveDeathCertRequest(req, res, next) {
   return transitionDeathCertRequest(req, res, next, {
     from: ['Under Review'], to: 'Approved',
     sideEffect: async (client, record, req2) => {
-      await client.query(`UPDATE death_certificate_requests SET status = 'Approved', reviewed_by_user_id = $1, reviewed_at = NOW(), updated_at = NOW() WHERE death_certificate_request_id = $2`, [req2.user.userId, record.death_certificate_request_id]);
+      // See migration 049 — approval is what mints the actual certificate (mirrors Burial
+      // Order's order_number, assigned the same way on its own approval).
+      const certificateNumber = generateReference('DC');
+      await client.query(`UPDATE death_certificate_requests SET status = 'Approved', certificate_number = $1, reviewed_by_user_id = $2, reviewed_at = NOW(), updated_at = NOW() WHERE death_certificate_request_id = $3`, [certificateNumber, req2.user.userId, record.death_certificate_request_id]);
       await syncApplicationStatus(client, { sourceTable: 'death_certificate_requests', sourceId: record.death_certificate_request_id, status: 'Approved', completed: true, changedByUserId: req2.user.userId });
-      await recordAudit({ userId: req2.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'DEATH_CERTIFICATE_APPROVED', targetType: 'death_certificate_request', targetId: record.death_certificate_request_id });
+      await recordAudit({ userId: req2.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'DEATH_CERTIFICATE_APPROVED', targetType: 'death_certificate_request', targetId: record.death_certificate_request_id, metadata: { certificateNumber } });
       const userRow = (await client.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.citizen_id])).rows[0];
-      if (userRow) await createNotification({ userId: userRow.user_id, title: 'Death certificate issued', message: `Reference ${record.request_reference}. The certificate is now available to view.`, type: 'Approval' });
-      return { status: 'Approved' };
+      if (userRow) await createNotification({ userId: userRow.user_id, title: 'Death certificate issued', message: `Reference ${record.request_reference}. Certificate number: ${certificateNumber}. The certificate is now available to view.`, type: 'Approval' });
+      return { status: 'Approved', extra: { certificateNumber } };
     },
   });
 }

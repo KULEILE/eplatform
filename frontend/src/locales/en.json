@@ -7,6 +7,7 @@
     "cancel": "Cancel",
     "submit": "Submit",
     "back": "Back",
+    "view": "View",
     "next": "Next",
     "close": "Close",
     "yes": "Yes",
@@ -562,12 +563,33 @@
         "reason": "Reason for the certificate",
         "details": "Additional details"
       },
-      "deceased": "Deceased"
+      "deceased": "Deceased",
+      "viewCertificate": "View certificate"
     },
     "deathCertificateReason": {
       "estate": "Estate / Inheritance",
       "insurance": "Insurance claim",
       "personal": "Personal record"
+    },
+    "deathCertificateView": {
+      "title": "Death Certificate",
+      "demoNotice": "Demo document — for prototype/testing purposes only. Not a legal record.",
+      "certificateTitle": "Certificate of Death",
+      "notReadyTitle": "Not issued yet",
+      "notReadyMessage": "This certificate has not been approved yet, so there is nothing to view. Check back once the request has been approved.",
+      "field": {
+        "entryNo": "Entry No.",
+        "idNumber": "ID number",
+        "name": "Name(s)",
+        "surname": "Surname",
+        "sex": "Sex",
+        "dateOfBirth": "Date of birth",
+        "dateOfDeath": "Date of death",
+        "placeOfDeath": "Place of death",
+        "deathRegistrationReference": "Death registration reference"
+      },
+      "certifiedStatement": "This certifies that the particulars above are recorded as an entry in the Register of Deaths maintained by the Ministry of Home Affairs.",
+      "requestedBy": "Requested by"
     },
     "nameChange": "Change of name or surname",
     "nameChangeForm": {
@@ -712,7 +734,32 @@
     "reuseNotice": "Your verified Home Affairs identity information will be reused for this application.",
     "feeNotice": "The passport fee must be paid before you apply — enter your payment reference and attach a photo of your receipt.",
     "passportNumber": "Passport number",
-    "expiryDate": "Expiry date"
+    "expiryDate": "Expiry date",
+    "document": {
+      "title": "Passport",
+      "cardTitle": "Passport",
+      "demoNotice": "Demo document — for prototype/testing purposes only. Not a legal travel document.",
+      "photoPlaceholder": "No photo on file",
+      "photoCaptured": "Applicant photo",
+      "signaturePlaceholder": "Signature",
+      "nationalityValue": "MOSOTHO",
+      "openFullSize": "Open full size",
+      "mrzDisclaimer": "Illustrative strip only — not a functional machine-readable zone.",
+      "field": {
+        "type": "Type",
+        "passportNo": "Passport No.",
+        "surname": "Surname",
+        "givenNames": "Given name(s)",
+        "nationality": "Nationality",
+        "sex": "Sex",
+        "dateOfBirth": "Date of birth",
+        "placeOfBirth": "Place of birth",
+        "dateOfIssue": "Date of issue",
+        "dateOfExpiry": "Date of expiry",
+        "authority": "Authority",
+        "nationalIdNo": "National ID No."
+      }
+    }
   },
   "traffic": {
     "title": "Traffic",
