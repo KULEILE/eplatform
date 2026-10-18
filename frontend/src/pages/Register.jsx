@@ -10,8 +10,8 @@ export default function Register() {
   const { t } = useLanguage();
   const navigate = useNavigate();
 
-  const [step, setStep] = useState('choice'); // choice -> verify -> accountForm  |  choice -> accountForm (provisional)
-  const [mode, setMode] = useState(null); // 'existing' | 'provisional'
+  const [step, setStep] = useState('choice'); // choice -> verify -> accountForm  |  choice -> accountForm (provisional/foreign)
+  const [mode, setMode] = useState(null); // 'existing' | 'provisional' | 'foreign'
   const [permanentIdentityNumber, setPin] = useState('');
   const [dateOfBirth, setDob] = useState('');
   const [verifiedCitizen, setVerifiedCitizen] = useState(null);
@@ -75,6 +75,9 @@ export default function Register() {
               <button type="button" className="btn-secondary" onClick={() => { setMode('provisional'); setStep('accountForm'); }}>
                 {t('auth.needToRegister')}
               </button>
+              <button type="button" className="btn-secondary" onClick={() => { setMode('foreign'); setStep('accountForm'); }}>
+                {t('auth.notACitizen')}
+              </button>
             </div>
           </div>
         )}
@@ -104,6 +107,9 @@ export default function Register() {
             )}
             {mode === 'provisional' && (
               <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-gov-amber">⚠ {t('auth.provisionalNotice')}</p>
+            )}
+            {mode === 'foreign' && (
+              <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-gov-amber">⚠ {t('auth.foreignNationalNotice')}</p>
             )}
             {formError && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {formError}</p>}
             <FormField label={t('auth.email')} htmlFor="email" required>

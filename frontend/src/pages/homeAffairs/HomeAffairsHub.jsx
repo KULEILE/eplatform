@@ -21,13 +21,25 @@ const SERVICES = [
   { key: 'specialLicence', to: '/home-affairs/special-marriage-licence', icon: '💌', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'solemnisation', to: '/home-affairs/marriage-solemnisation', icon: '⛪', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'marriageOfficers', to: '/home-affairs/marriage-officers', icon: '📋', roles: ['home_affairs_officer', 'system_administrator'] },
+  { key: 'naturalization', to: '/home-affairs/naturalization', icon: '🌍', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'applicationTracking', to: '/applications', icon: '📊', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
 ];
 
 export default function HomeAffairsHub() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const visible = SERVICES.filter((s) => s.roles.includes(user.roleKey));
+  // A foreign-national account (migration 051) has no citizen_id and no access to any other
+  // Home Affairs service — every one of them requires a verified citizen record — so it sees
+  // ONLY Citizenship by Naturalization and its own application tracking. Conversely, a citizen
+  // who is NOT a foreign national never needs the naturalization service, so it's hidden from
+  // them (it still shows for officers/admins, who review the applications).
+  const isForeignNational = user.roleKey === 'citizen' && !!user.isForeignNational;
+  const visible = SERVICES.filter((s) => {
+    if (!s.roles.includes(user.roleKey)) return false;
+    if (user.roleKey !== 'citizen') return true;
+    if (isForeignNational) return s.key === 'naturalization' || s.key === 'applicationTracking';
+    return s.key !== 'naturalization';
+  });
   const isOfficer = ['home_affairs_officer', 'system_administrator'].includes(user.roleKey);
   const [pendingIdentityCount, setPendingIdentityCount] = useState(null);
 
@@ -50,11 +62,13 @@ export default function HomeAffairsHub() {
             )}
           </Link>
         ))}
-        <Link to="/passport" className="card flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-md transition">
-          <span className="text-2xl" aria-hidden="true">🛂</span>
-          <span className="font-semibold text-slate-900">{t('departments.passport')}</span>
-          <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">{t('departments.groupedUnderHomeAffairs')}</span>
-        </Link>
+        {!isForeignNational && (
+          <Link to="/passport" className="card flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-md transition">
+            <span className="text-2xl" aria-hidden="true">🛂</span>
+            <span className="font-semibold text-slate-900">{t('departments.passport')}</span>
+            <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">{t('departments.groupedUnderHomeAffairs')}</span>
+          </Link>
+        )}
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ function safeUser(row) {
     departmentKey: row.department_key,
     citizenId: row.citizen_id,
     isProvisional: row.is_provisional,
+    isForeignNational: row.is_foreign_national,
     preferredLanguage: row.preferred_language,
     officeId: row.office_id,
     officeName: row.office_name,
@@ -36,7 +37,7 @@ async function fetchUserWithRole(userId) {
 
 /**
  * POST /api/auth/register
- * body: { mode: 'existing' | 'provisional', email, phone, password,
+ * body: { mode: 'existing' | 'provisional' | 'foreign', email, phone, password,
  *         permanentIdentityNumber?, dateOfBirth? }  (last two required when mode = 'existing')
  *
  * 'existing'    -> re-verifies identity server-side, links the new portal account to the
@@ -44,7 +45,13 @@ async function fetchUserWithRole(userId) {
  *                  if that citizen already has a linked account.
  * 'provisional' -> creates an account with no citizen_id. NOT a verified identity — only lets
  *                  the holder begin a Home Affairs identity process and track it, per the
- *                  assignment's registration flow.
+ *                  assignment's registration flow. Used by someone who IS (or believes they
+ *                  are) a Mosotho citizen, just not yet matched/verified against the register.
+ * 'foreign'     -> creates an account with no citizen_id AND is_foreign_national = TRUE, for
+ *                  someone who is NOT a Lesotho citizen at all. See migration 051: this account
+ *                  stays locked out of every citizen service (they all require citizenId) until
+ *                  Citizenship by Naturalization approves an application and creates a citizens
+ *                  row for them — see naturalization.controller.js.
  */
 async function register(req, res, next) {
   try {
@@ -61,6 +68,7 @@ async function register(req, res, next) {
 
     let citizenId = null;
     let isProvisional = false;
+    let isForeignNational = false;
 
     if (mode === 'existing') {
       if (!permanentIdentityNumber || !dateOfBirth) {
@@ -80,21 +88,25 @@ async function register(req, res, next) {
       }
     } else if (mode === 'provisional') {
       isProvisional = true;
+    } else if (mode === 'foreign') {
+      isForeignNational = true;
     } else {
-      return res.status(400).json({ error: "mode must be 'existing' or 'provisional'." });
+      return res.status(400).json({ error: "mode must be 'existing', 'provisional' or 'foreign'." });
     }
 
     const { rows } = await db.query(
-      `INSERT INTO users (citizen_id, email, phone, password_hash, role_id, is_provisional)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING user_id`,
-      [citizenId, email, phone || null, passwordHash, citizenRoleId, isProvisional]
+      `INSERT INTO users (citizen_id, email, phone, password_hash, role_id, is_provisional, is_foreign_national)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING user_id`,
+      [citizenId, email, phone || null, passwordHash, citizenRoleId, isProvisional, isForeignNational]
     );
     const userId = rows[0].user_id;
 
     await createNotification({
       userId,
-      title: isProvisional ? 'Welcome — provisional account created' : 'Welcome — identity verified',
-      message: isProvisional
+      title: isForeignNational ? 'Welcome — foreign national account created' : isProvisional ? 'Welcome — provisional account created' : 'Welcome — identity verified',
+      message: isForeignNational
+        ? 'Your account has been created. As a foreign national, you do not yet have access to government services — apply for Citizenship by Naturalization under Home Affairs once you have lived in Lesotho for at least 5 years. All other services unlock once that application is approved.'
+        : isProvisional
         ? 'Your account has been created. A provisional account lets you begin a Home Affairs identity process and track it, but it is not yet a verified identity. Complete Home Affairs registration or verification to unlock all services.'
         : 'Your account has been linked to your verified Home Affairs identity record. You can now access all government services.',
       type: 'System',

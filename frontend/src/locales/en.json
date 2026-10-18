@@ -205,7 +205,10 @@
     "confirmNewPassword": "Confirm new password",
     "changePasswordSubmit": "Change password",
     "passwordTooShort": "New password must be at least 8 characters.",
-    "passwordsDoNotMatch": "New passwords do not match."
+    "passwordsDoNotMatch": "New passwords do not match.",
+    "notACitizen": "No, I am not a Lesotho citizen",
+    "foreignNationalNotice": "A foreign-national account has no access to government services yet. You can apply for Citizenship by Naturalization under Home Affairs once you have lived in Lesotho for at least 5 years — full access unlocks once that application is approved.",
+    "foreignNationalNoticeShort": "Foreign national — citizenship not yet granted"
   },
   "dashboard": {
     "welcome": "Welcome, {{name}}",
@@ -715,6 +718,58 @@
       "stolen": "Stolen",
       "damaged": "Damaged",
       "expired": "Expired"
+    },
+    "naturalization": "Citizenship by Naturalization",
+    "naturalizationForm": {
+      "title": "Apply for Citizenship by Naturalization",
+      "intro": "If you are a foreign national who has lived in Lesotho for at least 5 years, you may apply to become a citizen of Lesotho. A Home Affairs officer will review your application and supporting documents.",
+      "notApplicable": "This service is for foreign-national accounts applying to become citizens of Lesotho. It does not apply to your account.",
+      "eligibilityNotice": "You must have lived in Lesotho for at least 5 years before you can apply, supported by a letter from your area chief confirming your residency.",
+      "feeNotice": "A naturalization application fee is payable. Upload your payment reference and a photo of the receipt.",
+      "field": {
+        "firstName": "First name",
+        "middleName": "Middle name",
+        "lastName": "Last name",
+        "dateOfBirth": "Date of birth",
+        "placeOfBirth": "Place of birth",
+        "sex": "Sex",
+        "nationality": "Nationality (your country of citizenship)",
+        "travelDocumentType": "Travel document type",
+        "travelDocumentNumber": "Travel document number",
+        "immigrationStatus": "Immigration status",
+        "arrivalDate": "Date you arrived to live in Lesotho",
+        "arrivalDateHelp": "Used to confirm you meet the 5-year residency requirement.",
+        "photo": "Your photo",
+        "chiefLetter": "Chief's letter confirming your residency",
+        "chiefLetterHelp": "A letter from the chief of the area where you live, confirming how long you have lived there — required as proof of the arrival date above.",
+        "chiefLetterRequired": "A chief's letter confirming your residency is required."
+      },
+      "male": "Male",
+      "female": "Female",
+      "other": "Other",
+      "unspecified": "Prefer not to say",
+      "travelDocumentType": {
+        "Passport": "Passport",
+        "Refugee Travel Document": "Refugee travel document",
+        "Other": "Other"
+      },
+      "immigrationStatus": {
+        "Refugee": "Refugee",
+        "Asylum Seeker": "Asylum seeker",
+        "Work Permit Holder": "Work permit holder",
+        "Study Permit Holder": "Study permit holder",
+        "Permanent Resident": "Permanent resident",
+        "Other": "Other"
+      },
+      "submit": "Submit application"
+    },
+    "naturalizationQueue": {
+      "title": "Citizenship by Naturalization Applications",
+      "desc": "Review foreign-national applications for citizenship, including each applicant's chief's letter and supporting documents.",
+      "applicant": "Applicant",
+      "certificateLabel": "Certificate number",
+      "newIdNumberLabel": "New permanent identity number",
+      "empty": "No naturalization applications waiting for review."
     }
   },
   "passport": {

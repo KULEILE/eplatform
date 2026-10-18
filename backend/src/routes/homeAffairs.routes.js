@@ -2,6 +2,7 @@ const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const hac = require('../controllers/homeAffairs.controller');
 const hac2 = require('../controllers/homeAffairsServices2.controller');
+const nat = require('../controllers/naturalization.controller');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -140,6 +141,16 @@ router.post('/marriage-officers', hac2.createMarriageOfficer);
 router.get('/marriage-officers', hac2.listMarriageOfficers);
 router.get('/marriage-officers/:id', hac2.getMarriageOfficer);
 router.post('/marriage-officers/:id/status', hac2.updateMarriageOfficerStatus);
+
+// Citizenship by naturalization (new service — foreign-national accounts only; see migration 051)
+router.post('/naturalization', nat.submitNaturalizationRequest);
+router.get('/naturalization', nat.listNaturalizationRequests);
+router.get('/naturalization/:id', nat.getNaturalizationRequest);
+router.post('/naturalization/:id/start-review', nat.startReviewNaturalization);
+router.post('/naturalization/:id/request-information', nat.requestInformationNaturalization);
+router.post('/naturalization/:id/resubmit', nat.resubmitNaturalization);
+router.post('/naturalization/:id/approve', nat.approveNaturalization);
+router.post('/naturalization/:id/reject', nat.rejectNaturalization);
 
 // Identity enrolment for non-citizens/refugees (new service)
 router.post('/foreign-identity', hac2.applyForeignIdentity);

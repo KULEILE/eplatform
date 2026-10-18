@@ -4,6 +4,17 @@ const db = require('../config/db');
 async function getProfile(req, res, next) {
   try {
     if (!req.user.citizenId) {
+      // A foreign-national account (migration 051) and a provisional account both have no
+      // citizen_id, but they need completely different next steps — a provisional account
+      // claims an existing Mosotho identity that just hasn't been matched yet (Identity
+      // Verification), while a foreign national isn't a citizen at all yet (Citizenship by
+      // Naturalization) — so the shape returned here branches on isForeignNational.
+      if (req.user.isForeignNational) {
+        return res.json({
+          foreignNational: true,
+          message: 'This account is registered as a foreign national. Apply for Citizenship by Naturalization to gain access to government services.',
+        });
+      }
       return res.json({
         provisional: true,
         message: 'This account is not yet linked to a verified identity record.',

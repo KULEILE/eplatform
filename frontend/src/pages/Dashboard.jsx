@@ -83,7 +83,11 @@ export default function Dashboard() {
   const isSystemAdmin = user.roleKey === 'system_administrator';
   const isEmployee = !isCitizen;
   const isOfficer = isEmployee && !isBranchAdmin && !isSystemAdmin;
-  const visibleDepartments = isCitizen ? DEPARTMENTS : [];
+  // A foreign-national account (migration 051) is still roleKey 'citizen', but has no citizen_id
+  // yet and no access to any department service except Citizenship by Naturalization itself —
+  // so the full departments grid is hidden for them until that application is approved.
+  const isForeignNational = isCitizen && !!user.isForeignNational;
+  const visibleDepartments = isCitizen && !isForeignNational ? DEPARTMENTS : [];
 
   useEffect(() => {
     if (isCitizen) api.get('/citizen/profile').then(setProfile).catch(() => {}).finally(() => setLoading(false));
@@ -113,7 +117,15 @@ export default function Dashboard() {
 
           {isCitizen && (
             <div className="mt-4 inline-flex max-w-full flex-wrap items-center gap-4 rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-              {loading ? <Loading /> : profile?.provisional ? (
+              {loading ? <Loading /> : profile?.foreignNational ? (
+                <div>
+                  <p className="flex items-center gap-1.5 font-semibold text-amber-300">⚠ {t('auth.foreignNationalNoticeShort')}</p>
+                  <p className="mt-1 text-sm text-white/80">{profile.message}</p>
+                  <Link to="/home-affairs/naturalization" className="mt-2 inline-block text-sm font-semibold text-white underline underline-offset-2 hover:text-white/90">
+                    {t('homeAffairs.naturalization')} →
+                  </Link>
+                </div>
+              ) : profile?.provisional ? (
                 <div>
                   <p className="flex items-center gap-1.5 font-semibold text-amber-300">⚠ {t('auth.provisionalNoticeShort')}</p>
                   <p className="mt-1 text-sm text-white/80">{profile.message}</p>
@@ -241,7 +253,7 @@ export default function Dashboard() {
         </section>
       )}
 
-      {isCitizen && (
+      {isCitizen && !isForeignNational && (
         <section className="mt-10">
           <h2 className="section-title">{t('dashboard.governmentDepartments')}</h2>
           <p className="mt-1 text-sm text-slate-600">{t('dashboard.chooseDepartmentDesc')}</p>

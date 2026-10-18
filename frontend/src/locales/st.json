@@ -205,7 +205,10 @@
     "confirmNewPassword": "Netefatsa password e ntjha",
     "changePasswordSubmit": "Fetola password",
     "passwordTooShort": "Password e ntjha e tlameha ho ba le ditlhaku tse 8 kapa ho feta.",
-    "passwordsDoNotMatch": "Di-password tse ntjha ha di tshwane."
+    "passwordsDoNotMatch": "Di-password tse ntjha ha di tshwane.",
+    "notACitizen": "Tjhe, ha ke moahi wa Lesotho",
+    "foreignNationalNotice": "Akhaonto ya moditjhaba ha e so fihlelle ditshebeletso tsa mmuso. O ka kopa Boahi ka Naturalization tlas'a Litaba tsa Selehae ha o se o dutse Lesotho dilemo tse 5 kapa ho feta — phihlello e feletseng e tla buleha ha kopo eo e amohelwa.",
+    "foreignNationalNoticeShort": "Moditjhaba — boahi ha bo so fuwe"
   },
   "dashboard": {
     "welcome": "Rea o amohela, {{name}}",
@@ -715,6 +718,58 @@
       "stolen": "E Utswitswe",
       "damaged": "E Senyehile",
       "expired": "E Felile Nako"
+    },
+    "naturalization": "Boahi ka Naturalization",
+    "naturalizationForm": {
+      "title": "Kopa Boahi ka Naturalization",
+      "intro": "Haeba o moditjhaba o dutseng Lesotho dilemo tse 5 kapa ho feta, o ka kopa ho ba moahi wa Lesotho. Mohlanka wa Litaba tsa Selehae o tla hlahloba kopo ya hao le ditokomane tse tshehetsang.",
+      "notApplicable": "Tshebeletso ena e bakeng sa di-akhaonto tsa baditjhaba ba kopang ho ba baahi ba Lesotho. Ha e sebetse akhaonto ya hao.",
+      "eligibilityNotice": "O tlameha ho be o dutse Lesotho dilemo tse 5 kapa ho feta pele o ka kopa, mme sena se tshehetswe ke lengolo le tswang ho morena wa sebaka sa hao le netefatsang bodulo ba hao.",
+      "feeNotice": "Tefo ya kopo ya naturalization e hlokahala. Kenya nomoro ya hao ya tefo le setshwantsho sa risiti.",
+      "field": {
+        "firstName": "Lebitso la pele",
+        "middleName": "Lebitso le bohareng",
+        "lastName": "Fane",
+        "dateOfBirth": "Letsatsi la tswalo",
+        "placeOfBirth": "Sebaka sa tswalo",
+        "sex": "Bong",
+        "nationality": "Naha ya boahi (naha eo o leng moahi wa yona)",
+        "travelDocumentType": "Mofuta wa tokomane ya leeto",
+        "travelDocumentNumber": "Nomoro ya tokomane ya leeto",
+        "immigrationStatus": "Boemo ba bojaki",
+        "arrivalDate": "Letsatsi leo o fihlileng Lesotho ho dula",
+        "arrivalDateHelp": "E sebediswa ho netefatsa hore o fihlelletse tlhoko ya bodulo ba dilemo tse 5.",
+        "photo": "Setshwantsho sa hao",
+        "chiefLetter": "Lengolo la morena le netefatsang bodulo ba hao",
+        "chiefLetterHelp": "Lengolo le tswang ho morena wa sebaka seo o dulang teng, le netefatsang nako eo o e qetileng o dutse teng — le hlokahala e le bopaki ba letsatsi la ho fihla le boletsweng ka hodimo.",
+        "chiefLetterRequired": "Lengolo la morena le netefatsang bodulo ba hao le hlokahala."
+      },
+      "male": "Monna",
+      "female": "Mosadi",
+      "other": "Tse ding",
+      "unspecified": "Ha ke batle ho bolela",
+      "travelDocumentType": {
+        "Passport": "Passport",
+        "Refugee Travel Document": "Tokomane ya leeto ya mophaphathehi",
+        "Other": "Tse ding"
+      },
+      "immigrationStatus": {
+        "Refugee": "Mophaphathehi",
+        "Asylum Seeker": "Mokopi wa bophephelo",
+        "Work Permit Holder": "Mong'a tumello ya mosebetsi",
+        "Study Permit Holder": "Mong'a tumello ya thuto",
+        "Permanent Resident": "Modudi wa kamehla",
+        "Other": "Tse ding"
+      },
+      "submit": "Romela kopo"
+    },
+    "naturalizationQueue": {
+      "title": "Dikopo tsa Boahi ka Naturalization",
+      "desc": "Hlahloba dikopo tsa baditjhaba tsa boahi, ho kenyeletswa lengolo la morena la mong'a kopo le ditokomane tse tshehetsang.",
+      "applicant": "Mokopi",
+      "certificateLabel": "Nomoro ya setifikeiti",
+      "newIdNumberLabel": "Nomoro e ntjha ya boitsebiso e sa fetoheng",
+      "empty": "Ha ho dikopo tsa boahi ka naturalization tse emetseng tlhahlobo."
     }
   },
   "passport": {
