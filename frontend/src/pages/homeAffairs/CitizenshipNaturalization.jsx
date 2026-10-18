@@ -52,6 +52,23 @@ export default function CitizenshipNaturalization() {
   return isOfficer ? <OfficerQueue t={t} /> : <ApplicantView t={t} />;
 }
 
+function useSyncCitizenAccessAfterApproval(rows) {
+  // The officer who approves an application and the applicant viewing this page are two
+  // different browser sessions — approval happens on the SERVER, but the applicant's own
+  // AuthContext `user` (and therefore every nav/access check derived from it, e.g.
+  // Dashboard.jsx and HomeAffairsHub.jsx) only reflects what was loaded at their last login or
+  // page load. Without this, an applicant whose application was just approved would see
+  // "Approved" right here, yet still find every other Home Affairs service hidden until they
+  // happened to log out and back in. As soon as this page sees its own "Approved" row while the
+  // cached user still shows no citizenId, it refreshes the shared auth state so the rest of the
+  // app picks up full access immediately — no logout required.
+  const { user, refresh } = useAuth();
+  useEffect(() => {
+    if (!rows || user.citizenId) return;
+    if (rows.some((r) => r.status === 'Approved')) refresh();
+  }, [rows, user.citizenId, refresh]);
+}
+
 function FieldGrid({ t, form, onChange, idPrefix = '' }) {
   return (
     <>
@@ -120,6 +137,7 @@ function ApplicantView({ t }) {
 
   function load() { api.get('/home-affairs/naturalization').then((d) => setRows(d.naturalizationRequests)).catch(() => setRows([])); }
   useEffect(() => { load(); }, []);
+  useSyncCitizenAccessAfterApproval(rows);
 
   function update(name, value) { setForm((f) => ({ ...f, [name]: value })); }
 

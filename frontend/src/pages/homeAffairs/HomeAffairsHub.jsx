@@ -28,17 +28,26 @@ const SERVICES = [
 export default function HomeAffairsHub() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  // A foreign-national account (migration 051) has no citizen_id and no access to any other
-  // Home Affairs service — every one of them requires a verified citizen record — so it sees
-  // ONLY Citizenship by Naturalization and its own application tracking. Conversely, a citizen
-  // who is NOT a foreign national never needs the naturalization service, so it's hidden from
-  // them (it still shows for officers/admins, who review the applications).
-  const isForeignNational = user.roleKey === 'citizen' && !!user.isForeignNational;
+  // user.isForeignNational (migration 051) is a PERMANENT historical flag — it stays TRUE even
+  // after naturalization is approved and citizen_id is set, as a record of how this citizen
+  // became one. Gating on that flag alone was a bug: it kept locking a fully naturalised
+  // citizen out of every Home Affairs service forever. What actually determines access is
+  // whether citizen_id is still missing (isLockedOutForeignNational below) — once it's set,
+  // this account behaves exactly like any other citizen's, including hiding the naturalization
+  // service itself (no longer relevant to them) the same way it's hidden from a citizen who was
+  // never a foreign national.
+  const wasForeignNational = user.roleKey === 'citizen' && !!user.isForeignNational;
+  const isLockedOutForeignNational = wasForeignNational && !user.citizenId;
   const visible = SERVICES.filter((s) => {
     if (!s.roles.includes(user.roleKey)) return false;
     if (user.roleKey !== 'citizen') return true;
-    if (isForeignNational) return s.key === 'naturalization' || s.key === 'applicationTracking';
-    return s.key !== 'naturalization';
+    if (isLockedOutForeignNational) return s.key === 'naturalization' || s.key === 'applicationTracking';
+    // A citizen who was never a foreign national has no reason to see this service. One who
+    // WAS (even if long since naturalised) keeps seeing it, the same way Identity Verification
+    // stays visible to an already-verified citizen — so they can still see their own approved
+    // application and certificate number.
+    if (s.key === 'naturalization') return wasForeignNational;
+    return true;
   });
   const isOfficer = ['home_affairs_officer', 'system_administrator'].includes(user.roleKey);
   const [pendingIdentityCount, setPendingIdentityCount] = useState(null);
@@ -62,7 +71,7 @@ export default function HomeAffairsHub() {
             )}
           </Link>
         ))}
-        {!isForeignNational && (
+        {!isLockedOutForeignNational && (
           <Link to="/passport" className="card flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-md transition">
             <span className="text-2xl" aria-hidden="true">🛂</span>
             <span className="font-semibold text-slate-900">{t('departments.passport')}</span>

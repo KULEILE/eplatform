@@ -83,11 +83,15 @@ export default function Dashboard() {
   const isSystemAdmin = user.roleKey === 'system_administrator';
   const isEmployee = !isCitizen;
   const isOfficer = isEmployee && !isBranchAdmin && !isSystemAdmin;
-  // A foreign-national account (migration 051) is still roleKey 'citizen', but has no citizen_id
-  // yet and no access to any department service except Citizenship by Naturalization itself —
-  // so the full departments grid is hidden for them until that application is approved.
-  const isForeignNational = isCitizen && !!user.isForeignNational;
-  const visibleDepartments = isCitizen && !isForeignNational ? DEPARTMENTS : [];
+  // user.isForeignNational (migration 051) is a PERMANENT historical flag — it stays TRUE even
+  // after a foreign national is naturalised and granted a citizen_id, as a record of how they
+  // became a citizen. It must never be used alone to decide current access (that was a bug: it
+  // kept hiding every department from a citizen who had already been fully naturalised). The
+  // only thing that should ever gate access is whether citizen_id is still missing — exactly
+  // like a provisional account. Once naturalization is approved and citizen_id is set, this
+  // account is a full citizen in every respect.
+  const isLockedOutForeignNational = isCitizen && !!user.isForeignNational && !user.citizenId;
+  const visibleDepartments = isCitizen && !isLockedOutForeignNational ? DEPARTMENTS : [];
 
   useEffect(() => {
     if (isCitizen) api.get('/citizen/profile').then(setProfile).catch(() => {}).finally(() => setLoading(false));
@@ -253,7 +257,7 @@ export default function Dashboard() {
         </section>
       )}
 
-      {isCitizen && !isForeignNational && (
+      {isCitizen && !isLockedOutForeignNational && (
         <section className="mt-10">
           <h2 className="section-title">{t('dashboard.governmentDepartments')}</h2>
           <p className="mt-1 text-sm text-slate-600">{t('dashboard.chooseDepartmentDesc')}</p>

@@ -25,9 +25,13 @@ export default function Modal({ open, onClose, title, children, footer }) {
         aria-modal="true"
         aria-labelledby="modal-title"
         tabIndex={-1}
-        className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl focus:outline-none"
+        // flex-col + max-h-[90vh] on the panel, with only the body (not the header/footer)
+        // scrolling: previously this had no height limit at all, so a modal with a lot of
+        // content (e.g. a detail view with several photos) simply ran off the bottom of the
+        // screen with no way to scroll down to the rest of it or to the action buttons below.
+        className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-lg bg-white shadow-xl focus:outline-none"
       >
-        <div className="mb-4 flex items-start justify-between">
+        <div className="flex shrink-0 items-start justify-between p-6 pb-4">
           <h2 id="modal-title" className="text-lg font-semibold text-slate-900">{title}</h2>
           <button
             type="button"
@@ -38,8 +42,8 @@ export default function Modal({ open, onClose, title, children, footer }) {
             ✕
           </button>
         </div>
-        <div>{children}</div>
-        {footer && <div className="mt-6 flex justify-end gap-3">{footer}</div>}
+        <div className="overflow-y-auto px-6 pb-6">{children}</div>
+        {footer && <div className="mt-6 flex shrink-0 justify-end gap-3 p-6 pt-0">{footer}</div>}
       </div>
     </div>
   );
