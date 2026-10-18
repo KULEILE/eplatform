@@ -1,67 +1,66 @@
-# Integrated Government Services System — HCI Prototype
+HOW TO APPLY THIS UPDATE TO YOUR PROJECT
+=========================================
 
-**Design and Prototyping of an Integrated Government Services System Connecting Home Affairs
-with Traffic, Finance, Pensions, Police and Passport Services**
+Every file in this zip keeps the SAME folder path it has inside your project
+(gov-services-prototype). Copy each file to that exact path, overwriting the
+existing file if one is already there. The two files under frontend/src/hooks/
+go into a NEW folder you need to create first (you don't have that folder yet).
 
-A high-fidelity, database-driven interactive prototype built for a university HCI assignment
-(BIHC3110). This is **not** a static mockup — it is a real client/server application with a
-PostgreSQL database, a Node/Express REST API, and a React (Vite) frontend.
+NEW files (don't exist in your project yet — create them):
+  - database/migrations/049_death_certificate_number.sql
+  - frontend/src/hooks/useApprovedDeathRecords.js   <-- create the "hooks" folder first
+  - frontend/src/pages/homeAffairs/DeathCertificate.jsx
+  - frontend/src/pages/passport/PassportDocument.jsx
 
-> ⚠️ **Prototype / Demonstration Data.** Every citizen, employee, and record in this system is
-> fictional and generated for demonstration purposes only. No real personal information is used.
+REPLACE these existing files with the versions in this zip:
+  - backend/src/controllers/homeAffairs.controller.js
+  - backend/src/controllers/homeAffairsServices2.controller.js
+  - backend/src/controllers/passport.controller.js
+  - database/migrations/033_add_payment_receipt.sql
+  - frontend/src/App.jsx
+  - frontend/src/components/PhotoCapture.jsx
+  - frontend/src/components/ServiceWorkflowPage.jsx
+  - frontend/src/locales/en.json
+  - frontend/src/locales/st.json
+  - frontend/src/pages/homeAffairs/BirthCertificate.jsx
+  - frontend/src/pages/homeAffairs/BirthCertificateReissue.jsx
+  - frontend/src/pages/homeAffairs/BurialOrder.jsx
+  - frontend/src/pages/homeAffairs/DeathCertificateRequest.jsx
+  - frontend/src/pages/passport/Passport.jsx
+  - frontend/src/utils/faceCheck.js
 
-## Monorepo layout
+WHAT THIS UPDATE DOES
+----------------------
+1. Passport: a new document view (Passport No, Surname, Given names,
+   Nationality, Sex, DOB, Place of birth, Date of issue/expiry, Authority,
+   National ID No, signature, plus a decorative MRZ strip) styled after the
+   real Lesotho passport. Officers now see the full-size photo AND full-size
+   receipt image together (not just a thumbnail) and can approve/reject/
+   request info right from that page. Reachable via a new "View" link on
+   every row of the Passport list (citizen and officer views).
 
-```
-gov-services-prototype/
-├── database/     PostgreSQL migrations + seed data
-├── backend/      Node.js + Express REST API (JWT auth, RBAC, audit logging)
-├── frontend/     React + Vite SPA (bilingual EN/ST, accessible, responsive)
-└── docs/         Architecture notes
-```
+2. Death Certificate: same idea — a proper certificate view, reachable via
+   "View certificate" once a request is approved. Approval now generates a
+   real certificate number (new migration 049).
 
-## Quick start
+3. Earlier fixes already part of this batch (Burial Order / shared service
+   review screen): citizens pick their death record from a dropdown of their
+   own approved records instead of typing a raw internal ID; officers
+   reviewing Burial Order, Death Certificate Request, Name Change, Adoption,
+   and Special Marriage Licence can now click "View details" to see what the
+   citizen actually submitted before approving/rejecting.
 
-### 1. Database
+4. Birth Certificate / National ID: fee-schedule corrections (Birth
+   Certificate and National ID are free in real life; a receipt is only
+   needed for replacement copies).
 
-```bash
-createdb gov_services
-cd database
-cp .env.example .env   # if present, else export DATABASE_URL directly
-node run-migrations.js
-node seed/seed.js
-```
+AFTER COPYING THE FILES
+------------------------
+1. Run any new database migrations you don't already have, in order:
+   033_add_payment_receipt.sql (if not already applied) and
+   049_death_certificate_number.sql.
+2. Restart the backend.
+3. Rebuild the frontend (npm run build) or restart your dev server.
 
-### 2. Backend API
-
-```bash
-cd backend
-cp .env.example .env   # set DATABASE_URL, JWT_SECRET
-npm install
-npm run dev             # http://localhost:4000
-```
-
-### 3. Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev              # http://localhost:5173
-```
-
-### Demo logins (see `database/seed/seed.js` for the full list)
-
-| Role | Email | Password |
-|---|---|---|
-| Citizen (verified) | thabo.mokoena@example.ls | Passw0rd! |
-| Citizen (provisional) | palesa.new@example.ls | Passw0rd! |
-| Home Affairs Officer | officer.homeaffairs@gov.ls | Passw0rd! |
-| Traffic Officer | officer.traffic@gov.ls | Passw0rd! |
-| Finance Officer | officer.finance@gov.ls | Passw0rd! |
-| Pensions Officer | officer.pensions@gov.ls | Passw0rd! |
-| Police Officer | officer.police@gov.ls | Passw0rd! |
-| Passport Officer | officer.passport@gov.ls | Passw0rd! |
-| System Administrator | admin@gov.ls | Passw0rd! |
-
-See `docs/ARCHITECTURE.md` for the full data model, API surface, and design rationale, and
-`docs/FILE_STRUCTURE.md` for the complete file tree.
+NOTE: Nothing has been committed or pushed to GitHub. These are your working
+files — commit/push from your own machine whenever you're ready.
