@@ -4,16 +4,20 @@
  * before the application record exists, and the returned reference is then submitted along with
  * the rest of the application form (matches the photo_reference column already on
  * national_id_cards and passport_records).
+ *
+ * The actual bytes are persisted via saveBlob() (into file_blobs — see migration 050) rather than
+ * to local disk, so they survive a redeploy or idle spin-down on hosts with an ephemeral
+ * filesystem (e.g. Render's free tier). The returned reference string's shape is unchanged.
  */
+const { saveBlob } = require('../middleware/upload');
 
 /** POST /api/uploads/photo — multipart upload, field name 'photo'. Any authenticated citizen. */
 async function uploadPhoto(req, res, next) {
   try {
     if (req.user.roleKey !== 'citizen') return res.status(403).json({ error: 'Only a citizen applicant can upload a photo here.' });
     if (!req.file) return res.status(400).json({ error: 'A photo file is required (field name "photo").' });
-    // Stored relative to the uploads root (e.g. "photos/171-xxxx.jpg") — servable directly under
-    // the app's static /uploads mount, and this is exactly what gets saved as photo_reference.
-    res.status(201).json({ photoReference: `photos/${req.file.filename}` });
+    const photoReference = await saveBlob('photos', req.file);
+    res.status(201).json({ photoReference });
   } catch (err) {
     next(err);
   }
@@ -29,7 +33,8 @@ async function uploadPhoto(req, res, next) {
 async function uploadReceipt(req, res, next) {
   try {
     if (!req.file) return res.status(400).json({ error: 'A receipt file is required (field name "receipt").' });
-    res.status(201).json({ receiptImageReference: `receipts/${req.file.filename}` });
+    const receiptImageReference = await saveBlob('receipts', req.file);
+    res.status(201).json({ receiptImageReference });
   } catch (err) {
     next(err);
   }
@@ -44,7 +49,8 @@ async function uploadBiometric(req, res, next) {
   try {
     if (req.user.roleKey !== 'citizen') return res.status(403).json({ error: 'Only a citizen applicant can capture biometrics here.' });
     if (!req.file) return res.status(400).json({ error: 'A biometric capture file is required (field name "biometric").' });
-    res.status(201).json({ biometricReference: `biometrics/${req.file.filename}` });
+    const biometricReference = await saveBlob('biometrics', req.file);
+    res.status(201).json({ biometricReference });
   } catch (err) {
     next(err);
   }
@@ -57,7 +63,8 @@ async function uploadBiometric(req, res, next) {
 async function uploadSignature(req, res, next) {
   try {
     if (!req.file) return res.status(400).json({ error: 'A signature file is required (field name "signature").' });
-    res.status(201).json({ signatureReference: `signatures/${req.file.filename}` });
+    const signatureReference = await saveBlob('signatures', req.file);
+    res.status(201).json({ signatureReference });
   } catch (err) {
     next(err);
   }

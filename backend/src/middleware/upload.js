@@ -1,9 +1,12 @@
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const db = require('../config/db');
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads');
-const LOGO_DIR = path.join(UPLOAD_DIR, 'logo');
+// Application-supporting documents (application_documents) aren't shown as images anywhere in
+// the UI today — see applications.controller.js's uploadDocument — so they're left on local disk
+// for now rather than moved into file_blobs below. Nothing else still writes to local disk.
 const DOCUMENTS_DIR = path.join(UPLOAD_DIR, 'documents');
 // Citizen-supplied ID/passport photos. Served the same way logos are — statically, under a
 // random unguessable filename (see app.js's UPLOAD_DIR static mount) — rather than through an
@@ -11,22 +14,14 @@ const DOCUMENTS_DIR = path.join(UPLOAD_DIR, 'documents');
 // the existing logo convention: real supporting documents (application_documents) are kept out
 // of static serving because they're more sensitive, but a photo used the same way a physical ID
 // photo would be doesn't need that. See uploads.routes.js.
-const PHOTOS_DIR = path.join(UPLOAD_DIR, 'photos');
-// Photos of a payment receipt/slip the citizen uploads as proof of payment — same static-serving
-// convention as PHOTOS_DIR (see the comment above), since a receipt photo is no more sensitive
-// than an ID photo in this prototype's threat model.
-const RECEIPTS_DIR = path.join(UPLOAD_DIR, 'receipts');
-// Biometric enrolment capture for National ID applications. This prototype has no fingerprint
-// scanner to integrate with, so — same simplification the rest of the system already makes for
-// photo_reference ("simulated capture reference") — biometric enrolment is represented as an
-// uploaded image (e.g. a photo of/standing in for a fingerprint scan) rather than real biometric
-// data. See database/migrations/034_add_biometric_reference.sql.
-const BIOMETRICS_DIR = path.join(UPLOAD_DIR, 'biometrics');
-// Citizen's signature, captured on a signature pad at the collection counter (Feature 3) — an
-// officer action, not a citizen upload, so uploadSignature (below) isn't restricted to the
-// citizen role the way uploadPhoto/uploadBiometric are.
-const SIGNATURES_DIR = path.join(UPLOAD_DIR, 'signatures');
-[UPLOAD_DIR, LOGO_DIR, DOCUMENTS_DIR, PHOTOS_DIR, RECEIPTS_DIR, BIOMETRICS_DIR, SIGNATURES_DIR].forEach((dir) => fs.mkdirSync(dir, { recursive: true }));
+// Photos of a payment receipt/slip the citizen uploads as proof of payment, biometric enrolment
+// captures, signatures, and the system logo all used to get their own disk subfolder here too
+// (photos/, receipts/, biometrics/, signatures/, logo/). They're now stored in the file_blobs
+// table instead (see migration 050) — only the file_key "subfolder" prefix in the generated
+// reference string (e.g. "photos/1700000000000-123456789.jpg") is kept, purely so every existing
+// reference already saved in the database, and every page that builds an "/uploads/..." URL from
+// one, keeps working unchanged.
+[UPLOAD_DIR, DOCUMENTS_DIR].forEach((dir) => fs.mkdirSync(dir, { recursive: true }));
 
 const LOGO_TYPES = new Set(['image/png', 'image/jpeg', 'image/svg+xml']);
 const PHOTO_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -50,8 +45,25 @@ function storageFor(dir) {
   });
 }
 
+// Everything that used to go to storageFor(someDir) above (logo, photo, receipt, biometric,
+// signature) now goes through memory storage instead: multer hands the controller the raw bytes
+// in req.file.buffer, and saveBlob() below is what actually persists them (into file_blobs, not
+// disk). uploadDocument is the one exception left on disk — see the comment on DOCUMENTS_DIR.
+const memoryStorage = multer.memoryStorage();
+
+/** Inserts an uploaded file's bytes into file_blobs and returns the same kind of reference
+ *  string the old disk-based filenames used (e.g. "photos/1700000000000-123456789.jpg"), so
+ *  every caller and every frontend page that builds an "/uploads/<reference>" URL keeps working
+ *  unchanged — see migration 050 and the GET /uploads/* route in app.js. */
+async function saveBlob(subdir, file) {
+  const ext = path.extname(file.originalname) || '';
+  const fileKey = `${subdir}/${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+  await db.query('INSERT INTO file_blobs (file_key, mime_type, data) VALUES ($1, $2, $3)', [fileKey, file.mimetype, file.buffer]);
+  return fileKey;
+}
+
 const uploadLogo = multer({
-  storage: storageFor(LOGO_DIR),
+  storage: memoryStorage,
   limits: { fileSize: MAX_LOGO_BYTES },
   fileFilter: (req, file, cb) => {
     if (!LOGO_TYPES.has(file.mimetype)) {
@@ -67,7 +79,7 @@ const uploadDocument = multer({
 });
 
 const uploadPhoto = multer({
-  storage: storageFor(PHOTOS_DIR),
+  storage: memoryStorage,
   limits: { fileSize: MAX_PHOTO_BYTES },
   fileFilter: (req, file, cb) => {
     if (!PHOTO_TYPES.has(file.mimetype)) {
@@ -78,7 +90,7 @@ const uploadPhoto = multer({
 });
 
 const uploadReceipt = multer({
-  storage: storageFor(RECEIPTS_DIR),
+  storage: memoryStorage,
   limits: { fileSize: MAX_RECEIPT_BYTES },
   fileFilter: (req, file, cb) => {
     if (!RECEIPT_TYPES.has(file.mimetype)) {
@@ -89,7 +101,7 @@ const uploadReceipt = multer({
 });
 
 const uploadBiometric = multer({
-  storage: storageFor(BIOMETRICS_DIR),
+  storage: memoryStorage,
   limits: { fileSize: MAX_BIOMETRIC_BYTES },
   fileFilter: (req, file, cb) => {
     if (!BIOMETRIC_TYPES.has(file.mimetype)) {
@@ -100,7 +112,7 @@ const uploadBiometric = multer({
 });
 
 const uploadSignature = multer({
-  storage: storageFor(SIGNATURES_DIR),
+  storage: memoryStorage,
   limits: { fileSize: MAX_SIGNATURE_BYTES },
   fileFilter: (req, file, cb) => {
     if (!SIGNATURE_TYPES.has(file.mimetype)) {
@@ -112,5 +124,5 @@ const uploadSignature = multer({
 
 module.exports = {
   uploadLogo, uploadDocument, uploadPhoto, uploadReceipt, uploadBiometric, uploadSignature,
-  UPLOAD_DIR, LOGO_DIR, DOCUMENTS_DIR, PHOTOS_DIR, RECEIPTS_DIR, BIOMETRICS_DIR, SIGNATURES_DIR,
+  saveBlob, UPLOAD_DIR, DOCUMENTS_DIR,
 };

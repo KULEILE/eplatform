@@ -1,9 +1,9 @@
-const path = require('path');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const db = require('../config/db');
 const { recordAudit } = require('../utils/audit');
 const { createNotification } = require('../utils/notify');
+const { saveBlob } = require('../middleware/upload');
 
 // role_key -> department_key an officer role belongs to. Derived server-side rather than
 // trusted from the client, so an officer account can never be minted for the wrong department.
@@ -58,11 +58,13 @@ async function updateSettings(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST /api/admin/logo — multipart upload, field name 'logo'. */
+/** POST /api/admin/logo — multipart upload, field name 'logo'. Saved via saveBlob() (into
+ *  file_blobs — see migration 050) rather than local disk, so it survives a redeploy or idle
+ *  spin-down on hosts with an ephemeral filesystem (e.g. Render's free tier). */
 async function uploadLogo(req, res, next) {
   try {
     if (!req.file) return res.status(400).json({ error: 'A logo file is required (field name "logo").' });
-    const reference = path.join('logo', path.basename(req.file.path));
+    const reference = await saveBlob('logo', req.file);
     const { rows } = await db.query(
       `UPDATE system_settings SET government_logo_reference = $1, updated_by_user_id = $2, updated_at = NOW()
        WHERE system_settings_id = (SELECT system_settings_id FROM system_settings ORDER BY system_settings_id LIMIT 1) RETURNING *`,
