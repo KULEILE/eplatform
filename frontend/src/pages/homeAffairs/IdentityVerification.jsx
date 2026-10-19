@@ -7,6 +7,7 @@ import DataTable from '../../components/ui/DataTable';
 import StatusBadge from '../../components/ui/StatusBadge';
 import FormField from '../../components/ui/FormField';
 import Modal from '../../components/ui/Modal';
+import BiometricCapture from '../../components/BiometricCapture';
 import { formatDateOnly } from '../../utils/format';
 
 const emptyForm = {
@@ -33,6 +34,15 @@ export default function IdentityVerification() {
 function CitizenRequestForm({ t, user, refresh }) {
   const [requests, setRequests] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  // Hand-biometric capture — required (see identity.controller.js's submitIdentityRequest). This
+  // applicant has no citizen_id yet, so BiometricCapture is used with enroll={false}: the real
+  // hand-geometry template it extracts is carried in this form's own submission instead, and the
+  // officer's verification is what actually enrols it (the moment a citizen_id is minted or
+  // linked) — see verifyIdentityRequest.
+  const [leftHandBiometricReference, setLeftHandBiometricReference] = useState(null);
+  const [rightHandBiometricReference, setRightHandBiometricReference] = useState(null);
+  const [leftHandTemplate, setLeftHandTemplate] = useState(null);
+  const [rightHandTemplate, setRightHandTemplate] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false);
@@ -52,11 +62,17 @@ function CitizenRequestForm({ t, user, refresh }) {
       setError(t('common.somethingWentWrong'));
       return;
     }
+    if (!leftHandBiometricReference || !rightHandBiometricReference) {
+      setError(t('biometricCapture.required'));
+      return;
+    }
     setBusy(true);
     try {
-      const { request } = await api.post('/identity/requests', form);
+      const { request } = await api.post('/identity/requests', { ...form, leftHandBiometricReference, rightHandBiometricReference, leftHandTemplate, rightHandTemplate });
       setSuccess(t('homeAffairs.identityVerificationForm.submitted', { reference: request.reference_number }));
       setForm(emptyForm);
+      setLeftHandBiometricReference(null); setRightHandBiometricReference(null);
+      setLeftHandTemplate(null); setRightHandTemplate(null);
       load();
       refresh();
     } catch (err) {
@@ -142,6 +158,23 @@ function CitizenRequestForm({ t, user, refresh }) {
             </FormField>
           </div>
 
+          <p className="mb-2 text-sm font-medium text-slate-700">{t('homeAffairs.identityVerificationForm.handBiometrics')}</p>
+          <BiometricCapture
+            value={leftHandBiometricReference}
+            onChange={(ref, template) => { setLeftHandBiometricReference(ref); setLeftHandTemplate(template); }}
+            label={t('biometricCapture.leftHandLabel')}
+            help={t('biometricCapture.scanHint')}
+            hand="left"
+            enroll={false}
+          />
+          <BiometricCapture
+            value={rightHandBiometricReference}
+            onChange={(ref, template) => { setRightHandBiometricReference(ref); setRightHandTemplate(template); }}
+            label={t('biometricCapture.rightHandLabel')}
+            help={t('biometricCapture.scanHint')}
+            hand="right"
+            enroll={false}
+          />
           <button type="submit" disabled={busy} className="btn-primary">{busy ? t('common.loading') : t('homeAffairs.identityVerificationForm.submit')}</button>
         </form>
       )}

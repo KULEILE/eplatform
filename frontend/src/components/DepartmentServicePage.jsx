@@ -217,6 +217,7 @@ function emptyFormFromFields(fields) {
 }
 
 function FieldInputs({ fields, form, onChange, departmentKey }) {
+  const { t } = useLanguage();
   return (
     <>
       {fields.map((f) => {
@@ -224,7 +225,20 @@ function FieldInputs({ fields, form, onChange, departmentKey }) {
           return <PhotoCapture key={f.name} value={form[f.name]} onChange={(v) => onChange(f.name, v)} label={f.label} help={f.help} faceCheck={!!f.faceCheck} />;
         }
         if (f.type === 'biometric') {
-          return <BiometricCapture key={f.name} value={form[f.name]} onChange={(v) => onChange(f.name, v)} label={f.label} help={f.help} />;
+          // f.name is always one of the *Left/*Right biometric reference fields (see every
+          // Traffic form that sets type: 'biometric') — hand is derived from that suffix so each
+          // call site doesn't need its own prop for it. enroll defaults to true: every service
+          // that uses this generic renderer (National ID, Driving Licence/Permit services) only
+          // ever runs for a citizen who already has a citizen_id, so the real hand-geometry
+          // template captured here can be self-enrolled immediately (see BiometricCapture.jsx).
+          const inferredHand = f.name.toLowerCase().endsWith('left') ? 'left' : 'right';
+          return (
+            <BiometricCapture
+              key={f.name} value={form[f.name]} onChange={(v) => onChange(f.name, v)}
+              label={f.label} help={f.help} hand={inferredHand}
+              enrollSource={f.enrollSource || t('biometricCapture.genericEnrollSource')}
+            />
+          );
         }
         if (f.type === 'office') {
           return (

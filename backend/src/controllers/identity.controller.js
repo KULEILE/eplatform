@@ -4,6 +4,7 @@ const { withUniquePermanentId } = require('../utils/idGenerator');
 const { createNotification } = require('../utils/notify');
 const { recordAudit } = require('../utils/audit');
 const { getDepartmentId } = require('../utils/lookup');
+const { isValidTemplate } = require('../utils/handMatch');
 
 /**
  * POST /api/identity/verify
@@ -77,6 +78,7 @@ async function submitIdentityRequest(req, res, next) {
     const {
       hasExistingId, claimedPermanentIdentityNumber,
       firstName, middleName, lastName, dateOfBirth, placeOfBirth, sex,
+      leftHandBiometricReference, rightHandBiometricReference, leftHandTemplate, rightHandTemplate,
     } = req.body;
     if (!firstName || !lastName || !dateOfBirth || !sex) {
       return res.status(400).json({ error: 'firstName, lastName, dateOfBirth and sex are required.' });
@@ -84,15 +86,27 @@ async function submitIdentityRequest(req, res, next) {
     if (hasExistingId && !claimedPermanentIdentityNumber) {
       return res.status(400).json({ error: 'claimedPermanentIdentityNumber is required when you say you already have a permanent identity number.' });
     }
+    // Required here for the same reason as National ID/Naturalization: this is one of the
+    // moments an adult identity gets established/linked in this system, so it's a real
+    // enrolment point — see verifyIdentityRequest below, which copies these into
+    // citizen_biometrics the moment a citizen_id actually exists.
+    if (!leftHandBiometricReference || !rightHandBiometricReference) {
+      return res.status(400).json({ error: 'A biometric scan of both the left and right hand is required.' });
+    }
+    if (!isValidTemplate(leftHandTemplate) || !isValidTemplate(rightHandTemplate)) {
+      return res.status(400).json({ error: 'Both hand scans must produce a valid hand-geometry reading — retake any scan that was rejected before submitting.' });
+    }
 
     const referenceNumber = generateReference('IDV');
     const { rows } = await db.query(
       `INSERT INTO identity_verification_requests
          (user_id, reference_number, has_existing_id, claimed_permanent_identity_number,
-          first_name, middle_name, last_name, date_of_birth, place_of_birth, sex)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING request_id, reference_number, status`,
+          first_name, middle_name, last_name, date_of_birth, place_of_birth, sex,
+          left_hand_biometric_reference, right_hand_biometric_reference, left_hand_template, right_hand_template)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING request_id, reference_number, status`,
       [req.user.userId, referenceNumber, !!hasExistingId, hasExistingId ? claimedPermanentIdentityNumber : null,
-       firstName, middleName || null, lastName, dateOfBirth, placeOfBirth || null, sex]
+       firstName, middleName || null, lastName, dateOfBirth, placeOfBirth || null, sex,
+       leftHandBiometricReference, rightHandBiometricReference, JSON.stringify(leftHandTemplate), JSON.stringify(rightHandTemplate)]
     );
     await createNotification({
       userId: req.user.userId, title: 'Identity verification submitted',
@@ -214,6 +228,20 @@ async function verifyIdentityRequest(req, res, next) {
          SET status = 'Verified', matched_citizen_id = $1, handling_officer_id = $2, reviewed_at = NOW(), updated_at = NOW()
          WHERE request_id = $3`,
         [citizenId, req.user.userId, reqRow.request_id]
+      );
+      // The hand scans captured at submission (required above) couldn't be enrolled until a
+      // citizen_id existed to key them on — this is that moment, for both branches above (a
+      // brand new enrolment, or linking to an existing record). A re-scan here intentionally
+      // overwrites whatever was enrolled before, on the view that the citizen's own just-taken
+      // scan is the more current/representative one. See migration 052.
+      await client.query(
+        `INSERT INTO citizen_biometrics (citizen_id, left_hand_template, left_hand_captured_at, right_hand_template, right_hand_captured_at, enrollment_source, updated_at)
+         VALUES ($1,$2,NOW(),$3,NOW(),'Identity Verification',NOW())
+         ON CONFLICT (citizen_id) DO UPDATE
+           SET left_hand_template = EXCLUDED.left_hand_template, left_hand_captured_at = NOW(),
+               right_hand_template = EXCLUDED.right_hand_template, right_hand_captured_at = NOW(),
+               enrollment_source = EXCLUDED.enrollment_source, updated_at = NOW()`,
+        [citizenId, JSON.stringify(reqRow.left_hand_template), JSON.stringify(reqRow.right_hand_template)]
       );
       await client.query('COMMIT');
 

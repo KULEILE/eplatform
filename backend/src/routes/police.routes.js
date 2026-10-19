@@ -7,6 +7,7 @@ const router = express.Router();
 router.use(requireAuth);
 
 router.post('/identity-verification', pc.performLookup);
+router.post('/identity-verification/biometric-search', pc.searchByHandBiometric);
 router.get('/identity-verification', pc.listLookups);
 router.get('/identity-verification/:id', pc.getLookup);
 

@@ -25,6 +25,7 @@ const { createNotification } = require('../utils/notify');
 const { recordAudit } = require('../utils/audit');
 const { getDepartmentId } = require('../utils/lookup');
 const { OFFICER_ROLES } = require('../utils/workflow');
+const { isValidTemplate } = require('../utils/handMatch');
 
 // See the brief this prototype was built from: the applicant must have lived in Lesotho for at
 // least this many years before they may apply. Kept as a single named constant — change this
@@ -45,11 +46,18 @@ function yearsSince(dateValue) {
 /** POST /api/home-affairs/naturalization
  *  body: { firstName, middleName?, lastName, dateOfBirth, placeOfBirth?, sex, nationality,
  *          travelDocumentType, travelDocumentNumber, immigrationStatus, arrivalDate,
- *          photoReference, chiefLetterReference, paymentReference?, receiptImageReference? }
+ *          photoReference, chiefLetterReference, paymentReference?, receiptImageReference?,
+ *          leftHandBiometricReference, rightHandBiometricReference, leftHandTemplate, rightHandTemplate }
  *
  *  Only a foreign-national account with no citizen_id yet may apply — not an ordinary citizen
  *  (who has no need to), and not a provisional account either, since a provisional account is
- *  claiming an EXISTING Mosotho identity and belongs in Identity Verification instead. */
+ *  claiming an EXISTING Mosotho identity and belongs in Identity Verification instead.
+ *
+ *  Hand-biometric capture is required here, same as National ID/Driving Licence applications —
+ *  this applicant has no citizen_id yet, so the real hand-geometry templates (see
+ *  frontend/src/utils/handGeometry.js) can't be enrolled to citizen_biometrics until one exists.
+ *  They're held on this row instead and copied over by approveNaturalization below, the moment
+ *  a citizen_id is actually minted. */
 async function submitNaturalizationRequest(req, res, next) {
   try {
     if (!req.user.isForeignNational) {
@@ -62,6 +70,7 @@ async function submitNaturalizationRequest(req, res, next) {
       firstName, middleName, lastName, dateOfBirth, placeOfBirth, sex, nationality,
       travelDocumentType, travelDocumentNumber, immigrationStatus, arrivalDate,
       photoReference, chiefLetterReference, paymentReference, receiptImageReference,
+      leftHandBiometricReference, rightHandBiometricReference, leftHandTemplate, rightHandTemplate,
     } = req.body;
     if (!firstName || !lastName || !dateOfBirth || !sex || !nationality
       || !travelDocumentType || !travelDocumentNumber || !immigrationStatus || !arrivalDate) {
@@ -71,6 +80,12 @@ async function submitNaturalizationRequest(req, res, next) {
     if (!chiefLetterReference) return res.status(400).json({ error: "A chief's letter confirming your residency is required." });
     if (!paymentReference || !receiptImageReference) {
       return res.status(400).json({ error: 'A payment reference and receipt image are required.' });
+    }
+    if (!leftHandBiometricReference || !rightHandBiometricReference) {
+      return res.status(400).json({ error: 'A biometric scan of both the left and right hand is required to apply for Citizenship by Naturalization.' });
+    }
+    if (!isValidTemplate(leftHandTemplate) || !isValidTemplate(rightHandTemplate)) {
+      return res.status(400).json({ error: 'Both hand scans must produce a valid hand-geometry reading — retake any scan that was rejected before resubmitting.' });
     }
 
     const arrival = new Date(arrivalDate);
@@ -96,11 +111,13 @@ async function submitNaturalizationRequest(req, res, next) {
       `INSERT INTO naturalization_requests
          (applicant_user_id, first_name, middle_name, last_name, date_of_birth, place_of_birth, sex, nationality,
           travel_document_type, travel_document_number, immigration_status, arrival_date,
-          photo_reference, chief_letter_reference, payment_reference, receipt_image_reference, request_reference)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
+          photo_reference, chief_letter_reference, payment_reference, receipt_image_reference, request_reference,
+          left_hand_biometric_reference, right_hand_biometric_reference, left_hand_template, right_hand_template)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
       [req.user.userId, firstName, middleName || null, lastName, dateOfBirth, placeOfBirth || null, sex, nationality,
         travelDocumentType, travelDocumentNumber, immigrationStatus, arrivalDate,
-        photoReference, chiefLetterReference, paymentReference, receiptImageReference, requestReference]
+        photoReference, chiefLetterReference, paymentReference, receiptImageReference, requestReference,
+        leftHandBiometricReference, rightHandBiometricReference, JSON.stringify(leftHandTemplate), JSON.stringify(rightHandTemplate)]
     );
     await createNotification({
       userId: req.user.userId, title: 'Naturalization application submitted',
@@ -213,6 +230,7 @@ function resubmitNaturalization(req, res, next) {
     firstName, middleName, lastName, dateOfBirth, placeOfBirth, sex, nationality,
     travelDocumentType, travelDocumentNumber, immigrationStatus, arrivalDate,
     photoReference, chiefLetterReference, paymentReference, receiptImageReference,
+    leftHandBiometricReference, rightHandBiometricReference, leftHandTemplate, rightHandTemplate,
   } = req.body;
   return transitionNaturalization(req, res, next, {
     from: ['Additional Information Required', 'Rejected'], to: 'Under Review', allowOwner: true,
@@ -220,6 +238,11 @@ function resubmitNaturalization(req, res, next) {
       if (!firstName || !lastName || !dateOfBirth || !sex || !nationality
         || !travelDocumentType || !travelDocumentNumber || !immigrationStatus || !arrivalDate) {
         throw Object.assign(new Error('firstName, lastName, dateOfBirth, sex, nationality, travelDocumentType, travelDocumentNumber, immigrationStatus and arrivalDate are required.'), { status: 400 });
+      }
+      // A re-scanned hand must itself be valid — only an UNCHANGED hand (kept from the original
+      // submission, not re-scanned this time) is allowed to fall back to what's already on file.
+      if ((leftHandTemplate && !isValidTemplate(leftHandTemplate)) || (rightHandTemplate && !isValidTemplate(rightHandTemplate))) {
+        throw Object.assign(new Error('A re-scanned hand must produce a valid hand-geometry reading — retake it before resubmitting.'), { status: 400 });
       }
       const yearsInLesotho = yearsSince(arrivalDate);
       if (yearsInLesotho < ELIGIBLE_RESIDENCY_YEARS) {
@@ -230,12 +253,18 @@ function resubmitNaturalization(req, res, next) {
             first_name = $1, middle_name = $2, last_name = $3, date_of_birth = $4, place_of_birth = $5, sex = $6, nationality = $7,
             travel_document_type = $8, travel_document_number = $9, immigration_status = $10, arrival_date = $11,
             photo_reference = $12, chief_letter_reference = $13,
-            payment_reference = $14, receipt_image_reference = $15, updated_at = NOW()
-         WHERE naturalization_request_id = $16`,
+            payment_reference = $14, receipt_image_reference = $15,
+            left_hand_biometric_reference = $16, right_hand_biometric_reference = $17,
+            left_hand_template = $18, right_hand_template = $19, updated_at = NOW()
+         WHERE naturalization_request_id = $20`,
         [firstName, middleName || null, lastName, dateOfBirth, placeOfBirth || null, sex, nationality,
           travelDocumentType, travelDocumentNumber, immigrationStatus, arrivalDate,
           photoReference || record.photo_reference, chiefLetterReference || record.chief_letter_reference,
           paymentReference || record.payment_reference, receiptImageReference || record.receipt_image_reference,
+          leftHandBiometricReference || record.left_hand_biometric_reference,
+          rightHandBiometricReference || record.right_hand_biometric_reference,
+          JSON.stringify(leftHandTemplate || record.left_hand_template),
+          JSON.stringify(rightHandTemplate || record.right_hand_template),
           record.naturalization_request_id]
       );
       return { status: 'Under Review' };
@@ -273,6 +302,18 @@ function approveNaturalization(req, res, next) {
              reviewed_by_user_id = $3, reviewed_at = NOW(), updated_at = NOW()
          WHERE naturalization_request_id = $4`,
         [citizenId, certificateNumber, req2.user.userId, record.naturalization_request_id]
+      );
+      // The applicant's hand templates were captured at submission time (required above) but
+      // couldn't be enrolled until a citizen_id existed to key them on — this is that moment.
+      // See database/migrations/052_citizen_hand_biometrics.sql.
+      await client.query(
+        `INSERT INTO citizen_biometrics (citizen_id, left_hand_template, left_hand_captured_at, right_hand_template, right_hand_captured_at, enrollment_source, updated_at)
+         VALUES ($1,$2,NOW(),$3,NOW(),'Naturalization',NOW())
+         ON CONFLICT (citizen_id) DO UPDATE
+           SET left_hand_template = EXCLUDED.left_hand_template, left_hand_captured_at = NOW(),
+               right_hand_template = EXCLUDED.right_hand_template, right_hand_captured_at = NOW(),
+               enrollment_source = EXCLUDED.enrollment_source, updated_at = NOW()`,
+        [citizenId, JSON.stringify(record.left_hand_template), JSON.stringify(record.right_hand_template)]
       );
       // is_foreign_national is intentionally left TRUE — it's a historical fact about how this
       // citizen came to be one, not an access flag. Every service in the system keys access off

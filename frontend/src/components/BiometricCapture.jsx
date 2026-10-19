@@ -1,37 +1,51 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
+import { extractHandFeatures } from '../utils/handGeometry';
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB — matches backend/src/middleware/upload.js's uploadBiometric limit
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 /**
- * Replaces the old static "will be enrolled automatically during card production" notice on the
- * National ID application form with a real capture step. This prototype has no fingerprint
- * scanner to integrate with, so the closest honest simulation is a live camera feed the citizen
- * scans their hand with — NOT a plain file picker, which would let someone just choose an
- * existing photo from their gallery and defeats the point of a "scan" entirely. The captured
- * frame is still, underneath, an uploaded image posted to POST /api/uploads/biometric (same
- * convention as photo_reference), but the interaction is a live scan, not an upload form.
- * See database/migrations/034_add_biometric_reference.sql and 036 (which splits one generic
- * capture into a left-hand and a right-hand scan — a real enrolment takes both, not one).
+ * A real hand-geometry scan, not just a photo. Earlier, this component (and the fake
+ * "biometric_status flips to Enrolled" logic it replaced) only ever captured an IMAGE — nothing
+ * was ever measured from it and nothing was ever compared to anything. That was flagged directly
+ * and honestly: "it does not scan for real it only capture image not biometrics".
  *
- * Rendered twice by NationalIdApply.jsx (once per hand) with a `label`/`help` override each
- * time, so this component itself stays hand-agnostic — it just scans and uploads one image.
- * Uses the rear ("environment") camera by default rather than the front/selfie camera, since a
- * citizen scanning their own hand needs to point the device at their hand, not at their face.
+ * It now runs every captured frame through utils/handGeometry.js, client-side, BEFORE accepting
+ * it: a photo that doesn't actually show a recognisable open hand (no hand in frame, too
+ * close/far, too few fingers visible) is rejected with a specific reason, exactly like
+ * PhotoCapture's face-compliance check. Only once a real hand-geometry template is extracted is
+ * the frame uploaded (same convention as before — POST /api/uploads/biometric, kept as the
+ * stored evidence photo) AND — when `enroll` is true and the logged-in user already has a
+ * citizen_id — silently enrolled against that citizen's record (POST /api/biometrics/enroll), so
+ * the captured hand becomes something a Police officer can later actually search against (see
+ * pages/police/Police.jsx). See database/migrations/052_citizen_hand_biometrics.sql for the
+ * storage side of this.
  *
- * Falls back to a plain file picker only when the camera genuinely can't be used (no
- * mediaDevices API, permission denied, no camera present, or an insecure/non-HTTPS context) —
- * never as the default path, so a real scan is always what's offered first.
+ * `enroll` is false for the two services that capture a hand BEFORE the applicant has a
+ * citizen_id (Naturalization, Identity Verification) — there, the parent form carries the
+ * template through in its own submission instead, and the officer-approval controller enrols it
+ * server-side the moment a citizen_id actually exists. `hand` ('left'|'right') and
+ * `enrollSource` (a short label, e.g. "National ID Application") describe where this capture is
+ * happening, for citizen_biometrics.enrollment_source.
  *
- * Controlled component: value = biometricReference (string|null), onChange(biometricReference|null).
+ * Uses the rear ("environment") camera by default — a citizen scanning their own hand points
+ * the device AT their hand, not at their face — falling back to a plain file picker only when
+ * the camera genuinely can't be used.
+ *
+ * Controlled component: value = biometricReference (string|null), onChange(biometricReference|null, template|null).
+ * (The 2nd onChange argument is new; existing callers that only take one parameter simply ignore it.)
  */
-export default function BiometricCapture({ value, onChange, label, help }) {
+export default function BiometricCapture({ value, onChange, label, help, hand, enroll = true, enrollSource = 'Biometric Capture' }) {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [preview, setPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [checking, setChecking] = useState(false); // running the client-side hand-geometry check
   const [error, setError] = useState('');
+  const [enrollWarning, setEnrollWarning] = useState('');
   const [scanning, setScanning] = useState(false); // live camera feed is open
   const [cameraUnavailable, setCameraUnavailable] = useState(false); // fall back to file input
   const videoRef = useRef(null);
@@ -78,17 +92,32 @@ export default function BiometricCapture({ value, onChange, label, help }) {
     setScanning(false);
   }
 
-  async function uploadBlob(blob) {
+  async function uploadBlob(blob, template) {
     setUploading(true);
+    setEnrollWarning('');
     const fd = new FormData();
     fd.append('biometric', blob, 'scan.png');
     try {
       const { biometricReference } = await api.postForm('/uploads/biometric', fd);
-      onChange(biometricReference);
+      // Enrolment (when applicable) is attempted and awaited BEFORE onChange fires below — a
+      // caller like pages/Profile.jsx re-reads enrolment status from its onChange handler, and
+      // needs the enrolment POST to have already happened, not just been kicked off, for that
+      // re-read to see the new state.
+      if (enroll && user.citizenId && template) {
+        try {
+          await api.post('/biometrics/enroll', { hand, template, source: enrollSource });
+        } catch (enrollErr) {
+          // The capture + upload already succeeded and the form can proceed — enrolment failing
+          // (e.g. a transient network hiccup) shouldn't block the application itself. Surfaced
+          // as a soft, non-blocking notice rather than a hard error.
+          setEnrollWarning(t('biometricCapture.enrollWarning'));
+        }
+      }
+      onChange(biometricReference, template);
     } catch (err) {
       setError(err.message || t('common.somethingWentWrong'));
       setPreview(null);
-      onChange(null);
+      onChange(null, null);
     } finally {
       setUploading(false);
     }
@@ -101,13 +130,31 @@ export default function BiometricCapture({ value, onChange, label, help }) {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    setError('');
+    const result = extractHandFeatures(canvas);
+    if (!result.ok) {
+      // Deliberately does NOT stop the camera here — the citizen can see the live feed, adjust
+      // their hand, and press "Capture" again immediately, rather than being thrown back to the
+      // start of the flow over a bad frame.
+      setError(t(`biometricCapture.${result.reason}`));
+      return;
+    }
     canvas.toBlob((blob) => {
       if (!blob) return;
       setPreview(canvas.toDataURL('image/png'));
       stopStream();
       setScanning(false);
-      uploadBlob(blob);
+      uploadBlob(blob, result.template);
     }, 'image/png');
+  }
+
+  function extractFromImage(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(extractHandFeatures(img));
+      img.onerror = () => resolve({ ok: false, reason: 'noHandDetected' });
+      img.src = url;
+    });
   }
 
   async function onFileSelected(e) {
@@ -122,14 +169,25 @@ export default function BiometricCapture({ value, onChange, label, help }) {
       setError(t('biometricCapture.tooLarge'));
       return;
     }
-    setPreview(URL.createObjectURL(file));
-    await uploadBlob(file);
+    const objectUrl = URL.createObjectURL(file);
+    setChecking(true);
+    const result = await extractFromImage(objectUrl);
+    setChecking(false);
+    if (!result.ok) {
+      setError(t(`biometricCapture.${result.reason}`));
+      URL.revokeObjectURL(objectUrl);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    setPreview(objectUrl);
+    await uploadBlob(file, result.template);
   }
 
   function retake() {
     setPreview(null);
-    onChange(null);
+    onChange(null, null);
     setError('');
+    setEnrollWarning('');
     setCameraUnavailable(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
@@ -149,10 +207,13 @@ export default function BiometricCapture({ value, onChange, label, help }) {
           ) : value ? (
             <>
               <p className="text-sm text-gov-green">✓ {t('biometricCapture.uploaded')}</p>
+              {enrollWarning && <p className="text-xs text-gov-amber">⚠ {enrollWarning}</p>}
               <button type="button" className="btn-secondary !py-1 !text-xs" onClick={retake}>{t('biometricCapture.retake')}</button>
             </>
           ) : null}
         </div>
+      ) : checking ? (
+        <p className="text-sm text-slate-500">{t('biometricCapture.checking')}</p>
       ) : scanning ? (
         <div className="flex flex-col items-center gap-3">
           {/* Live camera feed with a scanning-frame overlay and a sweeping line, so this reads as

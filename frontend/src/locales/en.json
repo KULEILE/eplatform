@@ -134,7 +134,7 @@
     }
   },
   "biometricCapture": {
-    "hint": "Used to enrol your fingerprints for this National ID card.",
+    "hint": "Used to enrol your hand-geometry biometrics for this National ID card.",
     "scanHint": "Place this hand flat and scan it — a real enrolment takes a scan of each hand, not a single photo.",
     "captureHint": "PNG, JPG or WEBP, up to 5MB.",
     "previewAlt": "Biometric scan",
@@ -148,7 +148,14 @@
     "startScan": "Start scan",
     "captureNow": "Capture scan",
     "scanInProgressHint": "Hold your hand steady in the frame, then tap Capture scan.",
-    "cameraUnavailable": "Camera not available on this device — choose an existing image instead."
+    "cameraUnavailable": "Camera not available on this device — choose an existing image instead.",
+    "checking": "Checking the scan…",
+    "noHandDetected": "No hand was detected in that scan — make sure an open hand fills most of the frame and try again.",
+    "handTooFar": "Your hand is too far from the camera — move it closer and try again.",
+    "handTooClose": "Your hand is too close to the camera — move it back slightly and try again.",
+    "tooFewFingersVisible": "Not enough fingers were visible in that scan — hold your hand flat and open, fingers spread, and try again.",
+    "enrollWarning": "The scan was recorded, but enrolling it against your record failed — you can try again later from your Profile.",
+    "genericEnrollSource": "Service Application"
   },
   "signaturePad": {
     "label": "Citizen's signature",
@@ -456,7 +463,8 @@
       "pendingNotice": "Your request {{reference}} is awaiting review by a Home Affairs officer.",
       "rejectedNotice": "Your last request was not approved: {{reason}}",
       "rejectedRetry": "You can submit a new request below with corrected details.",
-      "verifiedNotice": "Your identity has been verified. You now have full access to citizen services."
+      "verifiedNotice": "Your identity has been verified. You now have full access to citizen services.",
+      "handBiometrics": "Hand biometric scan (both hands)"
     },
     "identityVerificationQueue": {
       "title": "Identity Verification Requests",
@@ -742,7 +750,8 @@
         "photo": "Your photo",
         "chiefLetter": "Chief's letter confirming your residency",
         "chiefLetterHelp": "A letter from the chief of the area where you live, confirming how long you have lived there — required as proof of the arrival date above.",
-        "chiefLetterRequired": "A chief's letter confirming your residency is required."
+        "chiefLetterRequired": "A chief's letter confirming your residency is required.",
+        "handBiometrics": "Hand biometric scan (both hands)"
       },
       "male": "Male",
       "female": "Female",
@@ -1133,7 +1142,18 @@
         "sex": "Sex",
         "issueDate": "Date of Issue"
       }
-    }
+    },
+    "handBiometric": "Hand biometric scan",
+    "startHandScan": "Start hand scan",
+    "handScanCaptured": "Hand scan captured.",
+    "runBiometricSearch": "Search enrolled citizens",
+    "purposeRequiredForSearch": "Enter a lawful operational reason before searching.",
+    "candidateListTitle": "Candidate matches — confirm the correct one, or confirm none match",
+    "noCandidates": "No enrolled citizen matched this scan closely enough to show.",
+    "confirmMatch": "Confirm selected match",
+    "noneMatch": "None of these match",
+    "matchMethod": "Match method",
+    "manualLookup": "Manual"
   },
   "applications": {
     "title": "My Applications",
@@ -1253,5 +1273,11 @@
     "requestInfo": "Request more information",
     "reason": "Reason",
     "notProvided": "Not provided"
+  },
+  "profile": {
+    "biometricEnrollment": "Hand biometric enrolment",
+    "biometricEnrollmentDesc": "A real hand-geometry scan enrolled against your record — the same thing Police can search against during an audited identity-verification lookup.",
+    "biometricEnrolledBoth": "Both hands are enrolled.",
+    "biometricEnrolledOneHand": "Only one hand is enrolled so far — scan the other below for a more reliable match."
   }
 }

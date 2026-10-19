@@ -134,7 +134,7 @@
     }
   },
   "biometricCapture": {
-    "hint": "E sebediswa ho ngolisa menwana ya hao bakeng sa ID ena ya Setjhaba.",
+    "hint": "E sebelisetsoa ho ngolisa sebopeho sa letsoho bakeng sa karete ena ea Boitsebiso ba Naha.",
     "scanHint": "Beha letsoho lena le otlolohile 'me o le sekene — ngodiso ya nnete e nka tlhahlobo ya letsoho le leng le le leng, eseng setshwantsho se le seng.",
     "captureHint": "PNG, JPG kapa WEBP, ho fihla ho 5MB.",
     "previewAlt": "Tlhahlobo ya letsoho",
@@ -148,7 +148,14 @@
     "startScan": "Qala ho sekena",
     "captureNow": "Nka tlhahlobo",
     "scanInProgressHint": "Tshwara letsoho la hao le sa sisinyehe ka hara foreimi, ebe o tobetsa Nka tlhahlobo.",
-    "cameraUnavailable": "Khamera ha e fumanehe setsebeng sena — ka kopo kgetha setshwantsho se seng."
+    "cameraUnavailable": "Khamera ha e fumanehe setsebeng sena — ka kopo kgetha setshwantsho se seng.",
+    "checking": "Ho hlahloba sekane…",
+    "noHandDetected": "Ha ho letsoho le fumanoeng sekaneng seo — etsa bonnete ba hore letsoho le bulehileng le tlatsa sebaka se seholo sa foto, ebe oa leka hape.",
+    "handTooFar": "Letsoho la hau le hole haholo le khamera — le atamedise ebe oa leka hape.",
+    "handTooClose": "Letsoho la hau le haufi haholo le khamera — le khaotse hanyane ebe oa leka hape.",
+    "tooFewFingersVisible": "Menoana e mengata ha e bonahale sekaneng seo — tsamaisa letsoho la hau le bulehile le menoana e hasane, ebe oa leka hape.",
+    "enrollWarning": "Sekane se ngolisitsoe, empa ho ngolisa sena rekoto ea hau ho hlolehile — u ka leka hape hamorao ho tsoa ho Profile ea hau.",
+    "genericEnrollSource": "Kopo ea Tshebeletso"
   },
   "signaturePad": {
     "label": "Mosaeno wa moahi",
@@ -456,7 +463,8 @@
       "pendingNotice": "Kopo ya hao {{reference}} e emetse ho hlahlojwa ke mohlanka wa Litaba tsa Selehae.",
       "rejectedNotice": "Kopo ya hao ya ho qetela ha e a amoheloa: {{reason}}",
       "rejectedRetry": "O ka romela kopo e ntjha ka tlase ka lintlha tse nepahetseng.",
-      "verifiedNotice": "Boitsebiso ba hao bo netefaditswe. Jwale o na le phihlello e feletseng ya ditshebeletso tsa baahi."
+      "verifiedNotice": "Boitsebiso ba hao bo netefaditswe. Jwale o na le phihlello e feletseng ya ditshebeletso tsa baahi.",
+      "handBiometrics": "Tlhahlobo ea sebopeho sa letsoho (matsoho a mabeli)"
     },
     "identityVerificationQueue": {
       "title": "Dikopo tsa Netefatso ya Boitsebiso",
@@ -742,7 +750,8 @@
         "photo": "Setshwantsho sa hao",
         "chiefLetter": "Lengolo la morena le netefatsang bodulo ba hao",
         "chiefLetterHelp": "Lengolo le tswang ho morena wa sebaka seo o dulang teng, le netefatsang nako eo o e qetileng o dutse teng — le hlokahala e le bopaki ba letsatsi la ho fihla le boletsweng ka hodimo.",
-        "chiefLetterRequired": "Lengolo la morena le netefatsang bodulo ba hao le hlokahala."
+        "chiefLetterRequired": "Lengolo la morena le netefatsang bodulo ba hao le hlokahala.",
+        "handBiometrics": "Tlhahlobo ea sebopeho sa letsoho (matsoho a mabeli)"
       },
       "male": "Monna",
       "female": "Mosadi",
@@ -1133,7 +1142,18 @@
         "sex": "Bong",
         "issueDate": "Letsatsi la ho Ntshuwa"
       }
-    }
+    },
+    "handBiometric": "Tlhahlobo ea sebopeho sa letsoho",
+    "startHandScan": "Qala tlhahlobo ea letsoho",
+    "handScanCaptured": "Tlhahlobo ea letsoho e nkiloe.",
+    "runBiometricSearch": "Batla baahi ba ngolisitsoeng",
+    "purposeRequiredForSearch": "Kenya lebaka le molaong pele oa batla.",
+    "candidateListTitle": "Baahi ba ka 'nang ba tsamaisana — netefatsa e nepahetseng, kapa netefatsa hore ha ho e nepahetseng",
+    "noCandidates": "Ha ho moahi a ngolisitsoeng a tsamaisanang le sekane sena ho lekaneng hore a bontsoe.",
+    "confirmMatch": "Netefatsa e khethoe",
+    "noneMatch": "Ha ho e nepahetseng ho tsena",
+    "matchMethod": "Mokhoa oa tsamaiso",
+    "manualLookup": "Ka letsoho"
   },
   "applications": {
     "title": "Dikopo Tsaka",
@@ -1253,5 +1273,11 @@
     "requestInfo": "Kopa tlhahisoleseling e eketsehileng",
     "reason": "Lebaka",
     "notProvided": "Ha ho a fanwe"
+  },
+  "profile": {
+    "biometricEnrollment": "Ngoliso ea sebopeho sa letsoho",
+    "biometricEnrollmentDesc": "Tlhahlobo ea 'nete ea sebopeho sa letsoho e ngolisitsoeng rekoto ea hau — ntho e tshoanang eo Mapolesa a ka e batlang nakong ea tlhahlobo e hlahlojoang ea boitsebiso.",
+    "biometricEnrolledBoth": "Matsoho a mabeli a ngolisitsoe.",
+    "biometricEnrolledOneHand": "Letsoho le le leng feela le ngolisitsoe hajoale — hlahloba le leng ka tlase bakeng sa tsamaiso e tsepamisehang."
   }
 }

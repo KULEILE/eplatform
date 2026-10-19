@@ -5,6 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { api } from '../api/client';
 import Loading from '../components/ui/Loading';
 import StatusBadge from '../components/ui/StatusBadge';
+import BiometricCapture from '../components/BiometricCapture';
 import { formatDateOnly } from '../utils/format';
 
 export default function Profile() {
@@ -12,6 +13,7 @@ export default function Profile() {
   const { t } = useLanguage();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [biometricStatus, setBiometricStatus] = useState(null);
 
   useEffect(() => {
     if (user.roleKey === 'citizen') {
@@ -20,6 +22,9 @@ export default function Profile() {
       setLoading(false);
     }
   }, [user.roleKey]);
+
+  function loadBiometricStatus() { api.get('/biometrics/status').then(setBiometricStatus).catch(() => {}); }
+  useEffect(() => { if (user.citizenId) loadBiometricStatus(); }, [user.citizenId]);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -55,6 +60,40 @@ export default function Profile() {
               <Link to="/home-affairs/corrections" className="btn-secondary mt-4 inline-flex">{t('homeAffairs.correction')}</Link>
             </div>
           ) : null}
+        </div>
+      )}
+
+      {user.roleKey === 'citizen' && user.citizenId && (
+        <div className="card mt-4">
+          <h2 className="mb-1 font-semibold text-slate-800">{t('profile.biometricEnrollment')}</h2>
+          <p className="mb-3 text-sm text-slate-500">{t('profile.biometricEnrollmentDesc')}</p>
+          {!biometricStatus ? <Loading /> : biometricStatus.enrolled && biometricStatus.leftHand && biometricStatus.rightHand ? (
+            <p className="text-sm text-gov-green">✓ {t('profile.biometricEnrolledBoth')}{biometricStatus.enrollmentSource ? ` (${biometricStatus.enrollmentSource})` : ''}</p>
+          ) : (
+            <div>
+              {biometricStatus.enrolled && <p className="mb-3 text-sm text-gov-amber">⚠ {t('profile.biometricEnrolledOneHand')}</p>}
+              {!biometricStatus.leftHand && (
+                <BiometricCapture
+                  value={null}
+                  onChange={() => loadBiometricStatus()}
+                  label={t('biometricCapture.leftHandLabel')}
+                  help={t('biometricCapture.scanHint')}
+                  hand="left"
+                  enrollSource="Self-Enrolment"
+                />
+              )}
+              {!biometricStatus.rightHand && (
+                <BiometricCapture
+                  value={null}
+                  onChange={() => loadBiometricStatus()}
+                  label={t('biometricCapture.rightHandLabel')}
+                  help={t('biometricCapture.scanHint')}
+                  hand="right"
+                  enrollSource="Self-Enrolment"
+                />
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

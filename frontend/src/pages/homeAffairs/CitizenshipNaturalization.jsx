@@ -9,6 +9,7 @@ import Modal from '../../components/ui/Modal';
 import FormField from '../../components/ui/FormField';
 import PhotoCapture from '../../components/PhotoCapture';
 import ReceiptCapture from '../../components/ReceiptCapture';
+import BiometricCapture from '../../components/BiometricCapture';
 import { formatDateOnly } from '../../utils/format';
 
 const SEX_OPTIONS = ['Male', 'Female', 'Other', 'Unspecified'];
@@ -130,6 +131,15 @@ function ApplicantView({ t }) {
   const [photoReference, setPhotoReference] = useState(null);
   const [chiefLetterReference, setChiefLetterReference] = useState(null);
   const [receipt, setReceipt] = useState({ paymentReference: '', receiptImageReference: '' });
+  // Hand-biometric capture — required (see naturalization.controller.js's submit/approve). This
+  // applicant has no citizen_id yet, so BiometricCapture is used with enroll={false}: the real
+  // hand-geometry template it extracts is carried in the form's own submission instead of being
+  // self-enrolled immediately, and the officer's approval is what actually enrols it (the
+  // moment a citizen_id is minted) — see approveNaturalization.
+  const [leftHandBiometricReference, setLeftHandBiometricReference] = useState(null);
+  const [rightHandBiometricReference, setRightHandBiometricReference] = useState(null);
+  const [leftHandTemplate, setLeftHandTemplate] = useState(null);
+  const [rightHandTemplate, setRightHandTemplate] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(false);
@@ -146,6 +156,10 @@ function ApplicantView({ t }) {
     setPhotoReference(null);
     setChiefLetterReference(null);
     setReceipt({ paymentReference: '', receiptImageReference: '' });
+    setLeftHandBiometricReference(null);
+    setRightHandBiometricReference(null);
+    setLeftHandTemplate(null);
+    setRightHandTemplate(null);
     setResubmitTarget(null);
   }
 
@@ -161,6 +175,14 @@ function ApplicantView({ t }) {
     setPhotoReference(row.photo_reference || null);
     setChiefLetterReference(row.chief_letter_reference || null);
     setReceipt({ paymentReference: row.payment_reference || '', receiptImageReference: row.receipt_image_reference || '' });
+    // Hand templates aren't re-shown here (they're numbers, not an image) — keeping them null
+    // means a resubmission without a fresh scan falls back to what was already on file (see
+    // resubmitNaturalization's `|| record.left_hand_template` fallback) rather than requiring a
+    // re-scan every time unless the officer specifically asked for one.
+    setLeftHandBiometricReference(row.left_hand_biometric_reference || null);
+    setRightHandBiometricReference(row.right_hand_biometric_reference || null);
+    setLeftHandTemplate(null);
+    setRightHandTemplate(null);
     setError(''); setSuccess('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -171,11 +193,13 @@ function ApplicantView({ t }) {
     if (!photoReference) { setError(t('photoCapture.required')); return; }
     if (!chiefLetterReference) { setError(t('homeAffairs.naturalizationForm.field.chiefLetterRequired')); return; }
     if (!receipt.paymentReference.trim() || !receipt.receiptImageReference) { setError(t('receiptCapture.required')); return; }
+    if (!leftHandBiometricReference || !rightHandBiometricReference) { setError(t('biometricCapture.required')); return; }
     setBusy(true);
     try {
       const payload = {
         ...form, photoReference, chiefLetterReference,
         paymentReference: receipt.paymentReference.trim(), receiptImageReference: receipt.receiptImageReference,
+        leftHandBiometricReference, rightHandBiometricReference, leftHandTemplate, rightHandTemplate,
       };
       if (resubmitTarget) {
         await api.post(`/home-affairs/naturalization/${resubmitTarget}/resubmit`, payload);
@@ -218,6 +242,23 @@ function ApplicantView({ t }) {
           <PhotoCapture value={photoReference} onChange={setPhotoReference} label={t('homeAffairs.naturalizationForm.field.photo')} help={t('photoCapture.idHelp')} faceCheck />
           <PhotoCapture value={chiefLetterReference} onChange={setChiefLetterReference} label={t('homeAffairs.naturalizationForm.field.chiefLetter')} help={t('homeAffairs.naturalizationForm.field.chiefLetterHelp')} />
           <ReceiptCapture value={receipt} onChange={setReceipt} help={t('homeAffairs.naturalizationForm.feeNotice')} />
+          <p className="mb-2 text-sm font-medium text-slate-700">{t('homeAffairs.naturalizationForm.field.handBiometrics')}</p>
+          <BiometricCapture
+            value={leftHandBiometricReference}
+            onChange={(ref, template) => { setLeftHandBiometricReference(ref); setLeftHandTemplate(template); }}
+            label={t('biometricCapture.leftHandLabel')}
+            help={t('biometricCapture.scanHint')}
+            hand="left"
+            enroll={false}
+          />
+          <BiometricCapture
+            value={rightHandBiometricReference}
+            onChange={(ref, template) => { setRightHandBiometricReference(ref); setRightHandTemplate(template); }}
+            label={t('biometricCapture.rightHandLabel')}
+            help={t('biometricCapture.scanHint')}
+            hand="right"
+            enroll={false}
+          />
           <button type="submit" disabled={busy} className="btn-primary">{busy ? t('common.loading') : (resubmitTarget ? t('common.resubmitForReview') : t('homeAffairs.naturalizationForm.submit'))}</button>
         </form>
       )}
@@ -414,6 +455,17 @@ function OfficerQueue({ t }) {
                     <span className="block font-mono text-[10px] text-slate-400">{detailRow.payment_reference}</span>
                   </a>
                 ) : t('services.notProvided')}
+              </dd>
+            </div>
+            <div>
+              <dt className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.naturalizationForm.field.handBiometrics')}</dt>
+              <dd className="flex gap-4 text-sm">
+                {detailRow.left_hand_biometric_reference ? (
+                  <a href={`/uploads/${detailRow.left_hand_biometric_reference}`} target="_blank" rel="noreferrer" className="text-gov-green underline">✓ {t('biometricCapture.leftHandLabel')}</a>
+                ) : <span className="text-gov-red">✕ {t('biometricCapture.leftHandLabel')}</span>}
+                {detailRow.right_hand_biometric_reference ? (
+                  <a href={`/uploads/${detailRow.right_hand_biometric_reference}`} target="_blank" rel="noreferrer" className="text-gov-green underline">✓ {t('biometricCapture.rightHandLabel')}</a>
+                ) : <span className="text-gov-red">✕ {t('biometricCapture.rightHandLabel')}</span>}
               </dd>
             </div>
             {detailRow.rejection_reason && (

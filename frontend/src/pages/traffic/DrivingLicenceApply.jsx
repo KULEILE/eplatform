@@ -26,8 +26,8 @@ export default function DrivingLicenceApply() {
     serviceTypes: ['Driving Licence Application'],
     extraFields: [
       { name: 'photoReference', type: 'photo', required: true, label: t('traffic.drivingLicenceApplyForm.photo'), help: t('photoCapture.idHelp'), faceCheck: true },
-      { name: 'biometricReferenceLeft', type: 'biometric', required: true, label: t('biometricCapture.leftHandLabel'), help: t('biometricCapture.scanHint') },
-      { name: 'biometricReferenceRight', type: 'biometric', required: true, label: t('biometricCapture.rightHandLabel'), help: t('biometricCapture.scanHint') },
+      { name: 'biometricReferenceLeft', type: 'biometric', required: true, label: t('biometricCapture.leftHandLabel'), help: t('biometricCapture.scanHint'), enrollSource: 'Driving Licence Application' },
+      { name: 'biometricReferenceRight', type: 'biometric', required: true, label: t('biometricCapture.rightHandLabel'), help: t('biometricCapture.scanHint'), enrollSource: 'Driving Licence Application' },
       { name: 'preferredOfficeId', type: 'office', required: true },
     ],
     transitions: TRANSITIONS,

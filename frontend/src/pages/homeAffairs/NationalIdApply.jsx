@@ -78,12 +78,16 @@ export default function NationalIdApply() {
             onChange={setLeftHandBiometricReference}
             label={t('biometricCapture.leftHandLabel')}
             help={t('biometricCapture.scanHint')}
+            hand="left"
+            enrollSource="National ID Application"
           />
           <BiometricCapture
             value={rightHandBiometricReference}
             onChange={setRightHandBiometricReference}
             label={t('biometricCapture.rightHandLabel')}
             help={t('biometricCapture.scanHint')}
+            hand="right"
+            enrollSource="National ID Application"
           />
           <DistrictOfficeSelect departmentKey="home_affairs" value={preferredOfficeId} onChange={setPreferredOfficeId} />
           <button
