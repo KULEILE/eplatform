@@ -186,7 +186,9 @@ function isNotFacingForward(landmarks) {
 }
 
 /**
- * @param {HTMLImageElement} imgEl - an already-loaded (complete) image element.
+ * @param {HTMLImageElement|HTMLCanvasElement} imgEl - an already-loaded image, or a canvas
+ * already drawn to (PhotoCapture.jsx's live camera capture passes a canvas holding the frame it
+ * just grabbed from the video feed; its fallback file picker still passes a loaded Image).
  * @returns {Promise<{ ok: boolean, reason?: string, skipped?: boolean }>}
  */
 export async function checkPhotoCompliance(imgEl) {

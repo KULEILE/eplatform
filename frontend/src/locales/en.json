@@ -134,7 +134,12 @@
     },
     "hat": "A hat or cap was detected in that photo. Home Affairs ID photos can't show fashion headwear — please remove it and retake the photo, or confirm below if this is a religious head covering rather than fashion headwear.",
     "religiousHeadCoveringNote": "If this is a religious head covering rather than fashion headwear — and your full face is still clearly visible — you can upload this exact photo anyway. This will be recorded as self-declared on your application for the reviewing officer to see.",
-    "religiousHeadCoveringConfirm": "This is a religious head covering, not fashion headwear — upload anyway"
+    "religiousHeadCoveringConfirm": "This is a religious head covering, not fashion headwear — upload anyway",
+    "startCamera": "Open camera",
+    "captureNow": "Take photo",
+    "cameraUnavailable": "Your camera couldn't be opened on this device — choose an existing photo instead.",
+    "cameraFallbackHint": "PNG, JPG or WEBP, up to 5MB.",
+    "scanInProgressHint": "Center your face in the frame, then tap Take photo."
   },
   "biometricCapture": {
     "hint": "Used to enrol your hand-geometry biometrics for this National ID card.",
