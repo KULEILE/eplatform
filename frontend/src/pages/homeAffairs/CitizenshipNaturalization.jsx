@@ -305,9 +305,21 @@ function OfficerQueue({ t }) {
   const [reasonTarget, setReasonTarget] = useState(null); // { id, action }
   const [reason, setReason] = useState('');
   const [detailRow, setDetailRow] = useState(null);
+  // Whether the applicant declared their photo shows a religious head covering rather than
+  // fashion headwear (see frontend/src/utils/hatCheck.js and PhotoCapture.jsx) — self-declared,
+  // not verified by this system, surfaced here for the officer reviewing this application.
+  const [photoNote, setPhotoNote] = useState(null);
 
   function load() { api.get('/home-affairs/naturalization').then((d) => setRows(d.naturalizationRequests)).catch(() => setRows([])); }
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (!detailRow?.photo_reference) { setPhotoNote(null); return; }
+    const [subdir, filename] = detailRow.photo_reference.split('/');
+    api.get(`/uploads/photo-note/${subdir}/${encodeURIComponent(filename)}`)
+      .then((d) => setPhotoNote(d.complianceNote))
+      .catch(() => setPhotoNote(null));
+  }, [detailRow?.photo_reference]);
 
   async function act(id, action, body) {
     setError(''); setSuccess(''); setBusy(id);
@@ -430,9 +442,16 @@ function OfficerQueue({ t }) {
               <dt className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.naturalizationForm.field.photo')}</dt>
               <dd>
                 {detailRow.photo_reference ? (
-                  <a href={`/uploads/${detailRow.photo_reference}`} target="_blank" rel="noreferrer">
-                    <img src={`/uploads/${detailRow.photo_reference}`} alt={t('photoCapture.previewAlt')} className="h-28 w-24 rounded border border-slate-200 object-cover" />
-                  </a>
+                  <>
+                    <a href={`/uploads/${detailRow.photo_reference}`} target="_blank" rel="noreferrer">
+                      <img src={`/uploads/${detailRow.photo_reference}`} alt={t('photoCapture.previewAlt')} className="h-28 w-24 rounded border border-slate-200 object-cover" />
+                    </a>
+                    {photoNote === 'religious_head_covering_declared' && (
+                      <p className="mt-1 max-w-[7rem] text-[10px] leading-tight text-gov-amber">
+                        ⚠ {t('homeAffairs.nationalIdCardView.religiousHeadCoveringDeclared')}
+                      </p>
+                    )}
+                  </>
                 ) : t('services.notProvided')}
               </dd>
             </div>

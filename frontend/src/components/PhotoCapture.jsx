@@ -29,10 +29,14 @@ const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
  * it, rather than being silently accepted and only caught later by an officer.
  *
  * `faceCheck` fields also require the citizen to tick a confirmation checkbox ("no hat, sunglasses
- * or other obstruction") once the photo is uploaded, before the field counts as filled. This is a
- * self-declaration, not automated detection — there's no free, reliable way to actually detect
- * hats/glasses client-side (see faceCheck.js) — but it puts the requirement in front of the
- * citizen explicitly rather than silently accepting a photo that an officer must then reject.
+ * or other obstruction") once the photo is uploaded, before the field counts as filled. For
+ * GLASSES/other obstructions this is still a self-declaration, not automated detection — there's
+ * no credible free way to detect those yet (see faceCheck.js) — but it puts the requirement in
+ * front of the citizen explicitly rather than silently accepting a photo that an officer must
+ * then reject. A HAT is different and is really, automatically detected (see hatCheck.js): a
+ * photo showing one is rejected outright with its own specific reason ('hat'), handled below
+ * separately from the generic rejection flow because of the one deliberate exception to it —
+ * see religiousHeadCovering below.
  *
  * `faceCheck` fields also show a short instructions screen BEFORE the citizen reaches the camera/
  * file picker (remove hat, sunglasses, headphones; plain background; hold steady), not just the
@@ -41,9 +45,20 @@ const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
  * "continue" action that then reveals the actual input — this is prevention (stop the mistake
  * before it happens), the obstruction checkbox below is self-declaration (confirm it didn't), and
  * the officer reviewing the application is the final real check — three honest, cheap layers,
- * none of them pretending to be automated hat/glasses detection (see faceCheck.js for why that
- * isn't realistic to build for free). Shown again every time the citizen goes to pick a new photo
- * (including after a retake), since that's exactly when the reminder matters most.
+ * on top of the one real automated check (the hat detector). Shown again every time the citizen
+ * goes to pick a new photo (including after a retake), since that's exactly when the reminder
+ * matters most.
+ *
+ * Religious head covering exception: a photo rejected specifically for reason 'hat' isn't
+ * discarded like any other rejection — the file is held in `hatFlagged` state and the citizen is
+ * offered a second choice instead of only "retake": declare that this is a religious head
+ * covering (not fashion headwear) and upload the exact same photo anyway. That declaration is
+ * sent to the backend alongside the photo (see uploadFile's complianceNote) and stored durably
+ * next to it (see migration 053 and middleware/upload.js), so an officer reviewing the
+ * application can see it was self-declared by the citizen — never silently hidden, and never
+ * verified by this system either. This mirrors real Home Affairs practice (fashion headwear
+ * blocked, a religious covering allowed with the full face still visible — which every other
+ * check here still enforces unchanged) rather than blocking every head covering outright.
  */
 export default function PhotoCapture({ value, onChange, label, help, faceCheck = false }) {
   const { t } = useLanguage();
@@ -60,6 +75,11 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
   // doc comment above. Irrelevant (never read) on non-faceCheck fields, which go straight to the
   // input as before.
   const [instructionsAcknowledged, setInstructionsAcknowledged] = useState(false);
+  // A photo rejected specifically for reason 'hat' is held here (file + its preview object URL)
+  // rather than discarded immediately — see the religious-head-covering paragraph in the class
+  // doc comment above — so the citizen can declare it's a religious covering and upload this
+  // exact photo without needing to pick it again.
+  const [hatFlagged, setHatFlagged] = useState(null);
   const inputRef = useRef(null);
 
   function runComplianceCheck(objectUrl) {
@@ -78,37 +98,14 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
     });
   }
 
-  async function onFileSelected(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setError('');
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      setError(t('photoCapture.wrongType'));
-      return;
-    }
-    if (file.size > MAX_BYTES) {
-      setError(t('photoCapture.tooLarge'));
-      return;
-    }
-
-    const objectUrl = URL.createObjectURL(file);
-
-    if (faceCheck) {
-      setChecking(true);
-      const result = await runComplianceCheck(objectUrl);
-      setChecking(false);
-      if (!result.ok) {
-        setError(t(`photoCapture.${result.reason}`));
-        URL.revokeObjectURL(objectUrl);
-        if (inputRef.current) inputRef.current.value = '';
-        return;
-      }
-    }
-
+  // Shared by the normal accept path and the "upload anyway, it's a religious head covering"
+  // override — the only difference between them is whether complianceNote is set.
+  async function uploadFile(file, objectUrl, complianceNote) {
     setPreview(objectUrl);
     setUploading(true);
     const fd = new FormData();
     fd.append('photo', file);
+    if (complianceNote) fd.append('complianceNote', complianceNote);
     try {
       const { photoReference } = await api.postForm('/uploads/photo', fd);
       if (faceCheck) {
@@ -129,6 +126,60 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
     }
   }
 
+  async function onFileSelected(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError('');
+    setHatFlagged(null);
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setError(t('photoCapture.wrongType'));
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setError(t('photoCapture.tooLarge'));
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+
+    if (faceCheck) {
+      setChecking(true);
+      const result = await runComplianceCheck(objectUrl);
+      setChecking(false);
+      if (!result.ok) {
+        setError(t(`photoCapture.${result.reason}`));
+        if (result.reason === 'hat') {
+          // Keep the file and preview alive — see the override UI below — instead of the normal
+          // discard-and-let-them-retake path.
+          setPreview(objectUrl);
+          setHatFlagged({ file, objectUrl });
+        } else {
+          URL.revokeObjectURL(objectUrl);
+          if (inputRef.current) inputRef.current.value = '';
+        }
+        return;
+      }
+    }
+
+    await uploadFile(file, objectUrl, null);
+  }
+
+  function uploadAsReligiousHeadCovering() {
+    if (!hatFlagged) return;
+    setError('');
+    const { file, objectUrl } = hatFlagged;
+    setHatFlagged(null);
+    uploadFile(file, objectUrl, 'religious_head_covering_declared');
+  }
+
+  function discardHatFlagged() {
+    if (hatFlagged) URL.revokeObjectURL(hatFlagged.objectUrl);
+    setHatFlagged(null);
+    setPreview(null);
+    setError('');
+    if (inputRef.current) inputRef.current.value = '';
+  }
+
   function onConfirmToggle(e) {
     const checked = e.target.checked;
     setConfirmed(checked);
@@ -138,6 +189,7 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
   function retake() {
     setPreview(null);
     setPendingRef(null);
+    setHatFlagged(null);
     setConfirmed(false);
     setInstructionsAcknowledged(false); // show the instructions again — see class doc comment
     onChange(null);
@@ -169,6 +221,18 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
               )}
               <button type="button" className="btn-secondary !py-1 !text-xs" onClick={retake}>{t('photoCapture.retake')}</button>
             </>
+          ) : hatFlagged ? (
+            <div className="max-w-xs rounded-md bg-amber-50 p-3 text-left text-xs text-slate-700">
+              <p className="mb-2">{t('photoCapture.religiousHeadCoveringNote')}</p>
+              <div className="flex flex-col gap-2">
+                <button type="button" className="btn-primary !py-1 !text-xs" onClick={uploadAsReligiousHeadCovering}>
+                  {t('photoCapture.religiousHeadCoveringConfirm')}
+                </button>
+                <button type="button" className="btn-secondary !py-1 !text-xs" onClick={discardHatFlagged}>
+                  {t('photoCapture.retake')}
+                </button>
+              </div>
+            </div>
           ) : null}
         </div>
       ) : checking ? (

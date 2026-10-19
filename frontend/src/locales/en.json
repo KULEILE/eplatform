@@ -131,7 +131,10 @@
       "plainBackground": "Stand against a plain, evenly lit background — not a patterned wall or a cluttered room",
       "steady": "Hold the camera steady so the photo is in focus, not blurry",
       "continue": "Continue"
-    }
+    },
+    "hat": "A hat or cap was detected in that photo. Home Affairs ID photos can't show fashion headwear — please remove it and retake the photo, or confirm below if this is a religious head covering rather than fashion headwear.",
+    "religiousHeadCoveringNote": "If this is a religious head covering rather than fashion headwear — and your full face is still clearly visible — you can upload this exact photo anyway. This will be recorded as self-declared on your application for the reviewing officer to see.",
+    "religiousHeadCoveringConfirm": "This is a religious head covering, not fashion headwear — upload anyway"
   },
   "biometricCapture": {
     "hint": "Used to enrol your hand-geometry biometrics for this National ID card.",
@@ -422,7 +425,8 @@
         "placeOfIssue": "Place of issue",
         "dateOfIssue": "Date of issue",
         "dateOfExpiry": "Date of expiry"
-      }
+      },
+      "religiousHeadCoveringDeclared": "Applicant declared this is a religious head covering (self-declared, not verified)"
     },
     "nationalIdForm": {
       "title": "Apply for a National ID card",

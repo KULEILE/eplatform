@@ -55,11 +55,25 @@ const memoryStorage = multer.memoryStorage();
  *  string the old disk-based filenames used (e.g. "photos/1700000000000-123456789.jpg"), so
  *  every caller and every frontend page that builds an "/uploads/<reference>" URL keeps working
  *  unchanged — see migration 050 and the GET /uploads/* route in app.js. */
-async function saveBlob(subdir, file) {
+async function saveBlob(subdir, file, complianceNote = null) {
   const ext = path.extname(file.originalname) || '';
   const fileKey = `${subdir}/${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-  await db.query('INSERT INTO file_blobs (file_key, mime_type, data) VALUES ($1, $2, $3)', [fileKey, file.mimetype, file.buffer]);
+  await db.query(
+    'INSERT INTO file_blobs (file_key, mime_type, data, compliance_note) VALUES ($1, $2, $3, $4)',
+    [fileKey, file.mimetype, file.buffer, complianceNote]
+  );
   return fileKey;
+}
+
+/** The counterpart read side of saveBlob's optional complianceNote (see migration 053) — used by
+ *  GET /api/uploads/photo-note/:subdir/:filename so an officer reviewing an application can see
+ *  whether the citizen declared a detected hat was actually a religious head covering (see
+ *  frontend/src/utils/hatCheck.js and PhotoCapture.jsx). Returns null for a file with no note,
+ *  or that doesn't exist — never throws on a missing key, since a missing/old photo with no note
+ *  is the overwhelmingly common, entirely normal case. */
+async function getBlobComplianceNote(fileKey) {
+  const { rows } = await db.query('SELECT compliance_note FROM file_blobs WHERE file_key = $1', [fileKey]);
+  return rows[0]?.compliance_note || null;
 }
 
 const uploadLogo = multer({
@@ -124,5 +138,5 @@ const uploadSignature = multer({
 
 module.exports = {
   uploadLogo, uploadDocument, uploadPhoto, uploadReceipt, uploadBiometric, uploadSignature,
-  saveBlob, UPLOAD_DIR, DOCUMENTS_DIR,
+  saveBlob, getBlobComplianceNote, UPLOAD_DIR, DOCUMENTS_DIR,
 };

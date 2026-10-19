@@ -44,6 +44,10 @@ export default function NationalIdDetail() {
   const [loadError, setLoadError] = useState('');
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [signatureReference, setSignatureReference] = useState(null);
+  // Whether the citizen declared the ID photo shows a religious head covering rather than
+  // fashion headwear (see frontend/src/utils/hatCheck.js and PhotoCapture.jsx) — self-declared by
+  // the citizen, not verified by this system, surfaced here so the reviewing officer sees it.
+  const [photoNote, setPhotoNote] = useState(null);
   const isOfficer = ['home_affairs_officer', 'system_administrator'].includes(user.roleKey);
 
   function load() {
@@ -53,6 +57,14 @@ export default function NationalIdDetail() {
       .catch((err) => setLoadError(err.message || t('common.somethingWentWrong')));
   }
   useEffect(() => { load(); }, [id]);
+
+  useEffect(() => {
+    if (!record?.photo_reference) { setPhotoNote(null); return; }
+    const [subdir, filename] = record.photo_reference.split('/');
+    api.get(`/uploads/photo-note/${subdir}/${encodeURIComponent(filename)}`)
+      .then((d) => setPhotoNote(d.complianceNote))
+      .catch(() => setPhotoNote(null)); // non-critical — never block the page on this
+  }, [record?.photo_reference]);
 
   async function runAction(action) {
     setBusy(true);
@@ -131,6 +143,11 @@ export default function NationalIdDetail() {
             <p className="text-center text-[9px] uppercase leading-tight text-slate-400">
               {record.photo_reference ? t('homeAffairs.nationalIdCardView.photoCaptured') : t('homeAffairs.nationalIdCardView.photoPlaceholder')}
             </p>
+            {photoNote === 'religious_head_covering_declared' && (
+              <p className="max-w-[6.5rem] text-center text-[9px] leading-tight text-gov-amber">
+                ⚠ {t('homeAffairs.nationalIdCardView.religiousHeadCoveringDeclared')}
+              </p>
+            )}
           </div>
 
           <dl className="grid flex-1 grid-cols-1 gap-x-3 gap-y-1.5 text-sm">

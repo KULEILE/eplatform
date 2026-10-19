@@ -9,15 +9,45 @@
  * to local disk, so they survive a redeploy or idle spin-down on hosts with an ephemeral
  * filesystem (e.g. Render's free tier). The returned reference string's shape is unchanged.
  */
-const { saveBlob } = require('../middleware/upload');
+const { saveBlob, getBlobComplianceNote } = require('../middleware/upload');
 
-/** POST /api/uploads/photo — multipart upload, field name 'photo'. Any authenticated citizen. */
+// The only compliance note this system knows how to record right now — see
+// frontend/src/utils/hatCheck.js and PhotoCapture.jsx's religious-head-covering exception.
+// Validated against this fixed set (rather than storing whatever string the client sends) so
+// this column can never become a place for arbitrary client-supplied text.
+const KNOWN_COMPLIANCE_NOTES = new Set(['religious_head_covering_declared']);
+
+/** POST /api/uploads/photo — multipart upload, field name 'photo'. Any authenticated citizen.
+ *  Optional text field 'complianceNote' — set only by PhotoCapture.jsx's religious-head-covering
+ *  override, never user-typed — is stored alongside the photo (see migration 053) so an officer
+ *  reviewing the application can see it was self-declared. */
 async function uploadPhoto(req, res, next) {
   try {
     if (req.user.roleKey !== 'citizen') return res.status(403).json({ error: 'Only a citizen applicant can upload a photo here.' });
     if (!req.file) return res.status(400).json({ error: 'A photo file is required (field name "photo").' });
-    const photoReference = await saveBlob('photos', req.file);
+    const { complianceNote } = req.body;
+    if (complianceNote && !KNOWN_COMPLIANCE_NOTES.has(complianceNote)) {
+      return res.status(400).json({ error: 'Unrecognized complianceNote value.' });
+    }
+    const photoReference = await saveBlob('photos', req.file, complianceNote || null);
     res.status(201).json({ photoReference });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** GET /api/uploads/photo-note/:subdir/:filename — any authenticated user. Reads back the
+ *  optional compliance note saved alongside a photo/receipt/biometric/signature reference (see
+ *  uploadPhoto above and migration 053). Split into two path params rather than one, because the
+ *  file_key references this system hands out everywhere else (e.g. "photos/172...-591...jpg")
+ *  contain a literal "/", which an Express ":param" segment won't match on its own. Harmless to
+ *  expose to anyone authenticated: it's a one-word declaration tag, not the file's contents, and
+ *  every file_key is already an unguessable random string, same as the static /uploads mount. */
+async function getPhotoComplianceNote(req, res, next) {
+  try {
+    const fileKey = `${req.params.subdir}/${req.params.filename}`;
+    const complianceNote = await getBlobComplianceNote(fileKey);
+    res.json({ complianceNote });
   } catch (err) {
     next(err);
   }
@@ -70,4 +100,4 @@ async function uploadSignature(req, res, next) {
   }
 }
 
-module.exports = { uploadPhoto, uploadReceipt, uploadBiometric, uploadSignature };
+module.exports = { uploadPhoto, uploadReceipt, uploadBiometric, uploadSignature, getPhotoComplianceNote };

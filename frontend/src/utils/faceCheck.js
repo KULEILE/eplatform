@@ -21,18 +21,31 @@
  *     whether the eyes are roughly level (not tilted) and whether the nose sits roughly midway
  *     between them (not turned to one side). It catches a clearly turned or tilted head; it is
  *     not a lab-grade 3D pose estimate, so small/natural variation is allowed through on purpose.
- *   - Hats / glasses — NOT implemented here. Reliably detecting those needs a trained facial
- *     attribute model or a paid cloud vision API, which is out of scope for this check. Instead,
- *     the citizen confirms by checkbox (see PhotoCapture.jsx) that the photo has no such
- *     obstruction — a self-declaration, not automated detection, same as this file is honest
- *     that the background check is a heuristic.
+ *   - Hats / caps — a genuine, real detection, added after an earlier version of this comment
+ *     wrongly claimed there's no free way to do this. See hatCheck.js for the model (PINTO0309/
+ *     HHC, MIT-licensed, published F1 0.92-0.97) and its honest limits (an approximated head
+ *     crop, a real ~11MB one-time runtime download). A detected hat is rejected with a specific
+ *     reason, same as every other failure here — except a citizen can declare it's a religious
+ *     head covering rather than fashion headwear and proceed anyway (see PhotoCapture.jsx); that
+ *     declaration is self-reported, not verified, and is stored alongside the photo so an officer
+ *     reviewing the application can see it was declared, not silently hidden.
+ *   - Glasses — still NOT implemented. Reliably detecting glasses needs a trained facial
+ *     attribute model or a paid cloud vision API; one small free option exists on npm
+ *     ("glassesjs") but it's brand new (first published this year, only two point releases, and
+ *     its own package metadata disagrees with itself about which repo/author it comes from) —
+ *     not something worth depending on for a government system over citizens' real photos
+ *     without it proving itself first. The citizen still confirms by checkbox (see
+ *     PhotoCapture.jsx) that the photo has no glasses or other obstruction — a self-declaration,
+ *     not automated detection, same as this file is honest that the background check is a
+ *     heuristic.
  *
- * Fails OPEN, not closed: if the model can't load (offline, blocked asset, slow network) or
+ * Fails OPEN, not closed: if a model can't load (offline, blocked asset, slow network) or
  * detection throws, this returns { ok: true, skipped: true } rather than blocking a legitimate
  * submission — the officer reviewing the application is still the final real check regardless.
- * It only fails CLOSED (ok: false) when the model actually ran and found a real problem.
+ * It only fails CLOSED (ok: false) when a model actually ran and found a real problem.
  */
 import * as faceapi from '@vladmandic/face-api';
+import { detectHat } from './hatCheck';
 
 const MODEL_URL = '/models';
 // Face must occupy at least this fraction of the photo's area — catches "stood too far back".
@@ -228,6 +241,14 @@ export async function checkPhotoCompliance(imgEl) {
 
   if (isBackgroundBusy(imgEl, { x, y, width, height }, imgW, imgH)) {
     return { ok: false, reason: 'busyBackground' };
+  }
+
+  // Run last and only once every cheaper check has passed: this is the one check that has to
+  // load a ~11MB WASM runtime (see hatCheck.js) the first time it runs on a device, so a photo
+  // that's going to be rejected anyway for being blurry, off-center, etc. never pays that cost.
+  const hat = await detectHat(imgEl, { x, y, width, height }, detections[0].landmarks);
+  if (hat.detected) {
+    return { ok: false, reason: 'hat' };
   }
 
   return { ok: true };

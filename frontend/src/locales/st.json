@@ -131,7 +131,10 @@
       "plainBackground": "Ema moo ho nang le semelo se bobebe, se kganyang hantle — eseng lebota le nang le mefuta ya mebala kapa phaposi e tletseng dintho",
       "steady": "Tshwara khamera ka tsitsipano hore setshwantsho se hlakile, se se fifala",
       "continue": "Tswela pele"
-    }
+    },
+    "hat": "Katiba kapa cap e fumanoe setshwantshong seo. Litshwantsho tsa Boitsebiso tsa Lekala la Merero ya Kahare ha li lumelloe ho bontsha hlooho e apesitsoeng ka mokhoa wa mokgwa — ka kopo e tlose ebe oa nka setshwantsho hape, kapa u netefatse ka tlase haeba sena se le ho apara hlooho ka lebaka la bolumeli eseng ka mokgwa.",
+    "religiousHeadCoveringNote": "Haeba sena se le ho apara hlooho ka lebaka la bolumeli eseng ka mokgwa — mme sefahleho sa hau se bonahala hantle — u ka kenya setshwantsho sena feela joalo ka ha se le teng. Sena se tla ngolisoa jwalo ka ho boleloa ke uena kopo-ng ya hau bakeng sa mohlahlobi.",
+    "religiousHeadCoveringConfirm": "Sena se le ho apara hlooho ka lebaka la bolumeli, eseng ka mokgwa — kenya leha ho le joalo"
   },
   "biometricCapture": {
     "hint": "E sebelisetsoa ho ngolisa sebopeho sa letsoho bakeng sa karete ena ea Boitsebiso ba Naha.",
@@ -422,7 +425,8 @@
         "placeOfIssue": "Sebaka sa ho fanwa",
         "dateOfIssue": "Letsatsi la ho fanwa",
         "dateOfExpiry": "Letsatsi la ho fela"
-      }
+      },
+      "religiousHeadCoveringDeclared": "Moikopanyi o boletse hore sena se le ho apara hlooho ka lebaka la bolumeli (ho boleloa ke eena, ha ho netefatsoe)"
     },
     "nationalIdForm": {
       "title": "Kopa karete ya ID ya Naha",
