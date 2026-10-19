@@ -21,18 +21,46 @@
 // attempted and hit real tooling friction (a numpy/tensorflowjs version conflict) and was not
 // pursued further for this delivery.
 //
-// WHAT THE MODEL EXPECTS, AND THE ONE REAL APPROXIMATION HERE: PINTO0309/HHC was trained on head
-// crops produced by the author's own dedicated head-detector model, with NO extra margin added
-// around them. This project has no such head detector — only face-api's face box and 68-point
-// landmarks (see faceCheck.js) — so estimateHeadBox() below approximates the same region: it
-// extends up from the eyebrows (toward where a hairline/hat brim would sit — there's no landmark
-// that marks the hairline directly, so this is a proportional estimate, not a measurement) and
-// down to the chin, with a small side margin. This is an honest approximation of the crop the
-// model was trained on, not a guarantee of identical framing, which is part of why this uses the
-// model's own published default decision threshold (0.5) rather than a project-tuned one — there
-// is no local "known good vs known bad" photo set to calibrate a tighter threshold against, the
-// same honesty already applied to MIN_FACE_SHARPNESS and MAX_BACKGROUND_EDGE_GRADIENT elsewhere
-// in this file's sibling, faceCheck.js, which WERE tuned against real captures.
+// WHAT THE MODEL EXPECTS, AND THE REAL BUG THIS CAUSED THE FIRST TIME: PINTO0309/HHC was trained
+// on head crops produced by the author's own dedicated head-detector model. This project has no
+// such head detector — only face-api's face box and 68-point landmarks (see faceCheck.js) — so
+// estimateHeadBox() below approximates that same region from the landmarks instead. The FIRST
+// version of this approximation was far too TIGHT (eyebrows-to-chin with only ~8% side padding),
+// and a citizen reported it rejecting every single photo, including a completely bare head with
+// no hat at all. That was reproduced and root-caused directly against the real photo from their
+// report (not guessed at): run through the actual downloaded model, a tight eyebrows-to-chin crop
+// of that photo scored 0.97 ("wearing a hat") even though there is no hat anywhere in it, while
+// the same photo's full, uncropped frame scored 0.01. A parameter sweep across side/bottom margin
+// on that same real photo — plus a positive control made by compositing a fake dark cap onto the
+// top of that same real head — found that a TOO-TIGHT crop is specifically what this model reads
+// as "hat": padding the crop out to roughly the full jaw width on each side, and about half the
+// eyebrow-to-chin distance below the chin, dropped the real bare-head photo to 0.19 while the
+// same crop on the fake-cap version scored 0.82 — a wide, comfortable margin either side of the
+// 0.5 line. HAT_THRESHOLD below was also raised from the model's own published default (0.5) to
+// 0.6 for extra headroom against a false rejection, since blocking a real ID photo outright is a
+// far worse failure here than occasionally letting an actual hat through to the officer who
+// reviews every submission anyway.
+//
+// HONEST LIMIT ON THIS FIX: it's calibrated against exactly ONE real reported photo plus one
+// synthetic positive control built from it — not a proper labelled dataset, because none exists
+// for this project. The margins above (0.19 vs 0.82) are wide enough that this should hold up
+// across real variation, but if it still misfires on a different photo — rejects a bare head, or
+// waves through an obvious hat — report what happened (ideally the photo) so the crop or
+// threshold can be recalibrated against that case too, the same way MIN_FACE_SHARPNESS and
+// MAX_BACKGROUND_EDGE_GRADIENT elsewhere in this file's sibling, faceCheck.js, were tuned
+// against real captures rather than guessed once and left alone.
+//
+// WHAT THIS ACTUALLY COSTS, HONESTLY: the model file itself is tiny, but ONNX Runtime Web's
+// WebAssembly engine that runs it is ~11MB (see public/models/ort/) — one-time per device, then
+// cached by the browser, and only fetched on a page with a faceCheck-enabled photo field, never
+// on every page load. That is still a much bigger download than everything else this app loads
+// client-side combined (the face-detection + landmark models below are under 300KB together).
+// This was a known, deliberate tradeoff when this was built, not an oversight: if Lesotho's
+// mobile data costs make this a real complaint, the fix is converting this same HHC model to run
+// on the TensorFlow.js runtime this app already loads for face detection (see
+// @vladmandic/face-api) instead of adding a second, separate ML runtime — that conversion was
+// attempted and hit real tooling friction (a numpy/tensorflowjs version conflict) and was not
+// pursued further for this delivery.
 //
 // Fails OPEN like every check in faceCheck.js: if the WASM runtime or the model can't load, or
 // inference throws for any reason, this returns { detected: false, skipped: true } rather than
@@ -41,7 +69,10 @@
 const ORT_WASM_DIR = '/models/ort/'; // ort-wasm-simd-threaded.{mjs,wasm}, copied from node_modules/onnxruntime-web/dist
 const MODEL_URL = '/models/hhc_is_s_48x48.onnx';
 const INPUT_SIZE = 48; // fixed by the model — see its ONNX input shape [batch, 3, 48, 48]
-const HAT_THRESHOLD = 0.5; // PINTO0309/HHC's own published default (WEARING_HAT_SCORE_THRESHOLD in its demo script)
+// Raised from the model's own published default of 0.5 — see the file header for the real-photo
+// calibration (0.19 bare-head vs 0.82 with-hat) this sits comfortably between, and why the extra
+// margin toward "don't reject" is the right side to err on here.
+const HAT_THRESHOLD = 0.6;
 
 let runtimePromise = null;
 
@@ -65,9 +96,12 @@ async function loadRuntime() {
 }
 
 /**
- * Approximates a head-only crop (eyebrows-to-chin, extended upward for hair/hat, a small side
- * margin) from face-api's face box + 68-point landmarks — see the file header for why this is an
- * approximation of, not identical to, the crop the model was actually trained on.
+ * Approximates a head-only crop from face-api's 68-point landmarks — see the file header for the
+ * real-photo debugging that set these specific margins (and for why the first, tighter version of
+ * this function was the actual cause of "rejects every photo"). Side padding is a full jaw-width
+ * on each side, not a small fraction of it; bottom padding extends about half the eyebrow-to-chin
+ * distance below the chin. Both are wide margins by normal cropping intuition — that width is the
+ * fix, not an accident: this model reads a too-tight crop as "hat" far more than a loose one.
  *
  * @returns {{x:number,y:number,width:number,height:number}} in SOURCE image pixel coordinates.
  */
@@ -78,13 +112,14 @@ function estimateHeadBox(faceBox, landmarks, imgW, imgH) {
   const chinY = jaw[8].y;
   const browTopY = Math.min(...leftBrow.map((p) => p.y), ...rightBrow.map((p) => p.y));
   const browToChin = Math.max(1, chinY - browTopY);
-
-  const top = Math.max(0, browTopY - browToChin * 1.1);
-  const bottom = Math.min(imgH, chinY + browToChin * 0.12);
   const jawMinX = Math.min(...jaw.map((p) => p.x));
   const jawMaxX = Math.max(...jaw.map((p) => p.x));
-  const left = Math.max(0, jawMinX - faceBox.width * 0.08);
-  const right = Math.min(imgW, jawMaxX + faceBox.width * 0.08);
+  const jawWidth = Math.max(1, jawMaxX - jawMinX);
+
+  const top = Math.max(0, browTopY - browToChin * 1.3);
+  const bottom = Math.min(imgH, chinY + browToChin * 0.5);
+  const left = Math.max(0, jawMinX - jawWidth * 1.0);
+  const right = Math.min(imgW, jawMaxX + jawWidth * 1.0);
 
   return { x: left, y: top, width: Math.max(1, right - left), height: Math.max(1, bottom - top) };
 }
