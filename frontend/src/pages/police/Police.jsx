@@ -202,6 +202,37 @@ export default function Police() {
             <p className="mt-2 text-xs text-slate-500">{t('police.matchMethod')}: {t('police.handBiometric')}</p>
           )}
           <p className="mt-3 font-mono text-xs text-slate-400">{result.lookupReference}</p>
+
+          {/* Case/arrest/sentence history on a confirmed match — part of what "performing other
+              police work" on a lookup means for this tool; see police.controller.js's doc comment
+              on why this is included here despite the minimum-necessary-disclosure principle that
+              governs everything else this endpoint returns. */}
+          {result.citizen && result.caseHistory && (
+            <div className="mt-4 border-t border-slate-200 pt-4">
+              <p className="mb-2 text-sm font-semibold text-slate-700">{t('police.caseHistoryTitle')}</p>
+              {result.caseHistory.cases.length === 0 && result.caseHistory.arrests.length === 0 && result.caseHistory.sentences.length === 0 ? (
+                <p className="text-sm text-slate-500">{t('police.noCaseHistory')}</p>
+              ) : (
+                <ul className="space-y-1.5 text-xs text-slate-700">
+                  {result.caseHistory.sentences.map((s) => (
+                    <li key={`s-${s.sentence_id}`} className="rounded border border-slate-200 p-2">
+                      <strong>{t(`status.${s.outcome}`)}</strong>{s.sentence_details ? ` — ${s.sentence_details}` : ''} ({s.case_reference})
+                    </li>
+                  ))}
+                  {result.caseHistory.arrests.map((a) => (
+                    <li key={`a-${a.arrest_id}`} className="rounded border border-slate-200 p-2">
+                      {t('police.cases.recordArrest')}: {a.charge} — {t(`status.${a.custody_status}`)} ({a.case_reference})
+                    </li>
+                  ))}
+                  {result.caseHistory.cases.map((cs) => (
+                    <li key={`c-${cs.case_id}`} className="rounded border border-slate-200 p-2">
+                      {cs.case_reference} — {t(`police.cases.caseTypeOption.${cs.case_type}`)} — {t(`status.${cs.status}`)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       )}
 

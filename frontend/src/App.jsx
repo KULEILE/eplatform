@@ -76,6 +76,8 @@ import PoliceHub from './pages/police/PoliceHub';
 import PoliceClearanceApply from './pages/police/PoliceClearanceApply';
 import PoliceClearanceList from './pages/police/PoliceClearanceList';
 import PoliceClearanceCertificate from './pages/police/PoliceClearanceCertificate';
+import PoliceCaseList from './pages/police/PoliceCaseList';
+import PoliceCaseDetail from './pages/police/PoliceCaseDetail';
 import Passport from './pages/passport/Passport';
 import PassportDocument from './pages/passport/PassportDocument';
 
@@ -163,6 +165,8 @@ export default function App() {
         <Route path="/police/clearance" element={<ProtectedRoute><PoliceClearanceList /></ProtectedRoute>} />
         <Route path="/police/clearance/apply" element={<ProtectedRoute><PoliceClearanceApply /></ProtectedRoute>} />
         <Route path="/police/clearance/:id/certificate" element={<ProtectedRoute><PoliceClearanceCertificate /></ProtectedRoute>} />
+        <Route path="/police/cases" element={<ProtectedRoute roles={['police_officer', 'system_administrator']}><PoliceCaseList /></ProtectedRoute>} />
+        <Route path="/police/cases/:id" element={<ProtectedRoute roles={['police_officer', 'system_administrator']}><PoliceCaseDetail /></ProtectedRoute>} />
         <Route path="/passport" element={<ProtectedRoute><Passport /></ProtectedRoute>} />
         <Route path="/passport/:id" element={<ProtectedRoute><PassportDocument /></ProtectedRoute>} />
 

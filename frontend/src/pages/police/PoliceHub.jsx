@@ -4,8 +4,9 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 
 const SERVICES = [
-  { key: 'clearance', to: '/police/clearance', icon: '📄', roles: ['citizen', 'police_officer', 'system_administrator'] },
-  { key: 'identityLookup', to: '/police/identity-verification', icon: '🔎', roles: ['police_officer', 'system_administrator'] },
+  { key: 'clearance', to: '/police/clearance', icon: '📄', roles: ['citizen', 'police_officer', 'system_administrator'], labelKey: 'police.clearance.title' },
+  { key: 'identityLookup', to: '/police/identity-verification', icon: '🔎', roles: ['police_officer', 'system_administrator'], labelKey: 'police.identityLookup' },
+  { key: 'cases', to: '/police/cases', icon: '🗂️', roles: ['police_officer', 'system_administrator'], labelKey: 'police.cases.navLabel' },
 ];
 
 /** Police previously had no citizen-facing entry point at all — only the officer-only identity
@@ -24,7 +25,7 @@ export default function PoliceHub() {
         {visible.map((s) => (
           <Link key={s.key} to={s.to} className="card flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-md transition">
             <span className="text-2xl" aria-hidden="true">{s.icon}</span>
-            <span className="font-semibold text-slate-900">{t(`police.${s.key === 'clearance' ? 'clearance.title' : 'identityLookup'}`)}</span>
+            <span className="font-semibold text-slate-900">{t(s.labelKey)}</span>
           </Link>
         ))}
       </div>

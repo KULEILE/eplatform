@@ -2,6 +2,7 @@ const db = require('../config/db');
 const { makeDepartmentController } = require('../utils/simpleDepartmentController');
 const { recordAudit } = require('../utils/audit');
 const { getDepartmentId } = require('../utils/lookup');
+const { getCaseHistoryForCitizen, computeSuggestedClearanceResult } = require('../utils/policeHistory');
 
 // ============================================================================================
 // POLICE CLEARANCE CERTIFICATE
@@ -30,8 +31,18 @@ const base = makeDepartmentController({
     'begin-background-check': { from: 'Under Review', to: 'Background Check In Progress' },
     'approve': {
       from: 'Background Check In Progress', to: 'Approved',
-      extra: (record, req) => {
-        const clearanceResult = req.body.clearanceResult === 'Record Found' ? 'Record Found' : 'Clean Record';
+      // Async (see simpleDepartmentController.js's transition(), which now awaits this): when
+      // the officer's request doesn't explicitly say clearanceResult, this computes the REAL
+      // suggested verdict from the applicant's actual case/arrest/sentence history (see
+      // policeHistory.js) instead of silently defaulting to 'Clean Record' regardless of what's
+      // on file. When the officer's request DOES say clearanceResult (the normal path — see
+      // GET .../history below, which the officer reviews before approving, and
+      // PoliceClearanceList.jsx, which pre-fills the approve form with that same suggestion), that
+      // explicit choice always wins — this is the one-and-only override point, same as before.
+      extra: async (record, req) => {
+        const clearanceResult = req.body.clearanceResult === 'Record Found' || req.body.clearanceResult === 'Clean Record'
+          ? req.body.clearanceResult
+          : await computeSuggestedClearanceResult(record.citizen_id);
         const certificateNumber = 'PCC-' + String(Math.floor(100000 + Math.random() * 900000));
         return {
           setSql: `certificate_number = $3, issue_date = CURRENT_DATE, clearance_result = $4::varchar, officer_notes = $5`,
@@ -91,6 +102,25 @@ async function resubmit(req, res, next) {
   } catch (err) { next(err); }
 }
 
+/** GET /api/police/clearance/:id/history — officer-only. Shows the applicant's full
+ *  case/arrest/sentence history (see policeHistory.js) alongside an auto-suggested clearance
+ *  verdict, so the officer reviewing the application can make an informed decision before
+ *  approving — and, per the explicit instruction behind this feature, can always override that
+ *  suggestion either way. The suggestion itself is computed only from actual convictions, never
+ *  from a mere open case or arrest — see computeSuggestedClearanceResult's own doc comment. */
+async function getHistory(req, res, next) {
+  try {
+    if (!['police_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
+    const { rows } = await db.query('SELECT clearance_record_id, citizen_id FROM police_clearance_requests WHERE clearance_record_id = $1', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Not found.' });
+    const [history, suggestedClearanceResult] = await Promise.all([
+      getCaseHistoryForCitizen(rows[0].citizen_id),
+      computeSuggestedClearanceResult(rows[0].citizen_id),
+    ]);
+    res.json({ history, suggestedClearanceResult });
+  } catch (err) { next(err); }
+}
+
 /** GET /api/police/clearance/:id/certificate — the formatted, printable certificate. */
 async function getCertificate(req, res, next) {
   try {
@@ -123,4 +153,4 @@ async function getCertificate(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { ...base, getCertificate, resubmit };
+module.exports = { ...base, getCertificate, resubmit, getHistory };

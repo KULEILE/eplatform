@@ -3,6 +3,7 @@ const { generateReference } = require('../utils/referenceGenerator');
 const { getDepartmentId } = require('../utils/lookup');
 const { recordAudit } = require('../utils/audit');
 const { isValidTemplate, bestScoreForRow } = require('../utils/handMatch');
+const { getCaseHistoryForCitizen } = require('../utils/policeHistory');
 
 const OFFICER_ROLES = ['police_officer', 'system_administrator'];
 const MIN_CANDIDATE_SCORE = 35; // below this, a candidate is noise, not worth showing the officer
@@ -98,7 +99,14 @@ async function performLookup(req, res, next) {
     });
 
     // Minimum necessary access: only verification outcome + name/DOB/sex are returned — never
-    // the full civil registration record, and never anything from other departments.
+    // the full civil registration record, and never anything from other departments. caseHistory
+    // is the one deliberate exception to "minimum necessary": this tool exists specifically for a
+    // lawful, purpose-stated, audited operational check, and a citizen's own case/arrest/sentence
+    // record (migration 054) is squarely what "performing other police work" on a confirmed match
+    // means — it is NOT extra disclosure beyond this endpoint's stated purpose, so it's included
+    // only when a real match was confirmed, never for a 'No Match'/'Possible Mismatch' result.
+    const caseHistory = citizen ? await getCaseHistoryForCitizen(citizen.citizen_id) : null;
+
     res.status(201).json({
       lookupReference,
       verificationResult: matchResult,
@@ -108,6 +116,7 @@ async function performLookup(req, res, next) {
         sex: citizen.sex, permanentIdentityNumber: citizen.permanent_identity_number,
         deceased: citizen.is_deceased,
       } : null,
+      caseHistory,
       policeRecordId: inserted[0].police_record_id,
     });
   } catch (err) {

@@ -120,7 +120,11 @@ function makeDepartmentController({
         // number on approval without hardcoding department-specific columns in this factory.
         // It may instead return { error: 'message' } to abort the transition before anything is
         // written — used e.g. to require the citizen's signature before a 'collect' transition.
-        const extra = t.extra ? t.extra(record, req) : null;
+        // Awaited rather than called plainly so an extra() that needs its own DB lookup (e.g.
+        // police clearance's 'approve' step computing a suggested verdict from case history) can
+        // be async — awaiting a plain synchronous return value (every other department's extra()
+        // so far) is a no-op, so this is backward compatible with all of them.
+        const extra = t.extra ? await t.extra(record, req) : null;
         if (extra && extra.error) {
           await client.query('ROLLBACK');
           return res.status(400).json({ error: extra.error });

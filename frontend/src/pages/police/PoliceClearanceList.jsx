@@ -27,6 +27,12 @@ export default function PoliceClearanceList() {
   const [reason, setReason] = useState('');
   const [clearanceResult, setClearanceResult] = useState('Clean Record');
   const [officerNotes, setOfficerNotes] = useState('');
+  // The applicant's case/arrest/sentence history + an auto-suggested verdict (see
+  // policeClearance.controller.js's getHistory / policeHistory.js's computeSuggestedClearanceResult)
+  // — fetched when the "record outcome" modal opens, so the officer sees what's actually on file
+  // before choosing, rather than guessing. The officer can always pick the other option — this
+  // only pre-selects the radio, it never submits anything by itself.
+  const [history, setHistory] = useState(null); // { history: {cases,arrests,sentences}, suggestedClearanceResult } | null while loading
   const isOfficer = ['police_officer', 'system_administrator'].includes(user.roleKey);
   // Feature 4 — editing a rejected/information-required application instead of starting over.
   const [resubmitTarget, setResubmitTarget] = useState(null);
@@ -61,6 +67,18 @@ export default function PoliceClearanceList() {
     }
   }
 
+  function openApproveModal(record) {
+    setModal({ kind: 'approve', record });
+    setHistory(null);
+    setClearanceResult('Clean Record');
+    api.get(`/police/clearance/${record.clearance_record_id}/history`)
+      .then((d) => {
+        setHistory(d);
+        setClearanceResult(d.suggestedClearanceResult); // pre-select the suggestion — officer can still change it below
+      })
+      .catch(() => setHistory({ history: { cases: [], arrests: [], sentences: [] }, suggestedClearanceResult: null })); // fail open — the modal still works, just without a suggestion
+  }
+
   async function runAction(id, action, body = {}) {
     setBusyId(id);
     setError('');
@@ -75,6 +93,7 @@ export default function PoliceClearanceList() {
       setReason('');
       setClearanceResult('Clean Record');
       setOfficerNotes('');
+      setHistory(null);
     }
   }
 
@@ -116,7 +135,7 @@ export default function PoliceClearanceList() {
                     <button type="button" disabled={busy} className="text-sm font-medium text-gov-navy hover:underline" onClick={() => runAction(r.clearance_record_id, next.action)}>{t(next.labelKey)}</button>
                   )}
                   {r.status === 'Background Check In Progress' && (
-                    <button type="button" disabled={busy} className="text-sm font-medium text-gov-green hover:underline" onClick={() => setModal({ kind: 'approve', record: r })}>{t('police.clearance.recordOutcome')}</button>
+                    <button type="button" disabled={busy} className="text-sm font-medium text-gov-green hover:underline" onClick={() => openApproveModal(r)}>{t('police.clearance.recordOutcome')}</button>
                   )}
                   {!['Rejected'].includes(r.status) && (
                     <>
@@ -142,7 +161,44 @@ export default function PoliceClearanceList() {
           </>
         }
       >
+        {!history ? (
+          <p className="mb-3 text-sm text-slate-500">{t('police.clearance.loadingHistory')}</p>
+        ) : (
+          <>
+            {history.suggestedClearanceResult && (
+              <p className={`mb-3 rounded-md px-3 py-2 text-xs ${history.suggestedClearanceResult === 'Record Found' ? 'bg-amber-50 text-gov-amber' : 'bg-green-50 text-gov-green'}`}>
+                {history.suggestedClearanceResult === 'Record Found' ? '⚠ ' + t('police.clearance.suggestedFound') : '✓ ' + t('police.clearance.suggestedClean')}
+              </p>
+            )}
+            <div className="mb-4">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('police.caseHistoryTitle')}</p>
+              {history.history.cases.length === 0 && history.history.arrests.length === 0 && history.history.sentences.length === 0 ? (
+                <p className="text-sm text-slate-500">{t('police.noCaseHistory')}</p>
+              ) : (
+                <ul className="space-y-1.5 text-xs text-slate-700">
+                  {history.history.sentences.map((s) => (
+                    <li key={`s-${s.sentence_id}`} className="rounded border border-slate-200 p-2">
+                      <strong>{t(`status.${s.outcome}`)}</strong>{s.sentence_details ? ` — ${s.sentence_details}` : ''} ({s.case_reference})
+                    </li>
+                  ))}
+                  {history.history.arrests.map((a) => (
+                    <li key={`a-${a.arrest_id}`} className="rounded border border-slate-200 p-2">
+                      {t('police.cases.recordArrest')}: {a.charge} — {t(`status.${a.custody_status}`)} ({a.case_reference})
+                    </li>
+                  ))}
+                  {history.history.cases.map((cs) => (
+                    <li key={`c-${cs.case_id}`} className="rounded border border-slate-200 p-2">
+                      {cs.case_reference} — {t(`police.cases.caseTypeOption.${cs.case_type}`)} — {t(`status.${cs.status}`)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        )}
+
         <label className="form-label">{t('police.clearance.clearanceResult')}</label>
+        <p className="mb-1 text-xs text-slate-500">{t('police.clearance.suggestedVerdict')}</p>
         <div className="mb-3 flex gap-4 text-sm">
           <label className="flex items-center gap-1.5"><input type="radio" checked={clearanceResult === 'Clean Record'} onChange={() => setClearanceResult('Clean Record')} /> {t('police.clearance.cleanRecord')}</label>
           <label className="flex items-center gap-1.5"><input type="radio" checked={clearanceResult === 'Record Found'} onChange={() => setClearanceResult('Record Found')} /> {t('police.clearance.recordFound')}</label>
