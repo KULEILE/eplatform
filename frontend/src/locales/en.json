@@ -135,6 +135,7 @@
     "hat": "A hat or cap was detected in that photo. Home Affairs ID photos can't show headwear of any kind — please remove it and retake the photo.",
     "startCamera": "Open camera",
     "captureNow": "Take photo",
+    "switchCamera": "Switch camera",
     "cameraUnavailable": "Your camera couldn't be opened on this device — choose an existing photo instead.",
     "cameraFallbackHint": "PNG, JPG or WEBP, up to 5MB.",
     "scanInProgressHint": "Center your face in the frame, then tap Take photo.",

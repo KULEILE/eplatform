@@ -28,12 +28,22 @@ const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
  * "choose a file from disk" picker, which defeats the entire point of an ID photo (anyone could
  * submit any existing image, including someone else's photo, or a screenshot). So a faceCheck
  * field now opens a REAL live camera feed via getUserMedia() on every device — the same approach
- * BiometricCapture.jsx and HandScan.jsx already use for hand scans — with the front ("user")
- * camera, a visible live preview, and a "Take photo" button the citizen presses themselves. Only
- * when getUserMedia genuinely isn't available (no camera, permission denied, or an old/insecure
- * browser context) does this fall back to a plain file picker — see cameraUnavailable below —
- * and that fallback is now the clearly-labelled exception, not the default experience it used to
- * be on every non-phone device.
+ * BiometricCapture.jsx and HandScan.jsx already use for hand scans — defaulting to the front
+ * ("user"/selfie) camera, a visible live preview, and a "Take photo" button the citizen presses
+ * themselves. Only when getUserMedia genuinely isn't available (no camera, permission denied, or
+ * an old/insecure browser context) does this fall back to a plain file picker — see
+ * cameraUnavailable below — and that fallback is now the clearly-labelled exception, not the
+ * default experience it used to be on every non-phone device.
+ *
+ * Front camera is only the DEFAULT, not a forced requirement: when the device actually has more
+ * than one camera (checked via enumerateDevices() right after permission is granted — see
+ * openCamera below; a typical laptop with a single built-in webcam never shows this), a "Switch
+ * camera" button appears next to "Take photo" so a citizen on a phone can flip to the back camera
+ * if they prefer — e.g. someone else is holding the phone and taking the photo for them, or the
+ * phone's back camera is simply better quality. The `{ ideal: facingMode }` constraint (rather
+ * than `exact`) means asking for a camera a device doesn't have never throws — the browser just
+ * falls back to whatever camera it does have — so this is safe to offer even when we can't be
+ * fully sure in advance.
  *
  * Every captured frame — live or from the fallback file picker — is run through a client-side
  * face check (see utils/faceCheck.js) before it's accepted/uploaded: it must show exactly one
@@ -87,6 +97,12 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
   const [instructionsAcknowledged, setInstructionsAcknowledged] = useState(false);
   const [scanning, setScanning] = useState(false); // live camera feed is open (faceCheck fields only)
   const [cameraUnavailable, setCameraUnavailable] = useState(false); // fall back to a plain file picker
+  // Which camera is currently open. Starts 'user' (front/selfie) — see the class doc comment
+  // above for why that's the default rather than a forced requirement.
+  const [facingMode, setFacingMode] = useState('user');
+  // Whether to show the "Switch camera" button at all — only meaningful once we actually know the
+  // device has more than one camera (see openCamera below); stays false on a typical laptop.
+  const [multiCamera, setMultiCamera] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -102,17 +118,21 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
   }
   useEffect(() => () => stopStream(), []);
 
-  async function startCamera() {
+  // Opens (or re-opens, when switching) the camera facing the given direction. `ideal` rather
+  // than `exact` means a device that doesn't have the requested camera (e.g. a laptop asked for
+  // 'environment') just gets whatever camera it does have instead of throwing — so it's always
+  // safe to try 'environment', even on a device we haven't checked in advance.
+  async function openCamera(mode) {
     setError('');
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setCameraUnavailable(true);
       return;
     }
+    stopStream(); // release whatever camera is currently open before acquiring the next one
     try {
-      // 'user' (front/selfie camera) — this is a photo OF the citizen themselves, unlike
-      // BiometricCapture's 'environment' camera, which photographs a hand held out away from them.
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: mode } } });
       streamRef.current = stream;
+      setFacingMode(mode);
       setScanning(true);
       // The <video> element only exists once `scanning` renders it, so attach the stream next tick.
       setTimeout(() => {
@@ -121,11 +141,29 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
           videoRef.current.play().catch(() => {});
         }
       }, 0);
+      // Only worth offering "Switch camera" when there's actually a second camera to switch to.
+      // enumerateDevices() only returns the full, reliable device list once permission has been
+      // granted (which it just was), so this is checked here rather than before the camera opens.
+      if (navigator.mediaDevices.enumerateDevices) {
+        navigator.mediaDevices.enumerateDevices()
+          .then((devices) => setMultiCamera(devices.filter((d) => d.kind === 'videoinput').length > 1))
+          .catch(() => {}); // harmless to skip — the switch button just stays hidden
+      }
     } catch {
       // Permission denied, no camera present, or an insecure context — fall back rather than
       // leaving the citizen stuck with no way to proceed at all.
       setCameraUnavailable(true);
     }
+  }
+
+  function startCamera() {
+    return openCamera(facingMode);
+  }
+
+  // Flips between front and back camera without leaving the live-capture screen. Only rendered
+  // when multiCamera is true (see openCamera above).
+  function switchCamera() {
+    openCamera(facingMode === 'user' ? 'environment' : 'user');
   }
 
   function cancelCamera() {
@@ -330,6 +368,11 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
           </div>
           <div className="flex gap-2">
             <button type="button" className="btn-primary !py-1 !text-xs" onClick={captureNow}>{t('photoCapture.captureNow')}</button>
+            {multiCamera && (
+              <button type="button" className="btn-secondary !py-1 !text-xs" onClick={switchCamera}>
+                {t('photoCapture.switchCamera')}
+              </button>
+            )}
             <button type="button" className="btn-secondary !py-1 !text-xs" onClick={cancelCamera}>{t('common.cancel')}</button>
           </div>
           <p className="text-xs text-slate-400">{t('photoCapture.scanInProgressHint')}</p>
