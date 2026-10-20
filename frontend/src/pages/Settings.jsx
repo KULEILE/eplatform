@@ -27,7 +27,10 @@ function OptionGroup({ label, options, value, onChange, translate }) {
 
 export default function Settings() {
   const { t, language, setLanguage } = useLanguage();
-  const { fontSize, setFontSize, fontSizes, contrast, setContrast, contrasts, brightness, setBrightness, brightnesses } = useAccessibility();
+  const {
+    fontSize, setFontSize, fontSizes, contrast, setContrast, contrasts,
+    brightness, setBrightness, brightnesses, theme, setTheme, themes,
+  } = useAccessibility();
 
   const fontLabel = (v) => t(`accessibility.${v.toLowerCase().replace(' ', '')}`) !== `accessibility.${v.toLowerCase().replace(' ', '')}` ? t(`accessibility.${v.toLowerCase().replace(' ', '')}`) : v;
 
@@ -43,6 +46,7 @@ export default function Settings() {
           onChange={setLanguage}
           translate={(v) => (v === 'en' ? t('common.englishLabel') : t('common.sesothoLabel'))}
         />
+        <OptionGroup label={t('accessibility.theme')} options={themes} value={theme} onChange={setTheme} translate={(v) => t(`accessibility.${v.toLowerCase()}`)} />
         <OptionGroup label={t('accessibility.textSize')} options={fontSizes} value={fontSize} onChange={setFontSize} translate={fontLabel} />
         <OptionGroup label={t('accessibility.contrast')} options={contrasts} value={contrast} onChange={setContrast} translate={(v) => t(`accessibility.${v.toLowerCase()}`)} />
         <OptionGroup label={t('accessibility.brightness')} options={brightnesses} value={brightness} onChange={setBrightness} translate={(v) => t(`accessibility.${v.toLowerCase()}`)} />

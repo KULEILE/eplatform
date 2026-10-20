@@ -88,3 +88,135 @@ body {
     @apply text-xl font-bold text-slate-900 sm:text-2xl;
   }
 }
+
+/* ================================================================================
+   DARK THEME — scoped via html[data-theme='Dark'], set by AccessibilityContext.jsx
+   (theme/setTheme), the exact same pattern already used above for
+   data-font-size/data-contrast/data-brightness. Chosen deliberately over Tailwind's
+   usual darkMode:'class' + sprinkling dark: on every element: this app's ~100
+   page/component files overwhelmingly reuse a small, consistent palette of utility
+   classes (bg-white, bg-slate-50/100, text-slate-900/700/600/500, border-slate-200/
+   300, plus the @layer components classes above) rather than bespoke per-page
+   styles, so one block of CSS overrides targeting those exact class names re-themes
+   the whole app without editing every file individually. A class NOT covered here
+   (an unusual one-off color used in only one or two places) simply keeps its
+   light-mode appearance in dark mode.
+
+   KNOWN, DELIBERATE GAP: the printable "certificate/ID card" preview pages (birth/
+   marriage/divorce/death certificates, the passport bio page, the National ID
+   detail certificate view, the Police Clearance Certificate) also use bg-white for
+   their "paper" background, and this re-themes that too, same as everything else.
+   A case could be made that a simulated printed document should always look like
+   white paper regardless of the app's theme (the way an email body usually stays
+   white even in a dark email client) — if you'd rather those stay pinned to light
+   regardless of theme, say so and that's a small follow-up (wrap each one's outer
+   "paper" div in an extra class that opts out of the rules below).
+   ================================================================================ */
+html[data-theme='Dark'] {
+  color-scheme: dark; /* native form controls, scrollbars, date pickers, etc. follow dark mode too */
+}
+html[data-theme='Dark'] body {
+  @apply bg-slate-950 text-slate-100;
+}
+
+/* Surfaces */
+html[data-theme='Dark'] .bg-white             { @apply bg-slate-900; }
+html[data-theme='Dark'] .bg-slate-50          { @apply bg-slate-950; }
+html[data-theme='Dark'] .bg-slate-100         { @apply bg-slate-800; }
+html[data-theme='Dark'] .bg-slate-300         { @apply bg-slate-600; }
+html[data-theme='Dark'] .bg-black             { @apply bg-slate-950; }
+html[data-theme='Dark'] .hover\:bg-white:hover   { @apply bg-slate-800; }
+html[data-theme='Dark'] .hover\:bg-slate-50:hover  { @apply bg-slate-800; }
+html[data-theme='Dark'] .hover\:bg-slate-100:hover { @apply bg-slate-700; }
+/* Timeline.jsx's dot "cutout" ring assumes a light page background behind it — repoint it at
+   the new dark surface colour so the cutout effect still reads correctly. */
+html[data-theme='Dark'] .border-white         { @apply border-slate-900; }
+
+/* Text */
+html[data-theme='Dark'] .text-slate-900 { @apply text-slate-50; }
+html[data-theme='Dark'] .text-slate-800 { @apply text-slate-100; }
+html[data-theme='Dark'] .text-slate-700 { @apply text-slate-200; }
+html[data-theme='Dark'] .text-slate-600 { @apply text-slate-300; }
+html[data-theme='Dark'] .text-slate-500 { @apply text-slate-400; }
+html[data-theme='Dark'] .text-slate-400 { @apply text-slate-300; }
+
+/* Borders / dividers / rings */
+html[data-theme='Dark'] .border-slate-100 { @apply border-slate-800; }
+html[data-theme='Dark'] .border-slate-200 { @apply border-slate-700; }
+html[data-theme='Dark'] .border-slate-300 { @apply border-slate-600; }
+html[data-theme='Dark'] .border-slate-400 { @apply border-slate-500; }
+html[data-theme='Dark'] .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { @apply border-slate-800; }
+html[data-theme='Dark'] .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { @apply border-slate-700; }
+html[data-theme='Dark'] .ring-slate-200 { @apply ring-slate-700; }
+
+/* Status-tint backgrounds + matching text/border/ring — StatusBadge.jsx and the many inline
+   positive/warning/negative/info/neutral banners and callouts built the same way across the app.
+   Darkened enough to sit comfortably on a dark page, not inverted into a bright glowing tint. */
+html[data-theme='Dark'] .bg-green-50,
+html[data-theme='Dark'] .bg-emerald-50     { @apply bg-emerald-950; }
+html[data-theme='Dark'] .bg-amber-50       { @apply bg-amber-950; }
+html[data-theme='Dark'] .bg-red-50,
+html[data-theme='Dark'] .bg-rose-50        { @apply bg-rose-950; }
+html[data-theme='Dark'] .bg-blue-50        { @apply bg-blue-950; }
+html[data-theme='Dark'] .bg-violet-50      { @apply bg-violet-950; }
+html[data-theme='Dark'] .bg-teal-50        { @apply bg-teal-950; }
+html[data-theme='Dark'] .hover\:bg-emerald-50:hover { @apply bg-emerald-900; }
+html[data-theme='Dark'] .hover\:bg-amber-50:hover   { @apply bg-amber-900; }
+html[data-theme='Dark'] .hover\:bg-rose-50:hover    { @apply bg-rose-900; }
+html[data-theme='Dark'] .hover\:bg-blue-50:hover    { @apply bg-blue-900; }
+html[data-theme='Dark'] .hover\:bg-violet-50:hover  { @apply bg-violet-900; }
+html[data-theme='Dark'] .hover\:bg-teal-50:hover    { @apply bg-teal-900; }
+
+html[data-theme='Dark'] .text-gov-green,
+html[data-theme='Dark'] .text-emerald-600,
+html[data-theme='Dark'] .text-emerald-700,
+html[data-theme='Dark'] .text-emerald-800  { @apply text-emerald-300; }
+html[data-theme='Dark'] .text-gov-amber,
+html[data-theme='Dark'] .text-amber-700,
+html[data-theme='Dark'] .text-amber-800,
+html[data-theme='Dark'] .text-amber-900    { @apply text-amber-300; }
+html[data-theme='Dark'] .text-gov-red,
+html[data-theme='Dark'] .text-rose-700     { @apply text-rose-300; }
+html[data-theme='Dark'] .text-blue-700,
+html[data-theme='Dark'] .text-blue-800     { @apply text-blue-300; }
+html[data-theme='Dark'] .text-violet-700   { @apply text-violet-300; }
+html[data-theme='Dark'] .text-teal-700     { @apply text-teal-300; }
+
+html[data-theme='Dark'] .border-green-200,
+html[data-theme='Dark'] .border-emerald-200 { @apply border-emerald-800; }
+html[data-theme='Dark'] .border-amber-200,
+html[data-theme='Dark'] .border-amber-300,
+html[data-theme='Dark'] .border-amber-400   { @apply border-amber-800; }
+html[data-theme='Dark'] .border-red-200,
+html[data-theme='Dark'] .border-rose-200    { @apply border-rose-800; }
+html[data-theme='Dark'] .border-blue-200    { @apply border-blue-800; }
+html[data-theme='Dark'] .ring-amber-200     { @apply ring-amber-800; }
+html[data-theme='Dark'] .ring-blue-200      { @apply ring-blue-800; }
+html[data-theme='Dark'] .ring-emerald-200   { @apply ring-emerald-800; }
+html[data-theme='Dark'] .ring-rose-200      { @apply ring-rose-800; }
+html[data-theme='Dark'] .ring-teal-200      { @apply ring-teal-800; }
+html[data-theme='Dark'] .ring-violet-200    { @apply ring-violet-800; }
+
+/* Shared component classes (@layer components above) */
+html[data-theme='Dark'] .btn-secondary {
+  @apply border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700;
+}
+html[data-theme='Dark'] .form-input {
+  @apply border-slate-600 bg-slate-800 text-slate-100;
+}
+html[data-theme='Dark'] .form-input::placeholder { @apply text-slate-500; }
+html[data-theme='Dark'] .form-label { @apply text-slate-300; }
+html[data-theme='Dark'] .card,
+html[data-theme='Dark'] .card-link {
+  @apply border-slate-700 bg-slate-900;
+}
+html[data-theme='Dark'] .eyebrow { @apply text-slate-400; }
+html[data-theme='Dark'] .section-title { @apply text-slate-50; }
+
+/* High contrast is a stark black/white override by design — it always wins over dark theme
+   rather than the two silently fighting each other when both happen to be on at once. */
+html[data-theme='Dark'][data-contrast='High'] {
+  --gov-text: #000000;
+  --gov-bg: #ffffff;
+}
+html[data-theme='Dark'][data-contrast='High'] body { @apply bg-white text-black; }

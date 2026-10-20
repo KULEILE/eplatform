@@ -4,6 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Integrated Government Services</title>
+    <script>
+      // Sets data-theme BEFORE the page paints, directly on <html>, rather than waiting for React
+      // to mount and AccessibilityContext's useEffect to run — without this, every page load would
+      // flash light-themed for a moment even for a citizen who already chose Dark, which is far
+      // more jarring than the other accessibility settings (font size, contrast) having the same
+      // brief flash, so it's worth the small inline script here specifically for theme.
+      (function () {
+        try {
+          var stored = localStorage.getItem('gov_theme');
+          var theme = stored === 'Light' || stored === 'Dark'
+            ? stored
+            : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'Dark' : 'Light');
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) { /* ignore — AccessibilityContext sets it once React mounts either way */ }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

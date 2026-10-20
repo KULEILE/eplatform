@@ -1197,6 +1197,9 @@
     "high": "High",
     "brightness": "Brightness",
     "low": "Low",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
     "language": "Language",
     "title": "Accessibility",
     "bookInterpreterAppointment": "Need an interpreter or other support arranged for a visit? Book an appointment →"

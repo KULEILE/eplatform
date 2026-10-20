@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   BellIcon, ChevronDownIcon, UserCircleIcon, AdjustmentsHorizontalIcon,
   ArrowRightOnRectangleIcon, Cog6ToothIcon, BuildingLibraryIcon, Squares2X2Icon, DocumentTextIcon,
-  CalendarDaysIcon,
+  CalendarDaysIcon, SunIcon, MoonIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -39,7 +39,7 @@ function NavItem({ to, icon: Icon, children }) {
 export default function Header() {
   const { user, logout } = useAuth();
   const { t, language, setLanguage } = useLanguage();
-  const { fontSize, setFontSize, fontSizes, contrast, setContrast, brightness, setBrightness } = useAccessibility();
+  const { fontSize, setFontSize, fontSizes, contrast, setContrast, brightness, setBrightness, theme, setTheme } = useAccessibility();
   const { settings, logoUrl } = useSystemSettings();
   const [unread, setUnread] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -157,6 +157,22 @@ export default function Header() {
           )}
 
           <div className="flex items-center gap-2">
+            {/* One-click theme toggle — kept outside the accessibility dropdown, unlike
+                contrast/brightness, because switching light/dark is a single, frequent, no-
+                explanation-needed action, not a setting someone dials in once and forgets. It's
+                also duplicated inside the dropdown below and on the Settings page for discovery
+                and consistency with the other display settings living there. */}
+            <button
+              type="button"
+              onClick={() => setTheme(theme === 'Dark' ? 'Light' : 'Dark')}
+              aria-pressed={theme === 'Dark'}
+              aria-label={theme === 'Dark' ? t('accessibility.light') : t('accessibility.dark')}
+              title={theme === 'Dark' ? t('accessibility.light') : t('accessibility.dark')}
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-white/25 bg-white/5 text-white hover:bg-white/10"
+            >
+              {theme === 'Dark' ? <SunIcon className="h-4 w-4" strokeWidth={1.75} /> : <MoonIcon className="h-4 w-4" strokeWidth={1.75} />}
+            </button>
+
             {/* Accessibility dropdown */}
             <div className="relative" ref={a11yRef}>
               <button
@@ -172,6 +188,16 @@ export default function Header() {
               </button>
               {a11yOpen && a11yPanelStyle && (
                 <div style={a11yPanelStyle} className="z-20 w-64 rounded-lg border border-slate-200 bg-white p-3 text-slate-800 shadow-lg">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('accessibility.theme')}</p>
+                  <button
+                    type="button"
+                    onClick={() => setTheme(theme === 'Dark' ? 'Light' : 'Dark')}
+                    aria-pressed={theme === 'Dark'}
+                    className="mb-3 flex w-full items-center gap-2 rounded-md border border-slate-300 px-2.5 py-1.5 text-left text-sm font-medium hover:bg-slate-50"
+                  >
+                    {theme === 'Dark' ? <MoonIcon className="h-4 w-4" strokeWidth={1.75} /> : <SunIcon className="h-4 w-4" strokeWidth={1.75} />}
+                    {t(`accessibility.${theme.toLowerCase()}`)}
+                  </button>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('accessibility.textSize')}</p>
                   <div className="mb-3 flex items-center overflow-hidden rounded-md border border-slate-300">
                     <button type="button" onClick={() => fontStep(-1)} aria-label="Decrease text size" className="flex-1 px-2 py-1.5 text-sm font-bold hover:bg-slate-50">A−</button>
