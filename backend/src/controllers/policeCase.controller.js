@@ -263,4 +263,31 @@ async function citizenHistory(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { startCase, listCases, getCase, setCaseStatus, recordArrest, recordSentence, citizenHistory };
+/** GET /api/police/cases/track?caseReference=... — citizen-facing "Criminal case tracking"
+ *  (service #10 on the department's service list: "Check permitted updates using a case
+ *  reference number"). Deliberately NOT a free lookup by reference number alone — the citizen
+ *  must be logged in, and the case must actually belong to them (they are its subject_citizen_id)
+ *  for anything to come back. This is a different, narrower tool than "My Applications" (which
+ *  already tracks every report THEY submitted, via the application index every
+ *  simpleDepartmentController-based apply() call feeds automatically) — a criminal case is
+ *  opened by an officer, not submitted by the citizen, so it needs its own lookup, and it only
+ *  ever shows what's "permitted" — case type, status and opened date — never arrest or sentence
+ *  detail, which stays for officer eyes only (see policeHistory.js / citizenHistory above). */
+async function trackCase(req, res, next) {
+  try {
+    if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required to track a case.' });
+    const { caseReference } = req.query;
+    if (!caseReference || !caseReference.trim()) return res.status(400).json({ error: 'caseReference is required.' });
+    const { rows } = await db.query(
+      `SELECT case_reference, case_type, status, created_at, closed_at FROM police_cases
+       WHERE case_reference = $1 AND subject_citizen_id = $2`,
+      [caseReference.trim(), req.user.citizenId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'No case found with that reference number on your record.' });
+    }
+    res.json({ case: rows[0] });
+  } catch (err) { next(err); }
+}
+
+module.exports = { startCase, listCases, getCase, setCaseStatus, recordArrest, recordSentence, citizenHistory, trackCase };

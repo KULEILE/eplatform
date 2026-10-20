@@ -3,6 +3,7 @@ const { requireAuth } = require('../middleware/auth');
 const pc = require('../controllers/police.controller');
 const pcc = require('../controllers/policeClearance.controller');
 const pcase = require('../controllers/policeCase.controller');
+const preports = require('../controllers/policeReports.controller');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -25,14 +26,27 @@ router.post('/clearance/:id/resubmit', pcc.resubmit);
 router.post('/clearance/:id/:action', pcc.transition);
 
 // Case / arrest / sentence recording — the officer-initiated side of the department (see
-// policeCase.controller.js). /cases/citizen-history must be registered before /cases/:id so
-// Express doesn't try to match "citizen-history" as a numeric :id first.
+// policeCase.controller.js). /cases/citizen-history and /cases/track must be registered before
+// /cases/:id so Express doesn't try to match either as a numeric :id first.
 router.get('/cases/citizen-history', pcase.citizenHistory);
+router.get('/cases/track', pcase.trackCase);
 router.post('/cases', pcase.startCase);
 router.get('/cases', pcase.listCases);
 router.get('/cases/:id', pcase.getCase);
 router.patch('/cases/:id/status', pcase.setCaseStatus);
 router.post('/cases/:id/arrests', pcase.recordArrest);
 router.post('/cases/:id/sentences', pcase.recordSentence);
+
+// Citizen-facing incident/request reporting — the eight reporting services plus Information
+// Requests (migration 055, policeReports.controller.js), on the same generic
+// apply/list/get/transition/resubmit/request-information/reject shape as everything else built
+// on simpleDepartmentController.
+router.post('/reports/apply', preports.apply);
+router.get('/reports', preports.list);
+router.get('/reports/:id', preports.getOne);
+router.post('/reports/:id/resubmit', preports.resubmit);
+router.post('/reports/:id/request-information', preports.requestInformation);
+router.post('/reports/:id/reject', preports.reject);
+router.post('/reports/:id/:action', preports.transition);
 
 module.exports = router;

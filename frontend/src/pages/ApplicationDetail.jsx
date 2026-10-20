@@ -22,6 +22,9 @@ const SOURCE_ROUTE = {
   // Traffic: traffic_records serves 13 different service types, each with its own apply page —
   // there is no single deep link that fits all of them, so this points at the hub instead.
   traffic_records: () => '/traffic',
+  // police_reports serves nine different service types, each with its own apply page — same
+  // reasoning as traffic_records above, so this points at the hub rather than a single page.
+  police_reports: () => '/police',
   driving_test_bookings: () => '/traffic/test-bookings',
   vehicle_inspections: () => '/traffic/inspections',
   transport_operating_permits: () => '/traffic/transport-permits/new',

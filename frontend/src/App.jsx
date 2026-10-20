@@ -78,6 +78,17 @@ import PoliceClearanceList from './pages/police/PoliceClearanceList';
 import PoliceClearanceCertificate from './pages/police/PoliceClearanceCertificate';
 import PoliceCaseList from './pages/police/PoliceCaseList';
 import PoliceCaseDetail from './pages/police/PoliceCaseDetail';
+import PoliceCaseTrack from './pages/police/PoliceCaseTrack';
+import PoliceInformation from './pages/police/PoliceInformation';
+import PoliceInformationRequest from './pages/police/PoliceInformationRequest';
+import LostPropertyReport from './pages/police/LostPropertyReport';
+import StolenPropertyReport from './pages/police/StolenPropertyReport';
+import GeneralCrimeReport from './pages/police/GeneralCrimeReport';
+import CybercrimeReport from './pages/police/CybercrimeReport';
+import MissingPersonReport from './pages/police/MissingPersonReport';
+import DomesticViolenceReport from './pages/police/DomesticViolenceReport';
+import TrafficAccidentReport from './pages/police/TrafficAccidentReport';
+import PoliceComplaint from './pages/police/PoliceComplaint';
 import Passport from './pages/passport/Passport';
 import PassportDocument from './pages/passport/PassportDocument';
 
@@ -166,7 +177,18 @@ export default function App() {
         <Route path="/police/clearance/apply" element={<ProtectedRoute><PoliceClearanceApply /></ProtectedRoute>} />
         <Route path="/police/clearance/:id/certificate" element={<ProtectedRoute><PoliceClearanceCertificate /></ProtectedRoute>} />
         <Route path="/police/cases" element={<ProtectedRoute roles={['police_officer', 'system_administrator']}><PoliceCaseList /></ProtectedRoute>} />
+        <Route path="/police/cases/track" element={<ProtectedRoute roles={['citizen']}><PoliceCaseTrack /></ProtectedRoute>} />
         <Route path="/police/cases/:id" element={<ProtectedRoute roles={['police_officer', 'system_administrator']}><PoliceCaseDetail /></ProtectedRoute>} />
+        <Route path="/police/information" element={<ProtectedRoute><PoliceInformation /></ProtectedRoute>} />
+        <Route path="/police/information-request" element={<ProtectedRoute><PoliceInformationRequest /></ProtectedRoute>} />
+        <Route path="/police/reports/lost-property" element={<ProtectedRoute><LostPropertyReport /></ProtectedRoute>} />
+        <Route path="/police/reports/stolen-property" element={<ProtectedRoute><StolenPropertyReport /></ProtectedRoute>} />
+        <Route path="/police/reports/general-crime" element={<ProtectedRoute><GeneralCrimeReport /></ProtectedRoute>} />
+        <Route path="/police/reports/cybercrime" element={<ProtectedRoute><CybercrimeReport /></ProtectedRoute>} />
+        <Route path="/police/reports/missing-person" element={<ProtectedRoute><MissingPersonReport /></ProtectedRoute>} />
+        <Route path="/police/reports/domestic-violence" element={<ProtectedRoute><DomesticViolenceReport /></ProtectedRoute>} />
+        <Route path="/police/reports/traffic-accident" element={<ProtectedRoute><TrafficAccidentReport /></ProtectedRoute>} />
+        <Route path="/police/reports/complaint" element={<ProtectedRoute><PoliceComplaint /></ProtectedRoute>} />
         <Route path="/passport" element={<ProtectedRoute><Passport /></ProtectedRoute>} />
         <Route path="/passport/:id" element={<ProtectedRoute><PassportDocument /></ProtectedRoute>} />
 
