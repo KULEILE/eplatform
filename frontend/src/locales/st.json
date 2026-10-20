@@ -132,14 +132,16 @@
       "steady": "Tshwara khamera ka tsitsipano hore setshwantsho se hlakile, se se fifala",
       "continue": "Tswela pele"
     },
-    "hat": "Katiba kapa cap e fumanoe setshwantshong seo. Litshwantsho tsa Boitsebiso tsa Lekala la Merero ya Kahare ha li lumelloe ho bontsha hlooho e apesitsoeng ka mokhoa wa mokgwa — ka kopo e tlose ebe oa nka setshwantsho hape, kapa u netefatse ka tlase haeba sena se le ho apara hlooho ka lebaka la bolumeli eseng ka mokgwa.",
-    "religiousHeadCoveringNote": "Haeba sena se le ho apara hlooho ka lebaka la bolumeli eseng ka mokgwa — mme sefahleho sa hau se bonahala hantle — u ka kenya setshwantsho sena feela joalo ka ha se le teng. Sena se tla ngolisoa jwalo ka ho boleloa ke uena kopo-ng ya hau bakeng sa mohlahlobi.",
-    "religiousHeadCoveringConfirm": "Sena se le ho apara hlooho ka lebaka la bolumeli, eseng ka mokgwa — kenya leha ho le joalo",
+    "hat": "Katiba kapa cap e fumanoe setshwantshong seo. Litshwantsho tsa Boitsebiso tsa Lekala la Merero ya Kahare ha li lumelloe ho bontsha hlooho e apesitsoeng ka mofuta ofe kapa ofe — ka kopo e tlose ebe oa nka setshwantsho hape.",
     "startCamera": "Bula khamera",
     "captureNow": "Nka setshwantsho",
     "cameraUnavailable": "Khamera ha e khone ho bulwa mochining ona — kgetha setshwantsho se seng sa pele ho eng hore.",
     "cameraFallbackHint": "PNG, JPG kapa WEBP, ho fihla ho 5MB.",
-    "scanInProgressHint": "Beha sefahleho sa hau bohareng ba foto, ebe o tobetsa Nka setshwantsho."
+    "scanInProgressHint": "Beha sefahleho sa hau bohareng ba foto, ebe o tobetsa Nka setshwantsho.",
+    "glasses": "Ho fumanwe mahalima a mahlo, mahalima a letsatsi kapa dintho tse jwalo setshwantshong seo. Litshwantsho tsa Boitsebiso tsa Lekala la Merero ya Kahare ha li lumelloe ho bontsha dintho tse jwalo mahlong — ka kopo e tlose ebe o nka setshwantsho hape.",
+    "faceObstruction": "Ho bonahala eka ho na le ntho e koahelang karolo ya sefahleho sa hao (jwalo ka maske, mosese wa molala, kapa letsoho). Litshwantsho tsa Boitsebiso tsa Lekala la Merero ya Kahare di tlameha ho bontsha sefahleho sa hao ka botlalo — ka kopo nka setshwantsho hape ntle le ntho e koahelang sefahleho sa hao.",
+    "faceCount": "Netefatsa hore ke sefahleho sa motho a le mong feela se bonahalang hantle setshwantshong, ntle le ntho e nngwe.",
+    "unclear": "Ha re a khona ho netefatsa setshwantsho sena ka ho hlaka. Ka kopo nka setshwantsho hape moo sefahleho sa hao se bonahalang ka botlalo, ho na le semelo se bobebe ka morao."
   },
   "biometricCapture": {
     "hint": "E sebelisetsoa ho ngolisa sebopeho sa letsoho bakeng sa karete ena ea Boitsebiso ba Naha.",

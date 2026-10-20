@@ -12,16 +12,7 @@
 const { saveBlob, getBlobComplianceNote } = require('../middleware/upload');
 const { checkWornAccessories, classifyWornAccessoryResult } = require('../utils/roboflowWornAccessoryCheck');
 
-// The only compliance note this system knows how to record right now — see
-// roboflowWornAccessoryCheck.js and PhotoCapture.jsx's religious-head-covering exception.
-// Validated against this fixed set (rather than storing whatever string the client sends) so
-// this column can never become a place for arbitrary client-supplied text.
-const KNOWN_COMPLIANCE_NOTES = new Set(['religious_head_covering_declared']);
-
 /** POST /api/uploads/photo — multipart upload, field name 'photo'. Any authenticated citizen.
- *  Optional text field 'complianceNote' — set only by PhotoCapture.jsx's religious-head-covering
- *  override, never user-typed — is stored alongside the photo (see migration 053) so an officer
- *  reviewing the application can see it was self-declared.
  *
  *  Optional text field 'faceCheck' — set to the string 'true' only by PhotoCapture.jsx instances
  *  rendered with its faceCheck prop (ID/passport/licence photos — NOT plain document scans like a
@@ -30,32 +21,40 @@ const KNOWN_COMPLIANCE_NOTES = new Set(['religious_head_covering_declared']);
  *  a document scan would reject photos for having "no face", which makes no sense there.
  *
  *  This check runs server-side, after the file has already been uploaded here, rather than
- *  client-side during capture the way the old (and unreliable — see
- *  frontend/src/utils/hatCheck.js's history) on-device model did. The real tradeoff: a citizen no
- *  longer gets instant feedback while the camera is still open; they find out after this request
- *  completes and have to reopen the camera to retake. In exchange, the detection itself is
- *  actually accurate — see roboflowWornAccessoryCheck.js for how that was verified against real
- *  reported photos before being wired in here.
+ *  client-side during capture the way the old (and unreliable, and now deleted) on-device model
+ *  did. The real tradeoff: a citizen no longer gets instant feedback while the camera is still
+ *  open; they find out after this request completes and have to reopen the camera to retake. In
+ *  exchange, the detection itself is actually accurate — see roboflowWornAccessoryCheck.js for
+ *  how that was verified against real reported photos before being wired in here.
  *
- *  Fails OPEN, same convention as every other compliance check in this project (see
- *  frontend/src/utils/faceCheck.js): if the Roboflow call itself fails for any reason — no API
- *  key configured, the network, a timeout, Roboflow being down — the error is logged and the
- *  upload proceeds normally rather than blocking every citizen's submission on an infrastructure
- *  hiccup on a third-party service this project doesn't control. Only an actual, successful
- *  rejection verdict from Roboflow blocks the upload. */
+ *  NO OVERRIDE, NO EXCEPTIONS: this used to accept a hat/cap rejection anyway when the citizen
+ *  self-declared it as a religious head covering (a 'complianceNote' field this endpoint read and
+ *  stored — see migration 053). That override has been deliberately removed at your request: a
+ *  detected hat, cap, eyewear, or face obstruction is now rejected unconditionally — there is no
+ *  way for a flagged photo to get through. (The compliance_note column, getBlobComplianceNote,
+ *  and getPhotoComplianceNote below are now unused by this endpoint but left in place — they're
+ *  still read by the officer-facing amber badge on the National ID and Naturalization detail
+ *  screens, for any old record that was saved with a note before this change.)
+ *
+ *  Fails OPEN, same convention as every other compliance check in this project: if the Roboflow
+ *  call itself fails for any reason — no API key configured, the network, a timeout, Roboflow
+ *  being down — the error is logged and the upload proceeds normally rather than blocking every
+ *  citizen's submission on an infrastructure hiccup on a third-party service this project doesn't
+ *  control. This is a DIFFERENT thing from the "no override" rule above: that rule says a photo
+ *  Roboflow actually flagged can never get through; this one says a photo Roboflow was never able
+ *  to check at all (because the service itself failed) still goes through unchecked, the same way
+ *  it always would have before this check existed. Only an actual, successful rejection verdict
+ *  from Roboflow blocks the upload. */
 async function uploadPhoto(req, res, next) {
   try {
     if (req.user.roleKey !== 'citizen') return res.status(403).json({ error: 'Only a citizen applicant can upload a photo here.' });
     if (!req.file) return res.status(400).json({ error: 'A photo file is required (field name "photo").' });
-    const { complianceNote, faceCheck } = req.body;
-    if (complianceNote && !KNOWN_COMPLIANCE_NOTES.has(complianceNote)) {
-      return res.status(400).json({ error: 'Unrecognized complianceNote value.' });
-    }
+    const { faceCheck } = req.body;
 
     if (faceCheck === 'true') {
       try {
         const result = await checkWornAccessories(req.file.buffer);
-        const rejection = classifyWornAccessoryResult(result, { complianceNote });
+        const rejection = classifyWornAccessoryResult(result);
         if (rejection) {
           return res.status(422).json({ error: rejection.message, reason: rejection.reason });
         }
@@ -68,20 +67,22 @@ async function uploadPhoto(req, res, next) {
       }
     }
 
-    const photoReference = await saveBlob('photos', req.file, complianceNote || null);
+    const photoReference = await saveBlob('photos', req.file);
     res.status(201).json({ photoReference });
   } catch (err) {
     next(err);
   }
 }
 
-/** GET /api/uploads/photo-note/:subdir/:filename — any authenticated user. Reads back the
- *  optional compliance note saved alongside a photo/receipt/biometric/signature reference (see
- *  uploadPhoto above and migration 053). Split into two path params rather than one, because the
- *  file_key references this system hands out everywhere else (e.g. "photos/172...-591...jpg")
- *  contain a literal "/", which an Express ":param" segment won't match on its own. Harmless to
- *  expose to anyone authenticated: it's a one-word declaration tag, not the file's contents, and
- *  every file_key is already an unguessable random string, same as the static /uploads mount. */
+/** GET /api/uploads/photo-note/:subdir/:filename — any authenticated user. Reads back a
+ *  compliance note saved alongside a photo/receipt/biometric/signature reference under the old
+ *  religious-head-covering override, now removed (see uploadPhoto above) — kept only so the
+ *  officer-facing amber badge on existing records still works; no new photo will ever have a note
+ *  going forward. Split into two path params rather than one, because the file_key references
+ *  this system hands out everywhere else (e.g. "photos/172...-591...jpg") contain a literal "/",
+ *  which an Express ":param" segment won't match on its own. Harmless to expose to anyone
+ *  authenticated: it's a one-word declaration tag, not the file's contents, and every file_key is
+ *  already an unguessable random string, same as the static /uploads mount. */
 async function getPhotoComplianceNote(req, res, next) {
   try {
     const fileKey = `${req.params.subdir}/${req.params.filename}`;

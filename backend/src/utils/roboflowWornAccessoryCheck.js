@@ -1,10 +1,10 @@
-// Server-side client for the "ID Photo Worn Accessory Review" Roboflow Workflow — a real,
-// grounded alternative to the client-side hat check in frontend/src/utils/hatCheck.js.
-//
-// WHY THIS EXISTS: hatCheck.js (a tiny on-device ONNX classifier, PINTO0309/HHC) proved
-// unreliable on real citizen photos — it misread at least two different real bare-headed photos
-// as "wearing a hat" regardless of how the crop around the head was tuned (see hatCheck.js's own
-// header for that history). This Roboflow Workflow takes a different, more robust approach: it
+// Server-side client for the "ID Photo Worn Accessory Review" Roboflow Workflow — the sole,
+// authoritative detector for hats/caps/eyewear/face obstructions on ID-style photos. It replaced
+// an earlier client-side hat check (frontend/src/utils/hatCheck.js, a tiny on-device ONNX
+// classifier, PINTO0309/HHC) that has since been deleted from this repo entirely — it proved
+// unreliable on real citizen photos, misreading multiple different real bare-headed photos as
+// "wearing a hat" regardless of how the crop around the head was tuned. This Roboflow Workflow
+// takes a different, more robust approach: it
 // runs real object detection for hats/caps/eyeglasses AND for face obstructions (masks, scarves,
 // hands, hair covering the face), finds the single face in the photo, and only flags an
 // accessory as "worn" if its bounding box actually overlaps that face's region — not a
@@ -36,8 +36,8 @@
 // message tells you exactly which key the real response used, and this parser should be a
 // one-line fix.
 //
-// THE ONE-TIME HONEST TRADEOFF THIS MAKES: unlike hatCheck.js (free, fully on-device, nothing
-// ever leaves the citizen's browser), this sends the citizen's actual uploaded photo to
+// THE ONE-TIME HONEST TRADEOFF THIS MAKES: unlike the old on-device check (free, fully local,
+// nothing ever leaves the citizen's browser), this sends the citizen's actual uploaded photo to
 // Roboflow's hosted cloud for inference. That's a real data-sharing decision for government
 // ID-style photos, made deliberately here at your request rather than silently — see this
 // project's chat history for the fuller discussion of that tradeoff. This file enforces that the
@@ -52,9 +52,12 @@
 //   - "needs_manual_review_unassociated_obstruction"   — an obstruction-looking box exists but
 //                                                         isn't clearly tied to the one face
 //   - "needs_manual_review_face_count"                 — zero or more than one face detected
-// None of these are a hard reject by themselves — see this file's caller for how each status
-// should be handled (the workflow's own role is detection + routing, not the accept/reject
-// decision, which stays an application-level choice).
+// The Workflow's own role is detection + routing, not the accept/reject decision — but THIS
+// application treats every one of these as a hard rejection, unconditionally (see
+// classifyWornAccessoryResult below): no self-declaration or override can get a flagged photo
+// through. That is a deliberate choice made for this project, not an inherent property of the
+// Workflow itself — a different integration could legitimately route "needs_manual_review_*"
+// statuses to a human queue instead of an automatic reject.
 
 const ROBOFLOW_API_URL = 'https://serverless.roboflow.com';
 const WORKSPACE_NAME = 'samarelis-workspace';
@@ -192,11 +195,8 @@ async function checkWornAccessories(imageBuffer, options = {}) {
   throw lastError || new RoboflowWornAccessoryCheckError('Roboflow request failed for an unknown reason.', { retriable: false });
 }
 
-// Head coverings get the religious-head-covering override (see classifyWornAccessoryResult
-// below and PhotoCapture.jsx) because that's a real, long-standing Home Affairs practice —
-// fashion headwear blocked, a religious covering allowed with the full face still visible.
-// Eyewear gets no such override: there's no equivalent real-world exception for it, so any
-// detected eyewear is rejected outright, full stop.
+// Two separate class groups purely so the rejection message/reason can name what was actually
+// found (hat vs eyewear) — neither one gets any kind of override; both are rejected outright.
 const HEAD_COVERING_CLASSES = new Set(['hat', 'cap']);
 const EYEWEAR_CLASSES = new Set(['eyeglasses', 'glasses', 'sunglasses']);
 
@@ -211,18 +211,22 @@ function predictedClassNames(predictionGroup) {
  * facing (bilingual) message; `message` is the plain-English text sent back in the HTTP response
  * body, for API consumers that aren't the bilingual frontend.
  *
- * `complianceNote` — pass req.body.complianceNote through unchanged. When it's exactly
- * 'religious_head_covering_declared' (the one value KNOWN_COMPLIANCE_NOTES in
- * uploads.controller.js accepts), a hat/cap-only worn_predictions result is treated as accepted
- * rather than rejected — the one deliberate exception, matching real Home Affairs practice. It
- * does NOT bypass eyewear, face obstructions, or a wrong face count: a citizen can declare a
- * religious head covering, not a blanket "skip every check" flag.
+ * NO OVERRIDES: this used to accept a hat/cap-only result when the citizen had self-declared it
+ * as a religious head covering (complianceNote === 'religious_head_covering_declared'). That
+ * override has been deliberately removed — a detected hat/cap is now rejected unconditionally,
+ * same as eyewear, face obstructions, and a wrong face count. See
+ * frontend/src/components/PhotoCapture.jsx's header comment for why (this is now the single,
+ * final, non-bypassable gate on worn accessories — no self-declaration can get past it).
  *
  * review_status values this switches on are the workflow's own (see this file's header) — a
  * status this function doesn't recognize is treated as "accept" (fail open) rather than blocking
- * on a verdict shape this hasn't seen before.
+ * on a verdict shape this hasn't seen before. Note this is a DIFFERENT kind of "open" than the
+ * no-override rule above: fail-open here only covers an unrecognized *shape* from Roboflow
+ * itself, never a recognized rejection — see uploads.controller.js's own fail-open handling for
+ * when the Roboflow call fails entirely (network/outage/misconfiguration), which is the other,
+ * separate case where a photo can still get through without a clean verdict.
  */
-function classifyWornAccessoryResult(result, { complianceNote } = {}) {
+function classifyWornAccessoryResult(result) {
   const status = result?.review_status;
 
   if (status === 'needs_manual_review_face_count') {
@@ -257,11 +261,10 @@ function classifyWornAccessoryResult(result, { complianceNote } = {}) {
       };
     }
     if (names.some((name) => HEAD_COVERING_CLASSES.has(name))) {
-      if (complianceNote === 'religious_head_covering_declared') return null; // the one override — see doc comment above
       return {
         reason: 'hat',
-        message: "A hat or cap was detected in that photo. Home Affairs ID photos can't show fashion headwear "
-          + '— please remove it and retake the photo, or confirm this is a religious head covering rather than fashion headwear.',
+        message: "A hat or cap was detected in that photo. Home Affairs ID photos can't show headwear of any "
+          + 'kind — please remove it and retake the photo.',
       };
     }
     // worn_predictions was non-empty but didn't match a class name this function recognizes —

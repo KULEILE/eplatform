@@ -21,23 +21,22 @@
  *     whether the eyes are roughly level (not tilted) and whether the nose sits roughly midway
  *     between them (not turned to one side). It catches a clearly turned or tilted head; it is
  *     not a lab-grade 3D pose estimate, so small/natural variation is allowed through on purpose.
- *   - Hats / caps — a genuine, real detection, added after an earlier version of this comment
- *     wrongly claimed there's no free way to do this. See hatCheck.js for the model (PINTO0309/
- *     HHC, MIT-licensed, published F1 0.92-0.97) and its honest limits (an approximated head
- *     crop, a real ~11MB one-time runtime download). A detected hat is rejected with a specific
- *     reason, same as every other failure here — except a citizen can declare it's a religious
- *     head covering rather than fashion headwear and proceed anyway (see PhotoCapture.jsx); that
- *     declaration is self-reported, not verified, and is stored alongside the photo so an officer
- *     reviewing the application can see it was declared, not silently hidden.
- *   - Glasses — still NOT implemented. Reliably detecting glasses needs a trained facial
- *     attribute model or a paid cloud vision API; one small free option exists on npm
- *     ("glassesjs") but it's brand new (first published this year, only two point releases, and
- *     its own package metadata disagrees with itself about which repo/author it comes from) —
- *     not something worth depending on for a government system over citizens' real photos
- *     without it proving itself first. The citizen still confirms by checkbox (see
- *     PhotoCapture.jsx) that the photo has no glasses or other obstruction — a self-declaration,
- *     not automated detection, same as this file is honest that the background check is a
- *     heuristic.
+ *
+ * Hats/caps, glasses/sunglasses, and face obstructions (masks, scarves, hands, hair covering the
+ * face) are deliberately NOT checked here anymore. An earlier version of this file ran a
+ * client-side ONNX hat classifier (hatCheck.js, PINTO0309/HHC) — it was real, but proved
+ * unreliable on real citizen photos: it misread multiple different real bare-headed photos as
+ * "wearing a hat" no matter how the crop around the head was tuned. Those checks now run
+ * server-side instead, after upload, against a real Roboflow-hosted object detector built for
+ * exactly this — see backend/src/utils/roboflowWornAccessoryCheck.js and uploads.controller.js.
+ * That workflow was verified against the real photos that broke the old client-side model before
+ * being wired in, and got them right, with no bypass of any kind: a detected hat, cap, eyewear,
+ * or face obstruction is now an unconditional rejection. The real tradeoff from moving this
+ * server-side: a citizen no longer gets instant feedback while the camera is still open for these
+ * specific issues — they find out after the upload completes and have to reopen the camera to
+ * retake, instead of just repositioning in front of a camera that's still running. hatCheck.js,
+ * its ONNX model file, and the onnxruntime-web dependency have since been deleted from this repo
+ * entirely — they are not just unused, they are gone.
  *
  * Fails OPEN, not closed: if a model can't load (offline, blocked asset, slow network) or
  * detection throws, this returns { ok: true, skipped: true } rather than blocking a legitimate
@@ -45,7 +44,6 @@
  * It only fails CLOSED (ok: false) when a model actually ran and found a real problem.
  */
 import * as faceapi from '@vladmandic/face-api';
-import { detectHat } from './hatCheck';
 
 const MODEL_URL = '/models';
 // Face must occupy at least this fraction of the photo's area — catches "stood too far back".
@@ -245,14 +243,9 @@ export async function checkPhotoCompliance(imgEl) {
     return { ok: false, reason: 'busyBackground' };
   }
 
-  // Run last and only once every cheaper check has passed: this is the one check that has to
-  // load a ~11MB WASM runtime (see hatCheck.js) the first time it runs on a device, so a photo
-  // that's going to be rejected anyway for being blurry, off-center, etc. never pays that cost.
-  const hat = await detectHat(imgEl, { x, y, width, height }, detections[0].landmarks);
-  if (hat.detected) {
-    return { ok: false, reason: 'hat' };
-  }
-
+  // Hat/cap/glasses/face-obstruction detection now happens server-side, after upload — see this
+  // file's header comment for why, and uploads.controller.js for where. Nothing left to check
+  // here once a face was found, framed, sharp, forward-facing, and the background is plain.
   return { ok: true };
 }
 

@@ -132,14 +132,16 @@
       "steady": "Hold the camera steady so the photo is in focus, not blurry",
       "continue": "Continue"
     },
-    "hat": "A hat or cap was detected in that photo. Home Affairs ID photos can't show fashion headwear — please remove it and retake the photo, or confirm below if this is a religious head covering rather than fashion headwear.",
-    "religiousHeadCoveringNote": "If this is a religious head covering rather than fashion headwear — and your full face is still clearly visible — you can upload this exact photo anyway. This will be recorded as self-declared on your application for the reviewing officer to see.",
-    "religiousHeadCoveringConfirm": "This is a religious head covering, not fashion headwear — upload anyway",
+    "hat": "A hat or cap was detected in that photo. Home Affairs ID photos can't show headwear of any kind — please remove it and retake the photo.",
     "startCamera": "Open camera",
     "captureNow": "Take photo",
     "cameraUnavailable": "Your camera couldn't be opened on this device — choose an existing photo instead.",
     "cameraFallbackHint": "PNG, JPG or WEBP, up to 5MB.",
-    "scanInProgressHint": "Center your face in the frame, then tap Take photo."
+    "scanInProgressHint": "Center your face in the frame, then tap Take photo.",
+    "glasses": "Eyeglasses, sunglasses or other eyewear were detected in that photo. Home Affairs ID photos can't show eyewear — please remove it and retake the photo.",
+    "faceObstruction": "Something appears to be covering part of your face (such as a mask, scarf, or hand). Home Affairs ID photos must show your full face clearly — please retake it without anything covering your face.",
+    "faceCount": "Make sure exactly one person's face is clearly visible in the photo, with nothing else in frame.",
+    "unclear": "We couldn't clearly verify this photo. Please retake it with your full face visible against a plain background."
   },
   "biometricCapture": {
     "hint": "Used to enrol your hand-geometry biometrics for this National ID card.",

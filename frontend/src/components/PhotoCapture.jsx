@@ -41,34 +41,34 @@ const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
  * obviously busy. A frame that fails is rejected with a specific reason so the citizen can
  * recapture it, rather than being silently accepted and only caught later by an officer.
  *
- * `faceCheck` fields also require the citizen to tick a confirmation checkbox ("no hat, sunglasses
- * or other obstruction") once the photo is uploaded, before the field counts as filled. For
- * GLASSES/other obstructions this is still a self-declaration, not automated detection — there's
- * no credible free way to detect those yet (see faceCheck.js) — but it puts the requirement in
- * front of the citizen explicitly rather than silently accepting a photo that an officer must
- * then reject. A HAT is different and is really, automatically detected (see hatCheck.js): a
- * photo showing one is rejected outright with its own specific reason ('hat'), handled below
- * separately from the generic rejection flow because of the one deliberate exception to it —
- * see religiousHeadCovering below.
+ * `faceCheck` fields also require the citizen to tick a confirmation checkbox once the photo is
+ * uploaded, before the field counts as filled — one more honest layer on top of the real
+ * automated checks below, not a substitute for them.
  *
  * `faceCheck` fields also show a short instructions screen BEFORE the citizen reaches the camera
  * (remove hat, sunglasses, headphones; plain background; hold steady), not just the confirmation
- * checkbox after — this is prevention (stop the mistake before it happens), the obstruction
- * checkbox below is self-declaration (confirm it didn't), and the officer reviewing the
- * application is the final real check — three honest, cheap layers, on top of the one real
- * automated check (the hat detector). Shown again every time the citizen goes to capture a new
- * photo (including after a retake), since that's exactly when the reminder matters most.
+ * checkbox after — this is prevention (stop the mistake before it happens).
  *
- * Religious head covering exception: a frame rejected specifically for reason 'hat' isn't
- * discarded like any other rejection — it's held in `hatFlagged` state and the citizen is offered
- * a second choice instead of only "retake": declare that this is a religious head covering (not
- * fashion headwear) and upload the exact same photo anyway. That declaration is sent to the
- * backend alongside the photo (see uploadFile's complianceNote) and stored durably next to it
- * (see migration 053 and middleware/upload.js), so an officer reviewing the application can see
- * it was self-declared by the citizen — never silently hidden, and never verified by this system
- * either. This mirrors real Home Affairs practice (fashion headwear blocked, a religious covering
- * allowed with the full face still visible — which every other check here still enforces
- * unchanged) rather than blocking every head covering outright.
+ * HAT/CAP/GLASSES/FACE-OBSTRUCTION DETECTION IS SERVER-SIDE, AFTER UPLOAD — not part of the
+ * client-side checkPhotoCompliance() call above (see faceCheck.js's header for why that moved: an
+ * earlier on-device model proved unreliable on real photos). This component still uploads the
+ * photo the moment it passes the quick client-side checks (face found, framed, sharp,
+ * forward-facing, plain background), the same as before — uploadFile() just also now has to
+ * handle the backend rejecting it afterwards, via a non-2xx response carrying a `reason` (see
+ * api/client.js — it attaches the parsed response body as err.data). The real UX tradeoff: for
+ * these specific issues, the citizen no longer finds out while the camera is still open — they
+ * find out after the upload completes and have to reopen the camera to retake. Every OTHER
+ * rejection reason (no face, blurry, off-center, busy background, etc.) still happens instantly
+ * client-side, before upload, exactly as before.
+ *
+ * NO OVERRIDE, NO EXCEPTIONS: a server-side rejection for ANY reason — hat, cap, glasses, face
+ * obstruction, bad face count, unclear — is treated identically: the preview is discarded, a
+ * reason-specific bilingual message is shown, and the citizen simply retakes the photo. There
+ * used to be a religious-head-covering self-declaration that let a detected hat/cap through
+ * anyway; that has been removed at the citizen's/operator's explicit request, so that a flagged
+ * photo can never pass no matter what the citizen declares. (The backend's compliance-note
+ * storage and the officer-facing amber badge on existing records still exist for old records —
+ * see uploads.controller.js's doc comment — but this component no longer offers or sends one.)
  */
 export default function PhotoCapture({ value, onChange, label, help, faceCheck = false }) {
   const { t } = useLanguage();
@@ -85,11 +85,6 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
   // comment above. Irrelevant (never read) on non-faceCheck fields, which go straight to the
   // plain file input as before.
   const [instructionsAcknowledged, setInstructionsAcknowledged] = useState(false);
-  // A frame rejected specifically for reason 'hat' is held here (file + its preview URL) rather
-  // than discarded immediately — see the religious-head-covering paragraph in the class doc
-  // comment above — so the citizen can declare it's a religious covering and upload this exact
-  // frame without needing to capture it again.
-  const [hatFlagged, setHatFlagged] = useState(null);
   const [scanning, setScanning] = useState(false); // live camera feed is open (faceCheck fields only)
   const [cameraUnavailable, setCameraUnavailable] = useState(false); // fall back to a plain file picker
   const videoRef = useRef(null);
@@ -150,19 +145,21 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
     })();
   }
 
-  // Shared by the normal accept path and the "upload anyway, it's a religious head covering"
-  // override — the only difference between them is whether complianceNote is set. `blob` is
-  // either a File from the fallback file picker (keep its own name/extension — e.g. a .jpg stays
-  // a .jpg) or a raw Blob from a live camera capture (always PNG — see captureNow's
+  // `blob` is either a File from the fallback file picker (keep its own name/extension — e.g. a
+  // .jpg stays a .jpg) or a raw Blob from a live camera capture (always PNG — see captureNow's
   // canvas.toBlob call — so it gets a matching .png name; the server reads the real mime type
   // off the blob itself for Content-Type when serving it back either way, but a file_key whose
   // extension actually matches its bytes is worth getting right rather than leaving misleading).
-  async function uploadFile(blob, objectUrl, complianceNote) {
+  async function uploadFile(blob, objectUrl) {
     setPreview(objectUrl);
     setUploading(true);
     const fd = new FormData();
     fd.append('photo', blob, blob.name || 'capture.png');
-    if (complianceNote) fd.append('complianceNote', complianceNote);
+    // Tells the backend whether to run the real hat/cap/glasses/face-obstruction detector (see
+    // uploads.controller.js) — only faceCheck fields should pay for that call; a plain document
+    // scan (e.g. the naturalization form's chief's letter) shares this same endpoint and has no
+    // face to check at all.
+    if (faceCheck) fd.append('faceCheck', 'true');
     try {
       const { photoReference } = await api.postForm('/uploads/photo', fd);
       if (faceCheck) {
@@ -174,7 +171,14 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
         onChange(photoReference);
       }
     } catch (err) {
-      setError(err.message || t('common.somethingWentWrong'));
+      // err.data is the parsed JSON response body (see api/client.js) — uploads.controller.js
+      // sends { error, reason } for a worn-accessory/face-obstruction rejection specifically, so
+      // this photo can get the same bilingual, reason-specific message as a client-side rejection
+      // instead of a generic "something went wrong". Every server-side rejection reason (hat,
+      // glasses, faceObstruction, faceCount, unclear) is handled identically: the photo is
+      // discarded, the message is shown, and the citizen retakes it — no override, no exceptions.
+      const serverReason = err.data?.reason;
+      setError((serverReason && t(`photoCapture.${serverReason}`)) || err.message || t('common.somethingWentWrong'));
       setPreview(null);
       setPendingRef(null);
       onChange(null);
@@ -183,10 +187,12 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
     }
   }
 
-  // Captures the current live-camera frame, runs it through the same compliance check as the
-  // fallback file picker, and either uploads it, flags it for the religious-head-covering
-  // exception, or — for every other rejection reason — leaves the camera running so the citizen
-  // can simply reposition and press "Take photo" again, rather than restarting the whole flow.
+  // Captures the current live-camera frame, runs it through the client-side compliance check
+  // (face presence/framing/sharpness/pose/background — see faceCheck.js), and either uploads it
+  // or leaves the camera running so the citizen can simply reposition and press "Take photo"
+  // again, rather than restarting the whole flow. Hat/cap/glasses/face-obstruction rejections
+  // (including the religious-head-covering flag) can no longer happen here — that check now runs
+  // server-side, after the upload this falls through to below (see uploadFile).
   async function captureNow() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -202,17 +208,7 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
 
     if (!result.ok) {
       setError(t(`photoCapture.${result.reason}`));
-      if (result.reason === 'hat') {
-        canvas.toBlob((blob) => {
-          if (!blob) return;
-          stopStream();
-          setScanning(false);
-          const objectUrl = URL.createObjectURL(blob);
-          setPreview(objectUrl);
-          setHatFlagged({ blob, objectUrl });
-        }, 'image/png');
-      }
-      // Any other reason: camera stays open, citizen adjusts and presses "Take photo" again.
+      // Camera stays open — citizen adjusts and presses "Take photo" again.
       return;
     }
 
@@ -220,7 +216,7 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
       if (!blob) return;
       stopStream();
       setScanning(false);
-      uploadFile(blob, URL.createObjectURL(blob), null);
+      uploadFile(blob, URL.createObjectURL(blob));
     }, 'image/png');
   }
 
@@ -228,7 +224,6 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
     const file = e.target.files?.[0];
     if (!file) return;
     setError('');
-    setHatFlagged(null);
     if (!ACCEPTED_TYPES.includes(file.type)) {
       setError(t('photoCapture.wrongType'));
       return;
@@ -252,37 +247,13 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
       setChecking(false);
       if (!result.ok) {
         setError(t(`photoCapture.${result.reason}`));
-        if (result.reason === 'hat') {
-          // Keep the file and preview alive — see the override UI below — instead of the normal
-          // discard-and-let-them-retake path.
-          setPreview(objectUrl);
-          setHatFlagged({ blob: file, objectUrl });
-        } else {
-          URL.revokeObjectURL(objectUrl);
-          if (inputRef.current) inputRef.current.value = '';
-        }
+        URL.revokeObjectURL(objectUrl);
+        if (inputRef.current) inputRef.current.value = '';
         return;
       }
     }
 
-    await uploadFile(file, objectUrl, null);
-  }
-
-  function uploadAsReligiousHeadCovering() {
-    if (!hatFlagged) return;
-    setError('');
-    const { blob, objectUrl } = hatFlagged;
-    setHatFlagged(null);
-    uploadFile(blob, objectUrl, 'religious_head_covering_declared');
-  }
-
-  function discardHatFlagged() {
-    if (hatFlagged) URL.revokeObjectURL(hatFlagged.objectUrl);
-    setHatFlagged(null);
-    setPreview(null);
-    setError('');
-    setInstructionsAcknowledged(false); // show the instructions again before the next attempt
-    if (inputRef.current) inputRef.current.value = '';
+    await uploadFile(file, objectUrl);
   }
 
   function onConfirmToggle(e) {
@@ -294,7 +265,6 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
   function retake() {
     setPreview(null);
     setPendingRef(null);
-    setHatFlagged(null);
     setConfirmed(false);
     setCameraUnavailable(false);
     setInstructionsAcknowledged(false); // show the instructions again — see class doc comment
@@ -327,18 +297,6 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
               )}
               <button type="button" className="btn-secondary !py-1 !text-xs" onClick={retake}>{t('photoCapture.retake')}</button>
             </>
-          ) : hatFlagged ? (
-            <div className="max-w-xs rounded-md bg-amber-50 p-3 text-left text-xs text-slate-700">
-              <p className="mb-2">{t('photoCapture.religiousHeadCoveringNote')}</p>
-              <div className="flex flex-col gap-2">
-                <button type="button" className="btn-primary !py-1 !text-xs" onClick={uploadAsReligiousHeadCovering}>
-                  {t('photoCapture.religiousHeadCoveringConfirm')}
-                </button>
-                <button type="button" className="btn-secondary !py-1 !text-xs" onClick={discardHatFlagged}>
-                  {t('photoCapture.retake')}
-                </button>
-              </div>
-            </div>
           ) : null}
         </div>
       ) : checking ? (

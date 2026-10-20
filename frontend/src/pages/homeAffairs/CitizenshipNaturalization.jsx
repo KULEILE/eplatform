@@ -306,8 +306,9 @@ function OfficerQueue({ t }) {
   const [reason, setReason] = useState('');
   const [detailRow, setDetailRow] = useState(null);
   // Whether the applicant declared their photo shows a religious head covering rather than
-  // fashion headwear (see frontend/src/utils/hatCheck.js and PhotoCapture.jsx) — self-declared,
-  // not verified by this system, surfaced here for the officer reviewing this application.
+  // fashion headwear — a now-removed PhotoCapture.jsx override (see its header comment and
+  // uploads.controller.js's); self-declared, not verified, kept here only so an existing record
+  // saved before the removal still shows this to the reviewing officer. No new record can get one.
   const [photoNote, setPhotoNote] = useState(null);
 
   function load() { api.get('/home-affairs/naturalization').then((d) => setRows(d.naturalizationRequests)).catch(() => setRows([])); }

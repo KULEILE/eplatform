@@ -45,8 +45,9 @@ export default function NationalIdDetail() {
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [signatureReference, setSignatureReference] = useState(null);
   // Whether the citizen declared the ID photo shows a religious head covering rather than
-  // fashion headwear (see frontend/src/utils/hatCheck.js and PhotoCapture.jsx) — self-declared by
-  // the citizen, not verified by this system, surfaced here so the reviewing officer sees it.
+  // fashion headwear — a now-removed PhotoCapture.jsx override (see its header comment and
+  // uploads.controller.js's); self-declared, not verified, kept here only so an existing record
+  // saved before the removal still shows this to the reviewing officer. No new record can get one.
   const [photoNote, setPhotoNote] = useState(null);
   const isOfficer = ['home_affairs_officer', 'system_administrator'].includes(user.roleKey);
 
