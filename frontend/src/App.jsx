@@ -42,8 +42,6 @@ import DeathCertificateRequest from './pages/homeAffairs/DeathCertificateRequest
 import DeathCertificate from './pages/homeAffairs/DeathCertificate';
 import NameChange from './pages/homeAffairs/NameChange';
 import Adoption from './pages/homeAffairs/Adoption';
-import BurialOrder from './pages/homeAffairs/BurialOrder';
-import SpecialMarriageLicence from './pages/homeAffairs/SpecialMarriageLicence';
 import MarriageSolemnisation from './pages/homeAffairs/MarriageSolemnisation';
 import MarriageOfficers from './pages/homeAffairs/MarriageOfficers';
 import CitizenshipNaturalization from './pages/homeAffairs/CitizenshipNaturalization';
@@ -70,7 +68,12 @@ import DrivingInstructors from './pages/traffic/DrivingInstructors';
 import Finance from './pages/finance/Finance';
 import GovernmentEmployment from './pages/finance/GovernmentEmployment';
 import FinanceCorrections from './pages/finance/Corrections';
+import SupplierPaymentTracking from './pages/finance/SupplierPaymentTracking';
+import FinanceComplaint from './pages/finance/FinanceComplaint';
+import RetirementTracking from './pages/finance/RetirementTracking';
+import BudgetAndTenders from './pages/finance/BudgetAndTenders';
 import Pensions from './pages/pensions/Pensions';
+import PensionEnquiry from './pages/pensions/PensionEnquiry';
 import Police from './pages/police/Police';
 import PoliceHub from './pages/police/PoliceHub';
 import PoliceClearanceApply from './pages/police/PoliceClearanceApply';
@@ -142,8 +145,6 @@ export default function App() {
         <Route path="/home-affairs/death-certificate/:id" element={<ProtectedRoute><DeathCertificate /></ProtectedRoute>} />
         <Route path="/home-affairs/name-change" element={<ProtectedRoute><NameChange /></ProtectedRoute>} />
         <Route path="/home-affairs/adoption" element={<ProtectedRoute><Adoption /></ProtectedRoute>} />
-        <Route path="/home-affairs/burial-order" element={<ProtectedRoute><BurialOrder /></ProtectedRoute>} />
-        <Route path="/home-affairs/special-marriage-licence" element={<ProtectedRoute><SpecialMarriageLicence /></ProtectedRoute>} />
         <Route path="/home-affairs/marriage-solemnisation" element={<ProtectedRoute><MarriageSolemnisation /></ProtectedRoute>} />
         <Route path="/home-affairs/marriage-officers" element={<ProtectedRoute><MarriageOfficers /></ProtectedRoute>} />
         <Route path="/home-affairs/naturalization" element={<ProtectedRoute><CitizenshipNaturalization /></ProtectedRoute>} />
@@ -170,7 +171,12 @@ export default function App() {
         <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
         <Route path="/finance/government-employment" element={<ProtectedRoute><GovernmentEmployment /></ProtectedRoute>} />
         <Route path="/finance/corrections" element={<ProtectedRoute><FinanceCorrections /></ProtectedRoute>} />
+        <Route path="/finance/supplier-payments" element={<ProtectedRoute><SupplierPaymentTracking /></ProtectedRoute>} />
+        <Route path="/finance/complaints" element={<ProtectedRoute><FinanceComplaint /></ProtectedRoute>} />
+        <Route path="/finance/retirement-tracking" element={<ProtectedRoute><RetirementTracking /></ProtectedRoute>} />
+        <Route path="/finance/publications" element={<ProtectedRoute><BudgetAndTenders /></ProtectedRoute>} />
         <Route path="/pensions" element={<ProtectedRoute><Pensions /></ProtectedRoute>} />
+        <Route path="/pensions/enquiry" element={<ProtectedRoute><PensionEnquiry /></ProtectedRoute>} />
         <Route path="/police" element={<ProtectedRoute><PoliceHub /></ProtectedRoute>} />
         <Route path="/police/identity-verification" element={<ProtectedRoute roles={['police_officer', 'system_administrator']}><Police /></ProtectedRoute>} />
         <Route path="/police/clearance" element={<ProtectedRoute><PoliceClearanceList /></ProtectedRoute>} />

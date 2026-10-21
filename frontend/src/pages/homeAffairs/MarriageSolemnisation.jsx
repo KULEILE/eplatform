@@ -111,7 +111,7 @@ function CitizenView({ t }) {
           emptyTitle={t('common.noResults')}
           columns={[
             { key: 'reference', header: t('applications.reference'), render: (r) => <span className="font-mono text-xs">{r.booking_reference}</span> },
-            { key: 'spouses', header: t('homeAffairs.specialLicenceForm.spouses'), render: (r) => `${r.spouse1_name} & ${r.spouse2_name}` },
+            { key: 'spouses', header: t('homeAffairs.solemnisationForm.spouses'), render: (r) => `${r.spouse1_name} & ${r.spouse2_name}` },
             { key: 'office', header: t('offices.branch'), render: (r) => r.office_name || '—' },
             { key: 'date', header: t('homeAffairs.solemnisationForm.field.requestedDate'), render: (r) => formatDateOnly(r.confirmed_date || r.requested_date) },
             { key: 'status', header: t('common.status'), render: (r) => <StatusBadge status={r.status} /> },
@@ -200,7 +200,7 @@ function OfficerQueue({ t }) {
           columns={[
             { key: 'reference', header: t('applications.reference'), render: (r) => <span className="font-mono text-xs">{r.booking_reference}</span> },
             { key: 'citizen', header: t('common.citizen'), render: (r) => `${r.first_name} ${r.last_name}` },
-            { key: 'spouses', header: t('homeAffairs.specialLicenceForm.spouses'), render: (r) => `${r.spouse1_name} & ${r.spouse2_name}` },
+            { key: 'spouses', header: t('homeAffairs.solemnisationForm.spouses'), render: (r) => `${r.spouse1_name} & ${r.spouse2_name}` },
             { key: 'office', header: t('offices.branch'), render: (r) => r.office_name || '—' },
             { key: 'date', header: t('homeAffairs.solemnisationForm.field.requestedDate'), render: (r) => formatDateOnly(r.confirmed_date || r.requested_date) },
             { key: 'status', header: t('common.status'), render: (r) => <StatusBadge status={r.status} /> },

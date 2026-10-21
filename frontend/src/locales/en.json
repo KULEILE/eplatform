@@ -27,6 +27,7 @@
     "date": "Date",
     "approve": "Approve",
     "reject": "Reject",
+    "respond": "Respond",
     "collect": "Mark as collected",
     "readyForCollection": "Mark ready for collection",
     "requestInformation": "Request more information",
@@ -326,7 +327,8 @@
     "Convicted - Sentenced": "Convicted - Sentenced",
     "Acquitted": "Acquitted",
     "Case Dismissed": "Case Dismissed",
-    "Caution/Diversion": "Caution/Diversion"
+    "Caution/Diversion": "Caution/Diversion",
+    "Paid": "Paid"
   },
   "statusHelp": {
     "Draft": "You haven't submitted this yet.",
@@ -659,40 +661,6 @@
       },
       "child": "Child"
     },
-    "burialOrder": "Burial order",
-    "burialOrderForm": {
-      "intro": "Request the order authorising burial of a citizen whose death has already been registered and approved.",
-      "field": {
-        "deathRecordId": "Deceased (approved death registration)",
-        "deathRecordIdHelp": "Choose from your own approved death registrations.",
-        "deathRecordIdLoading": "Loading your approved death registrations…",
-        "deathRecordIdEmpty": "You have no approved death registrations yet. Register the death first, then come back here.",
-        "placeOfBurial": "Place of burial",
-        "cemeteryOrSite": "Cemetery or site",
-        "plannedBurialDate": "Planned burial date"
-      },
-      "orderNumber": "Order number"
-    },
-    "specialLicence": "Special marriage licence",
-    "specialLicenceForm": {
-      "intro": "Apply for a special marriage licence for a marriage that doesn't fit the standard registration process — for example a foreign-national spouse, an urgent licence, or a minor marrying with consent.",
-      "field": {
-        "spouse1Name": "Your full name",
-        "spouse1Id": "Your permanent identity number",
-        "spouse2Name": "Spouse's full name",
-        "spouse2Nationality": "Spouse's nationality",
-        "spouse2Id": "Spouse's permanent identity number",
-        "specialReason": "Reason the licence is special",
-        "reasonDetails": "Explain your circumstances"
-      },
-      "spouses": "Spouses",
-      "licenceNumber": "Licence number"
-    },
-    "specialLicenceReason": {
-      "foreign": "Foreign national spouse",
-      "urgent": "Urgent / expedited",
-      "minor": "Minor with consent"
-    },
     "solemnisation": "Civil marriage solemnisation",
     "solemnisationForm": {
       "intro": "Book the marriage ceremony itself — a date, branch and officiant — separately from registering a marriage that has already taken place.",
@@ -704,7 +672,8 @@
       },
       "cancelled": "Booking cancelled.",
       "confirm": "Confirm booking",
-      "markCompleted": "Mark ceremony completed"
+      "markCompleted": "Mark ceremony completed",
+      "spouses": "Spouses"
     },
     "marriageOfficers": "Registration of marriage officers",
     "marriageOfficersForm": {
@@ -1098,6 +1067,67 @@
     "employeeCategory": {
       "General Civil Servant": "General Civil Servant (standard retirement age 60)",
       "Uniformed/Disciplined Services": "Uniformed/Disciplined Services — police, soldiers, correctional services (standard retirement age 55)"
+    },
+    "Government Supplier Payment Tracking": "Government Supplier Payment Tracking",
+    "Finance Complaint or Enquiry": "Finance Complaint or Enquiry",
+    "markPaid": "Mark as paid",
+    "supplierPayment": {
+      "title": "Government Supplier Payment Tracking",
+      "intro": "Submit an invoice for a government payment and track its progress.",
+      "field": {
+        "supplierName": "Supplier/business name",
+        "invoiceNumber": "Invoice number",
+        "invoiceAmount": "Invoice amount (LSL)",
+        "invoiceDate": "Invoice date",
+        "evidence": "Invoice document (optional)"
+      }
+    },
+    "complaint": {
+      "title": "Complaints and Enquiries",
+      "intro": "Submit a complaint or an enquiry about a Finance service. You will receive a reference number and an officer's response.",
+      "field": {
+        "complaintText": "Your complaint or enquiry",
+        "evidence": "Supporting document (optional)"
+      },
+      "officerResponseLabel": "Officer's response",
+      "noResponseYet": "No response yet — this will appear here once an officer reviews your submission."
+    },
+    "retirementTracking": {
+      "title": "Retirement Benefits Tracking",
+      "intro": "Track whether your retirement declaration and Civil Service Pension claim have been received and processed, in one place.",
+      "declarationTitle": "Government Employee Retirement Declaration",
+      "claimTitle": "Civil Service Pension Claim",
+      "noDeclaration": "You have not submitted a retirement declaration yet.",
+      "noClaim": "You have not submitted a Civil Service Pension claim yet.",
+      "startDeclaration": "Submit a retirement declaration",
+      "startClaim": "Submit a pension claim",
+      "reasonLabel": "Reason",
+      "submittedOn": "Submitted on"
+    },
+    "publications": {
+      "title": "Budget and Tender Information",
+      "intro": "View published budget documents, and find tender announcements with their requirements.",
+      "budgetDocuments": "Budget documents",
+      "tenderAnnouncements": "Tender announcements",
+      "noPublications": "Nothing published here yet.",
+      "fiscalYear": "Fiscal year",
+      "tenderDeadline": "Submission deadline",
+      "publishedOn": "Published",
+      "createTitle": "Publish a new document",
+      "typeLabel": "Type",
+      "titleLabel": "Title",
+      "descriptionLabel": "Description",
+      "fileLabel": "Document (PDF, PNG or JPG)",
+      "publishAction": "Publish",
+      "deactivate": "Remove from listing",
+      "activate": "Restore to listing",
+      "published": "Published.",
+      "downloadAction": "Download",
+      "inactiveTag": "Not currently listed",
+      "type": {
+        "Budget Document": "Budget Document",
+        "Tender Announcement": "Tender Announcement"
+      }
     }
   },
   "pensions": {
@@ -1110,7 +1140,16 @@
     "Pension Status Enquiry": "Pension Status Enquiry",
     "lifeStatus": "Life status",
     "Pension Age Eligibility Claim": "Pension Age Eligibility Claim",
-    "Civil Service Pension Claim": "Civil Service Pension Claim"
+    "Civil Service Pension Claim": "Civil Service Pension Claim",
+    "enquiry": {
+      "title": "Pension Enquiry and Tracking",
+      "intro": "Ask a question about your pension or retirement benefits and track the response.",
+      "field": {
+        "enquiryText": "Your question"
+      },
+      "officerResponseLabel": "Officer's response",
+      "noResponseYet": "No response yet — this will appear here once an officer reviews your enquiry."
+    }
   },
   "correction": {
     "formTitle": "Request a correction",

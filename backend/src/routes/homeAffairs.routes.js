@@ -105,26 +105,6 @@ router.post('/adoption/:id/resubmit', hac2.resubmitAdoption);
 router.post('/adoption/:id/approve', hac2.approveAdoption);
 router.post('/adoption/:id/reject', hac2.rejectAdoption);
 
-// Issuing burial orders (new service)
-router.post('/burial-order', hac2.requestBurialOrder);
-router.get('/burial-order', hac2.listBurialOrders);
-router.get('/burial-order/:id', hac2.getBurialOrder);
-router.post('/burial-order/:id/start-review', hac2.startReviewBurialOrder);
-router.post('/burial-order/:id/request-information', hac2.requestInformationBurialOrder);
-router.post('/burial-order/:id/resubmit', hac2.resubmitBurialOrder);
-router.post('/burial-order/:id/approve', hac2.approveBurialOrder);
-router.post('/burial-order/:id/reject', hac2.rejectBurialOrder);
-
-// Special marriage licence (new service)
-router.post('/special-marriage-licence', hac2.requestSpecialMarriageLicence);
-router.get('/special-marriage-licence', hac2.listSpecialMarriageLicences);
-router.get('/special-marriage-licence/:id', hac2.getSpecialMarriageLicence);
-router.post('/special-marriage-licence/:id/start-review', hac2.startReviewSpecialLicence);
-router.post('/special-marriage-licence/:id/request-information', hac2.requestInformationSpecialLicence);
-router.post('/special-marriage-licence/:id/resubmit', hac2.resubmitSpecialLicence);
-router.post('/special-marriage-licence/:id/approve', hac2.approveSpecialLicence);
-router.post('/special-marriage-licence/:id/reject', hac2.rejectSpecialLicence);
-
 // Civil marriage solemnisation booking (new service)
 router.post('/marriage-solemnisation', hac2.requestSolemnisationBooking);
 router.get('/marriage-solemnisation', hac2.listSolemnisationBookings);

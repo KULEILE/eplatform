@@ -16,8 +16,6 @@ const SOURCE_ROUTE = {
   death_certificate_requests: () => '/home-affairs/death-certificate-request',
   name_change_requests: () => '/home-affairs/name-change',
   adoption_records: () => '/home-affairs/adoption',
-  burial_order_requests: () => '/home-affairs/burial-order',
-  special_marriage_licence_requests: () => '/home-affairs/special-marriage-licence',
   marriage_solemnisation_bookings: () => '/home-affairs/marriage-solemnisation',
   // Traffic: traffic_records serves 13 different service types, each with its own apply page —
   // there is no single deep link that fits all of them, so this points at the hub instead.
@@ -28,6 +26,11 @@ const SOURCE_ROUTE = {
   driving_test_bookings: () => '/traffic/test-bookings',
   vehicle_inspections: () => '/traffic/inspections',
   transport_operating_permits: () => '/traffic/transport-permits/new',
+  // finance_records now serves 7 service types across several dedicated pages (retirement
+  // declaration, supplier payment tracking, complaints, plus the original generic form) — same
+  // "point at the hub" reasoning as traffic_records/police_reports above.
+  finance_records: () => '/finance',
+  pension_records: () => '/pensions',
 };
 
 export default function ApplicationDetail() {

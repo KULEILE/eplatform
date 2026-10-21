@@ -27,6 +27,7 @@
     "date": "Letsatsi",
     "approve": "Dumella",
     "reject": "Hana",
+    "respond": "Araba",
     "collect": "Tshwaya e nkuwe",
     "readyForCollection": "Tshwaya e loketse ho nkuwa",
     "requestInformation": "Kopa lesedi le leng",
@@ -326,7 +327,8 @@
     "Convicted - Sentenced": "O Fumanwe Molato - O Ahlotswe",
     "Acquitted": "O Lokolotswe Molato",
     "Case Dismissed": "Nyewe e Lahlilwe",
-    "Caution/Diversion": "Temoso/Tsela e Nngwe"
+    "Caution/Diversion": "Temoso/Tsela e Nngwe",
+    "Paid": "E lefilwe"
   },
   "statusHelp": {
     "Draft": "Ha o e so e romele.",
@@ -659,40 +661,6 @@
       },
       "child": "Ngwana"
     },
-    "burialOrder": "Taelo ya Patlo",
-    "burialOrderForm": {
-      "intro": "Kopa taelo e dumellang patlo ya moahi eo lefu la hae le ngodisitsweng le amohetsweng.",
-      "field": {
-        "deathRecordId": "Mofu (ngodiso ya lefu e amohetsweng)",
-        "deathRecordIdHelp": "Kgetha ho tse ding tsa dingodiso tsa hao tsa lefu tse amohetsweng.",
-        "deathRecordIdLoading": "Re laola diingodiso tsa hao tsa lefu tse amohetsweng…",
-        "deathRecordIdEmpty": "Ha o na ngodiso ya lefu e amohetsweng hajwale. Ngodisa lefu pele, mme o kgutlele mona.",
-        "placeOfBurial": "Sebaka sa Patlo",
-        "cemeteryOrSite": "Lebitla kapa Sebaka",
-        "plannedBurialDate": "Letsatsi le Reriweng la Patlo"
-      },
-      "orderNumber": "Nomoro ya Taelo"
-    },
-    "specialLicence": "Tumello e Ikgethang ya Lenyalo",
-    "specialLicenceForm": {
-      "intro": "Kopa tumello e ikgethang ya lenyalo bakeng sa lenyalo le sa lumellaneng le mokgwa o tloaelehileng wa ngodiso — mohlala molekane oa naha e nngwe, tumello e potlakileng, kapa ya monyane ka tumello.",
-      "field": {
-        "spouse1Name": "Lebitso la hau le feletseng",
-        "spouse1Id": "Nomoro ya hau ya boitsebiso",
-        "spouse2Name": "Lebitso la molekane le feletseng",
-        "spouse2Nationality": "Boahi ba molekane",
-        "spouse2Id": "Nomoro ya boitsebiso ya molekane",
-        "specialReason": "Lebaka la hore tumello e ikgethe",
-        "reasonDetails": "Hlalosa boemo ba hau"
-      },
-      "spouses": "Balekane",
-      "licenceNumber": "Nomoro ya Tumello"
-    },
-    "specialLicenceReason": {
-      "foreign": "Molekane oa Naha e Nngwe",
-      "urgent": "E Potlakileng",
-      "minor": "Monyane ka Tumello"
-    },
     "solemnisation": "Kopano ya Lenyalo la Semmuso",
     "solemnisationForm": {
       "intro": "Beka kopano ya lenyalo ka boyona — letsatsi, lekala le motho ea tla etsang kopanelo — ho arohana le ngodiso ya lenyalo le se le etsahetse.",
@@ -704,7 +672,8 @@
       },
       "cancelled": "Beking e hlakolwe.",
       "confirm": "Netefatsa Beking",
-      "markCompleted": "Tshwaya Kopano e Phethelletse"
+      "markCompleted": "Tshwaya Kopano e Phethelletse",
+      "spouses": "Balekane"
     },
     "marriageOfficers": "Ngodiso ya Baetsa-kopano ba Manyalo",
     "marriageOfficersForm": {
@@ -1098,6 +1067,67 @@
     "employeeCategory": {
       "General Civil Servant": "Mosebeletsi wa Mmuso o Tlwaelehileng (dilemo tsa ho tlohela mosebetsi 60)",
       "Uniformed/Disciplined Services": "Ditshebeletso tse Apereng Yunifomo — sepolesa, masole, ditshebeletso tsa tshwaro (dilemo tsa ho tlohela mosebetsi 55)"
+    },
+    "Government Supplier Payment Tracking": "Ho Latela Tefo ya Mofani wa Mmuso",
+    "Finance Complaint or Enquiry": "Pletso kapa Potso ya Ditjhelete",
+    "markPaid": "Tshwaya e lefilwe",
+    "supplierPayment": {
+      "title": "Ho Latela Tefo ya Mofani wa Mmuso",
+      "intro": "Romela invoice bakeng sa tefo ya mmuso mme o latele tswelopele ya yona.",
+      "field": {
+        "supplierName": "Lebitso la mofani/khamphani",
+        "invoiceNumber": "Nomoro ya invoice",
+        "invoiceAmount": "Chelete ya invoice (LSL)",
+        "invoiceDate": "Letsatsi la invoice",
+        "evidence": "Tokomane ya invoice (ha e le teng)"
+      }
+    },
+    "complaint": {
+      "title": "Dipletso le Dipotso",
+      "intro": "Romela pletso kapa potso mabapi le tshebeletso ya Ditjhelete. O tla fumana nomoro ya tshupiso le karabo ya lepolesa.",
+      "field": {
+        "complaintText": "Pletso kapa potso ya hao",
+        "evidence": "Tokomane ya tshehetso (ha e le teng)"
+      },
+      "officerResponseLabel": "Karabo ya ofisiri",
+      "noResponseYet": "Ha ho na karabo ho fihlela jwale — e tla hlaha mona hang ha ofisiri a hlahloba kopo ya hao."
+    },
+    "retirementTracking": {
+      "title": "Ho Latela Melemo ya Ho Tlohela Mosebetsi",
+      "intro": "Latela hore na phatlalatso ya hao ya ho tlohela mosebetsi le kopo ya Pentjhene ya Mosebeletsi wa Mmuso di amohetswe le ho sebetswa, kaofela hammoho.",
+      "declarationTitle": "Phatlalatso ya Ho Tlohela Mosebetsi wa Mmuso",
+      "claimTitle": "Kopo ya Pentjhene ya Mosebeletsi wa Mmuso",
+      "noDeclaration": "Ha o so romele phatlalatso ya ho tlohela mosebetsi.",
+      "noClaim": "Ha o so romele kopo ya Pentjhene ya Mosebeletsi wa Mmuso.",
+      "startDeclaration": "Romela phatlalatso ya ho tlohela mosebetsi",
+      "startClaim": "Romela kopo ya pentjhene",
+      "reasonLabel": "Lebaka",
+      "submittedOn": "E rometswe ka"
+    },
+    "publications": {
+      "title": "Tlhahisoleseding ya Tekanyetso le Ditenta",
+      "intro": "Sheba ditokomane tsa tekanyetso tse phatlaladitsweng, mme o fumane dipapatso tsa ditenta hammoho le ditlhoko tsa tsona.",
+      "budgetDocuments": "Ditokomane tsa tekanyetso",
+      "tenderAnnouncements": "Dipapatso tsa ditenta",
+      "noPublications": "Ha ho letho le phatlaladitsweng mona ho fihlela jwale.",
+      "fiscalYear": "Selemo sa ditjhelete",
+      "tenderDeadline": "Letsatsi la ho qetela la ho romela",
+      "publishedOn": "E phatlaladitswe",
+      "createTitle": "Phatlalatsa tokomane e ntjha",
+      "typeLabel": "Mofuta",
+      "titleLabel": "Sehlooho",
+      "descriptionLabel": "Tlhaloso",
+      "fileLabel": "Tokomane (PDF, PNG kapa JPG)",
+      "publishAction": "Phatlalatsa",
+      "deactivate": "Tlosa lenaneng",
+      "activate": "Kgutlisa lenaneng",
+      "published": "E phatlaladitswe.",
+      "downloadAction": "Khoasolla",
+      "inactiveTag": "Ha e se e thathamisitswe",
+      "type": {
+        "Budget Document": "Tokomane ya Tekanyetso",
+        "Tender Announcement": "Papatso ya Tenta"
+      }
     }
   },
   "pensions": {
@@ -1110,7 +1140,16 @@
     "Pension Status Enquiry": "Potso ya Boemo ba Pentjhene",
     "lifeStatus": "Boemo ba bophelo",
     "Pension Age Eligibility Claim": "Kopo ya Tokelo ya Pensheneng ka Dilemo",
-    "Civil Service Pension Claim": "Kopo ya Pentjhene ya Mosebeletsi wa Mmuso"
+    "Civil Service Pension Claim": "Kopo ya Pentjhene ya Mosebeletsi wa Mmuso",
+    "enquiry": {
+      "title": "Potso le Ho Latela Pentjhene",
+      "intro": "Botsa potso mabapi le pentjhene ya hao kapa melemo ya ho tlohela mosebetsi mme o latele karabo.",
+      "field": {
+        "enquiryText": "Potso ya hao"
+      },
+      "officerResponseLabel": "Karabo ya ofisiri",
+      "noResponseYet": "Ha ho na karabo ho fihlela jwale — e tla hlaha mona hang ha ofisiri a hlahloba potso ya hao."
+    }
   },
   "correction": {
     "formTitle": "Kopa tokiso",
