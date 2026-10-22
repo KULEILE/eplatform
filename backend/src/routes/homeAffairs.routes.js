@@ -75,15 +75,8 @@ router.post('/birth-certificate-reissue/:id/resubmit', hac2.resubmitReissue);
 router.post('/birth-certificate-reissue/:id/approve', hac2.approveReissue);
 router.post('/birth-certificate-reissue/:id/reject', hac2.rejectReissue);
 
-// Death certificate issuance (new service — distinct from death registration)
-router.post('/death-certificate-request', hac2.requestDeathCertificate);
-router.get('/death-certificate-request', hac2.listDeathCertificateRequests);
-router.get('/death-certificate-request/:id', hac2.getDeathCertificateRequest);
-router.post('/death-certificate-request/:id/start-review', hac2.startReviewDeathCertRequest);
-router.post('/death-certificate-request/:id/request-information', hac2.requestInformationDeathCertRequest);
-router.post('/death-certificate-request/:id/resubmit', hac2.resubmitDeathCertRequest);
-router.post('/death-certificate-request/:id/approve', hac2.approveDeathCertRequest);
-router.post('/death-certificate-request/:id/reject', hac2.rejectDeathCertRequest);
+// Death certificate issuance — REMOVED. The certificate is now generated automatically when a
+// death registration is approved (see /death-registration/:id/approve above and migration 058).
 
 // Change/alteration of name or surname (new service)
 router.post('/name-change', hac2.requestNameChange);

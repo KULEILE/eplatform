@@ -710,7 +710,16 @@ async function approveDeath(req, res, next) {
       const { rows } = await client.query('SELECT * FROM death_records WHERE death_record_id = $1 FOR UPDATE', [req.params.id]);
       if (rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Not found.' }); }
       const record = rows[0];
-      await client.query(`UPDATE death_records SET status = 'Approved', handling_officer_id = $1, approved_at = NOW(), updated_at = NOW() WHERE death_record_id = $2`, [req.user.userId, record.death_record_id]);
+      // The certificate is minted in this same step — no separate "Death Certificate Issuance"
+      // request needed any more (that service has been removed; see migration 058). This mirrors
+      // how Birth Certificate already works: the certificate_number is assigned the moment the
+      // underlying record is approved, not on a later, separate ask.
+      const certificateNumber = generateReference('DC');
+      await client.query(
+        `UPDATE death_records SET status = 'Approved', handling_officer_id = $1, approved_at = NOW(),
+            certificate_number = $2, certificate_issued_at = NOW(), updated_at = NOW() WHERE death_record_id = $3`,
+        [req.user.userId, certificateNumber, record.death_record_id]
+      );
       await client.query(`UPDATE citizens SET is_deceased = TRUE, date_of_death = $1, updated_at = NOW() WHERE citizen_id = $2`, [record.date_of_death, record.citizen_id]);
       // Every pension of the deceased stops automatically in this same step — not just a
       // notification for an officer to act on later. 'Rejected' records never took effect and
@@ -741,8 +750,16 @@ async function approveDeath(req, res, next) {
         });
       }
       await client.query('COMMIT');
-      await recordAudit({ userId: req.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'DEATH_REGISTRATION_APPROVED', targetType: 'death_record', targetId: record.death_record_id });
-      res.json({ deathRecordId: record.death_record_id, status: 'Approved' });
+      await recordAudit({ userId: req.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'DEATH_REGISTRATION_APPROVED', targetType: 'death_record', targetId: record.death_record_id, metadata: { certificateNumber } });
+      const { rows: reporterUserRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.reported_by_citizen_id]);
+      if (reporterUserRows[0]) {
+        await createNotification({
+          userId: reporterUserRows[0].user_id, title: 'Death certificate issued',
+          message: `The death registration ${record.registration_reference} has been approved. Certificate number: ${certificateNumber}. You can view and print it now.`,
+          type: 'Approval',
+        });
+      }
+      res.json({ deathRecordId: record.death_record_id, status: 'Approved', certificateNumber });
     } catch (err) {
       await client.query('ROLLBACK'); throw err;
     } finally {
@@ -787,8 +804,11 @@ async function listDeathRegistrations(req, res, next) {
 async function getDeathRegistration(req, res, next) {
   try {
     const { rows } = await db.query(
-      `SELECT dr.*, c.first_name, c.last_name, c.permanent_identity_number, c.date_of_birth
-       FROM death_records dr JOIN citizens c ON c.citizen_id = dr.citizen_id
+      `SELECT dr.*, c.first_name, c.middle_name, c.last_name, c.permanent_identity_number, c.date_of_birth, c.sex,
+              rc.first_name AS reporter_first_name, rc.last_name AS reporter_last_name
+       FROM death_records dr
+       JOIN citizens c ON c.citizen_id = dr.citizen_id
+       JOIN citizens rc ON rc.citizen_id = dr.reported_by_citizen_id
        WHERE dr.death_record_id = $1`,
       [req.params.id]
     );

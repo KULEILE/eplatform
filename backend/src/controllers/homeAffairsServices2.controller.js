@@ -186,159 +186,13 @@ function rejectReissue(req, res, next) {
 }
 
 // ============================================================================================
-// DEATH CERTIFICATE ISSUANCE (distinct from death REGISTRATION, migration 020)
+// DEATH CERTIFICATE ISSUANCE — REMOVED. A death certificate is now generated automatically the
+// moment a Home Affairs officer approves the death registration itself (see approveDeath in
+// homeAffairs.controller.js and migration 058) — there is no longer a separate request to file
+// or a second approval to wait for. The old death_certificate_requests table and any
+// certificate numbers it already issued are left untouched in the database; only this
+// now-redundant request-and-approve workflow has been removed.
 // ============================================================================================
-
-/** POST /api/home-affairs/death-certificate-request  body: { deathRecordId, relationshipToDeceased, reason, details } */
-async function requestDeathCertificate(req, res, next) {
-  try {
-    if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required to request a death certificate.' });
-    const { deathRecordId, relationshipToDeceased, reason, details } = req.body;
-    if (!deathRecordId || !relationshipToDeceased || !reason) return res.status(400).json({ error: 'deathRecordId, relationshipToDeceased and reason are required.' });
-    const { rows: drRows } = await db.query('SELECT * FROM death_records WHERE death_record_id = $1', [deathRecordId]);
-    if (drRows.length === 0) return res.status(404).json({ error: 'Death record not found.' });
-    if (drRows[0].status !== 'Approved') return res.status(409).json({ error: 'This death has not been registered yet — the registration must be approved before a certificate can be requested.' });
-
-    const client = await db.getClient();
-    try {
-      await client.query('BEGIN');
-      const requestReference = generateReference('DCR');
-      const { rows } = await client.query(
-        `INSERT INTO death_certificate_requests (citizen_id, death_record_id, relationship_to_deceased, reason, details, request_reference)
-         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-        [req.user.citizenId, deathRecordId, relationshipToDeceased, reason, details || null, requestReference]
-      );
-      await indexApplication(client, {
-        citizenId: req.user.citizenId, departmentKey: 'home_affairs', serviceType: 'Death Certificate Issuance',
-        referenceNumber: requestReference, sourceTable: 'death_certificate_requests', sourceId: rows[0].death_certificate_request_id, status: 'Submitted',
-      });
-      await client.query('COMMIT');
-      res.status(201).json({ deathCertificateRequest: rows[0] });
-    } catch (err) { await client.query('ROLLBACK'); throw err; } finally { client.release(); }
-  } catch (err) { next(err); }
-}
-
-async function listDeathCertificateRequests(req, res, next) {
-  try {
-    if (isOfficer(req)) {
-      const { rows } = await db.query(
-        `SELECT q.*, c.first_name, c.last_name, dc.first_name AS deceased_first_name, dc.last_name AS deceased_last_name
-         FROM death_certificate_requests q
-         JOIN citizens c ON c.citizen_id = q.citizen_id
-         JOIN death_records dr ON dr.death_record_id = q.death_record_id
-         JOIN citizens dc ON dc.citizen_id = dr.citizen_id
-         ORDER BY q.requested_at DESC`
-      );
-      return res.json({ deathCertificateRequests: rows });
-    }
-    if (!req.user.citizenId) return res.json({ deathCertificateRequests: [] });
-    const { rows } = await db.query(
-      `SELECT q.*, dc.first_name AS deceased_first_name, dc.last_name AS deceased_last_name
-       FROM death_certificate_requests q
-       JOIN death_records dr ON dr.death_record_id = q.death_record_id
-       JOIN citizens dc ON dc.citizen_id = dr.citizen_id
-       WHERE q.citizen_id = $1 ORDER BY q.requested_at DESC`,
-      [req.user.citizenId]
-    );
-    res.json({ deathCertificateRequests: rows });
-  } catch (err) { next(err); }
-}
-
-async function getDeathCertificateRequest(req, res, next) {
-  try {
-    const { rows } = await db.query(
-      `SELECT q.*, c.first_name, c.last_name,
-              dr.date_of_death, dr.place_of_death, dr.registration_reference AS death_registration_reference,
-              dc.first_name AS deceased_first_name, dc.middle_name AS deceased_middle_name, dc.last_name AS deceased_last_name,
-              dc.permanent_identity_number AS deceased_permanent_identity_number, dc.date_of_birth AS deceased_date_of_birth, dc.sex AS deceased_sex
-       FROM death_certificate_requests q
-       JOIN citizens c ON c.citizen_id = q.citizen_id
-       JOIN death_records dr ON dr.death_record_id = q.death_record_id
-       JOIN citizens dc ON dc.citizen_id = dr.citizen_id
-       WHERE q.death_certificate_request_id = $1`,
-      [req.params.id]
-    );
-    if (rows.length === 0) return res.status(404).json({ error: 'Death certificate request not found.' });
-    const record = rows[0];
-    if (!isOfficer(req) && record.citizen_id !== req.user.citizenId) return res.status(403).json({ error: 'You do not have access to this request.' });
-    res.json({ deathCertificateRequest: record });
-  } catch (err) { next(err); }
-}
-
-const transitionDeathCertRequest = buildTransition({ table: 'death_certificate_requests', idColumn: 'death_certificate_request_id', notFoundMessage: 'Death certificate request not found.' });
-
-function startReviewDeathCertRequest(req, res, next) {
-  return transitionDeathCertRequest(req, res, next, {
-    from: 'Submitted', to: 'Under Review',
-    sideEffect: async (client, record) => {
-      await client.query(`UPDATE death_certificate_requests SET status = 'Under Review', updated_at = NOW() WHERE death_certificate_request_id = $1`, [record.death_certificate_request_id]);
-      await syncApplicationStatus(client, { sourceTable: 'death_certificate_requests', sourceId: record.death_certificate_request_id, status: 'Under Review' });
-      return { status: 'Under Review' };
-    },
-  });
-}
-
-function requestInformationDeathCertRequest(req, res, next) {
-  const { reason } = req.body;
-  return transitionDeathCertRequest(req, res, next, {
-    from: ['Under Review'], to: 'Additional Information Required',
-    sideEffect: async (client, record) => {
-      if (!reason) throw Object.assign(new Error('A reason is required.'), { status: 400 });
-      await client.query(`UPDATE death_certificate_requests SET status = 'Additional Information Required', updated_at = NOW() WHERE death_certificate_request_id = $1`, [record.death_certificate_request_id]);
-      await syncApplicationStatus(client, { sourceTable: 'death_certificate_requests', sourceId: record.death_certificate_request_id, status: 'Additional Information Required' });
-      const userRow = (await client.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.citizen_id])).rows[0];
-      if (userRow) await createNotification({ userId: userRow.user_id, title: 'Additional information required', message: `Reference ${record.request_reference}: ${reason}`, type: 'Missing Information' });
-      return { status: 'Additional Information Required' };
-    },
-  });
-}
-
-function resubmitDeathCertRequest(req, res, next) {
-  const { relationshipToDeceased, reason, details } = req.body;
-  return transitionDeathCertRequest(req, res, next, {
-    from: ['Additional Information Required', 'Rejected'], to: 'Under Review', allowOwner: true,
-    sideEffect: async (client, record) => {
-      if (!relationshipToDeceased || !reason) throw Object.assign(new Error('relationshipToDeceased and reason are required.'), { status: 400 });
-      await client.query(
-        `UPDATE death_certificate_requests SET status = 'Under Review', rejection_reason = NULL,
-            relationship_to_deceased = $1, reason = $2, details = $3, updated_at = NOW() WHERE death_certificate_request_id = $4`,
-        [relationshipToDeceased, reason, details || null, record.death_certificate_request_id]
-      );
-      await syncApplicationStatus(client, { sourceTable: 'death_certificate_requests', sourceId: record.death_certificate_request_id, status: 'Under Review', note: 'Citizen resubmitted.' });
-      return { status: 'Under Review' };
-    },
-  });
-}
-
-function approveDeathCertRequest(req, res, next) {
-  return transitionDeathCertRequest(req, res, next, {
-    from: ['Under Review'], to: 'Approved',
-    sideEffect: async (client, record, req2) => {
-      // See migration 049 — approval is what mints the actual certificate (mirrors Burial
-      // Order's order_number, assigned the same way on its own approval).
-      const certificateNumber = generateReference('DC');
-      await client.query(`UPDATE death_certificate_requests SET status = 'Approved', certificate_number = $1, reviewed_by_user_id = $2, reviewed_at = NOW(), updated_at = NOW() WHERE death_certificate_request_id = $3`, [certificateNumber, req2.user.userId, record.death_certificate_request_id]);
-      await syncApplicationStatus(client, { sourceTable: 'death_certificate_requests', sourceId: record.death_certificate_request_id, status: 'Approved', completed: true, changedByUserId: req2.user.userId });
-      await recordAudit({ userId: req2.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'DEATH_CERTIFICATE_APPROVED', targetType: 'death_certificate_request', targetId: record.death_certificate_request_id, metadata: { certificateNumber } });
-      const userRow = (await client.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.citizen_id])).rows[0];
-      if (userRow) await createNotification({ userId: userRow.user_id, title: 'Death certificate issued', message: `Reference ${record.request_reference}. Certificate number: ${certificateNumber}. The certificate is now available to view.`, type: 'Approval' });
-      return { status: 'Approved', extra: { certificateNumber } };
-    },
-  });
-}
-
-function rejectDeathCertRequest(req, res, next) {
-  const { reason } = req.body;
-  return transitionDeathCertRequest(req, res, next, {
-    from: ['Submitted', 'Under Review', 'Additional Information Required'], to: 'Rejected',
-    sideEffect: async (client, record, req2) => {
-      if (!reason) throw Object.assign(new Error('A rejection reason is required.'), { status: 400 });
-      await client.query(`UPDATE death_certificate_requests SET status = 'Rejected', rejection_reason = $1, reviewed_by_user_id = $2, reviewed_at = NOW(), updated_at = NOW() WHERE death_certificate_request_id = $3`, [reason, req2.user.userId, record.death_certificate_request_id]);
-      await syncApplicationStatus(client, { sourceTable: 'death_certificate_requests', sourceId: record.death_certificate_request_id, status: 'Rejected', completed: true, changedByUserId: req2.user.userId, note: reason });
-      return { status: 'Rejected' };
-    },
-  });
-}
 
 // ============================================================================================
 // CHANGE / ALTERATION OF NAME OR SURNAME (formal legal change — distinct from "corrections",
@@ -1044,9 +898,6 @@ function rejectForeignIdentity(req, res, next) {
 module.exports = {
   requestBirthCertificateReissue, listBirthCertificateReissues, getBirthCertificateReissue,
   startReviewReissue, requestInformationReissue, resubmitReissue, approveReissue, rejectReissue,
-
-  requestDeathCertificate, listDeathCertificateRequests, getDeathCertificateRequest,
-  startReviewDeathCertRequest, requestInformationDeathCertRequest, resubmitDeathCertRequest, approveDeathCertRequest, rejectDeathCertRequest,
 
   requestNameChange, listNameChangeRequests, getNameChangeRequest,
   startReviewNameChange, requestInformationNameChange, resubmitNameChange, approveNameChange, rejectNameChange,

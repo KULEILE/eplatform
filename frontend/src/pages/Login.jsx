@@ -34,7 +34,7 @@ export default function Login() {
         <h1 className="mb-6 text-xl font-bold text-slate-900">{t('auth.loginTitle')}</h1>
         {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}
         <form onSubmit={onSubmit} noValidate>
-          <FormField label={t('auth.username')} htmlFor="username" required>
+          <FormField label={t('auth.usernameOrEmail')} htmlFor="username" required help={t('auth.usernameOrEmailHelp')}>
             <input id="username" required autoComplete="username" autoCapitalize="none" className="form-input" value={username} onChange={(e) => setUsername(e.target.value)} />
           </FormField>
           <FormField label={t('auth.password')} htmlFor="password" required>

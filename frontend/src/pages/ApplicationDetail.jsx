@@ -13,7 +13,6 @@ const SOURCE_ROUTE = {
   // These new services (see migrations 037-041) don't have a dedicated :id detail route yet —
   // their workflow page shows the citizen's own full list instead of a single-record view.
   birth_certificate_reissue_requests: () => '/home-affairs/birth-certificate-reissue',
-  death_certificate_requests: () => '/home-affairs/death-certificate-request',
   name_change_requests: () => '/home-affairs/name-change',
   adoption_records: () => '/home-affairs/adoption',
   marriage_solemnisation_bookings: () => '/home-affairs/marriage-solemnisation',

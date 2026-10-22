@@ -39,7 +39,6 @@ import DivorceCertificate from './pages/homeAffairs/DivorceCertificate';
 import DeathRegistration from './pages/homeAffairs/DeathRegistration';
 import NationalIdRenewReplace from './pages/homeAffairs/NationalIdRenewReplace';
 import BirthCertificateReissue from './pages/homeAffairs/BirthCertificateReissue';
-import DeathCertificateRequest from './pages/homeAffairs/DeathCertificateRequest';
 import DeathCertificate from './pages/homeAffairs/DeathCertificate';
 import NameChange from './pages/homeAffairs/NameChange';
 import Adoption from './pages/homeAffairs/Adoption';
@@ -143,7 +142,6 @@ export default function App() {
         <Route path="/home-affairs/death-registration" element={<ProtectedRoute><DeathRegistration /></ProtectedRoute>} />
         <Route path="/home-affairs/national-id/renew-replace" element={<ProtectedRoute><NationalIdRenewReplace /></ProtectedRoute>} />
         <Route path="/home-affairs/birth-certificate-reissue" element={<ProtectedRoute><BirthCertificateReissue /></ProtectedRoute>} />
-        <Route path="/home-affairs/death-certificate-request" element={<ProtectedRoute><DeathCertificateRequest /></ProtectedRoute>} />
         <Route path="/home-affairs/death-certificate/:id" element={<ProtectedRoute><DeathCertificate /></ProtectedRoute>} />
         <Route path="/home-affairs/name-change" element={<ProtectedRoute><NameChange /></ProtectedRoute>} />
         <Route path="/home-affairs/adoption" element={<ProtectedRoute><Adoption /></ProtectedRoute>} />

@@ -195,6 +195,8 @@
     "createAccountTitle": "Create a government account",
     "username": "Username",
     "usernameHelp": "3–50 characters: lowercase letters, numbers, \"_\" or \".\" only. This is what you log in with.",
+    "usernameOrEmail": "Username or email",
+    "usernameOrEmailHelp": "Enter your username, or the email address on your account if you have one.",
     "email": "Email address",
     "emailOptionalHelp": "Optional — you do not need an email to use this system.",
     "phone": "Mobile number",
@@ -215,7 +217,7 @@
     "provisionalNotice": "A provisional account is not a verified identity. It lets you begin a Home Affairs identity process and track it, but most services remain locked until your identity is verified.",
     "provisionalNoticeShort": "Provisional account — identity not yet verified",
     "verifiedNoticeShort": "Verified identity",
-    "loginError": "Invalid username or password.",
+    "loginError": "Invalid username/email or password.",
     "forgotPasswordLink": "Forgot your password?",
     "passwordRequirement": "Must be at least 8 characters.",
     "welcomeBack": "Welcome back",
@@ -597,7 +599,9 @@
       "submitted": "Death registration for {{name}} has been submitted and is awaiting review.",
       "reportedByMe": "Reported by me",
       "reportedBy": "Reported by",
-      "officerIntro": "Review and approve death registrations. Approving marks the citizen record as deceased."
+      "officerIntro": "Review and approve death registrations. Approving marks the citizen record as deceased and issues the death certificate automatically.",
+      "certificate": "Certificate",
+      "viewCertificate": "View certificate"
     },
     "birthCertificateReissue": "Birth certificate reissue",
     "birthCertificateReissueForm": {
@@ -615,26 +619,6 @@
       "Damaged": "Damaged",
       "NeverCollected": "Never collected",
       "Other": "Other"
-    },
-    "deathCertificateRequest": "Death certificate issuance",
-    "deathCertificateRequestForm": {
-      "intro": "Request an official death certificate for a death that has already been registered and approved.",
-      "field": {
-        "deathRecordId": "Deceased (approved death registration)",
-        "deathRecordIdHelp": "Choose from your own approved death registrations.",
-        "deathRecordIdLoading": "Loading your approved death registrations…",
-        "deathRecordIdEmpty": "You have no approved death registrations yet. Register the death first, then come back here.",
-        "relationship": "Your relationship to the deceased",
-        "reason": "Reason for the certificate",
-        "details": "Additional details"
-      },
-      "deceased": "Deceased",
-      "viewCertificate": "View certificate"
-    },
-    "deathCertificateReason": {
-      "estate": "Estate / Inheritance",
-      "insurance": "Insurance claim",
-      "personal": "Personal record"
     },
     "deathCertificateView": {
       "title": "Death Certificate",

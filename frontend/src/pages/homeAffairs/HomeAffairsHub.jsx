@@ -14,7 +14,6 @@ const SERVICES = [
   { key: 'correction', to: '/home-affairs/corrections', icon: '✏️', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'nationalIdRenewReplace', to: '/home-affairs/national-id/renew-replace', icon: '🔄', roles: ['citizen'] },
   { key: 'birthCertificateReissue', to: '/home-affairs/birth-certificate-reissue', icon: '📜', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
-  { key: 'deathCertificateRequest', to: '/home-affairs/death-certificate-request', icon: '🕯️', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'nameChange', to: '/home-affairs/name-change', icon: '🖋️', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'adoption', to: '/home-affairs/adoption', icon: '👨‍👩‍👧', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'solemnisation', to: '/home-affairs/marriage-solemnisation', icon: '⛪', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },

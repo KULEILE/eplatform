@@ -195,6 +195,8 @@
     "createAccountTitle": "Etsa akhaonto ya mmuso",
     "username": "Lebitso la ho kena (username)",
     "usernameHelp": "Ditlhaku tse 3–50: ditlhaku tse nyane, dinomoro, \"_\" kapa \".\" feela. Ke sena seo o tla kenang ka sona.",
+    "usernameOrEmail": "Lebitso la ho kena kapa imeile",
+    "usernameOrEmailHelp": "Kenya lebitso la hao la ho kena, kapa aterese ya imeile e tswalanang le akhaonto ya hao haeba o na le yona.",
     "email": "Aterese ya imeile",
     "emailOptionalHelp": "Ha e hlokahale — ha o hloke imeile ho sebedisa sistimi ena.",
     "phone": "Nomoro ya mohala",
@@ -215,7 +217,7 @@
     "provisionalNotice": "Akhaonto ya nakwana hase boitsebiso bo netefaditsweng. E o dumella ho qala tshebetso ya boitsebiso ya Home Affairs le ho e latela, empa ditshebeletso tse ngata di tla thibelwa ho fihlela boitsebiso ba hao bo netefadiswa.",
     "provisionalNoticeShort": "Akhaonto ya nakwana — boitsebiso ha bo so netefadiswe",
     "verifiedNoticeShort": "Boitsebiso bo netefaditswe",
-    "loginError": "Username kapa password ha di nepahala.",
+    "loginError": "Username/imeile kapa password ha di nepahala.",
     "forgotPasswordLink": "O lebetse password ya hao?",
     "passwordRequirement": "E tlameha ho ba le ditlhaku tse 8 kapa ho feta.",
     "welcomeBack": "Rea o amohela hape",
@@ -597,7 +599,9 @@
       "submitted": "Ngodiso ya lefu bakeng sa {{name}} e rometswe mme e emetse tlhahlobo.",
       "reportedByMe": "Tse tlalehiloeng ke nna",
       "reportedBy": "E tlalehilwe ke",
-      "officerIntro": "Hlahloba mme o dumellane le dingodiso tsa lefu. Ho dumela ho tshwaya rekoto ya moahi e le e hlokahetseng."
+      "officerIntro": "Hlahloba mme o dumellane le dingodiso tsa lefu. Ho dumela ho tshwaya rekoto ya moahi e le e hlokahetseng mme ho ntshe setifikeiti sa lefu ka boitshepelo.",
+      "certificate": "Setifikeiti",
+      "viewCertificate": "Sheba setifikeiti"
     },
     "birthCertificateReissue": "Phetiso ya Setifikeiti sa Tswalo",
     "birthCertificateReissueForm": {
@@ -615,26 +619,6 @@
       "Damaged": "E Senyehile",
       "NeverCollected": "Ha e so ke e nkuwe",
       "Other": "Tse ding"
-    },
-    "deathCertificateRequest": "Phepeliso ya Setifikeiti sa Lefu",
-    "deathCertificateRequestForm": {
-      "intro": "Kopa setifikeiti sa semmuso sa lefu bakeng sa lefu le ngodisitsweng le amohetsweng.",
-      "field": {
-        "deathRecordId": "Mofu (ngodiso ya lefu e amohetsweng)",
-        "deathRecordIdHelp": "Kgetha ho tse ding tsa dingodiso tsa hao tsa lefu tse amohetsweng.",
-        "deathRecordIdLoading": "Re laola diingodiso tsa hao tsa lefu tse amohetsweng…",
-        "deathRecordIdEmpty": "Ha o na ngodiso ya lefu e amohetsweng hajwale. Ngodisa lefu pele, mme o kgutlele mona.",
-        "relationship": "Kamano ya hau le mofu",
-        "reason": "Lebaka la setifikeiti",
-        "details": "Dintlha tse eketsehileng"
-      },
-      "deceased": "Mofu",
-      "viewCertificate": "Sheba setifikeiti"
-    },
-    "deathCertificateReason": {
-      "estate": "Lefa / Bofumanehi",
-      "insurance": "Kopo ya Inshorense",
-      "personal": "Rekoto ya Botho"
     },
     "deathCertificateView": {
       "title": "Setifikeiti sa Lefu",

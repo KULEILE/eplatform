@@ -188,27 +188,36 @@ async function register(req, res, next) {
   }
 }
 
-/** POST /api/auth/login  body: { username, password } */
+/**
+ * POST /api/auth/login  body: { username, password }
+ * `username` here means "whatever the citizen types to identify themselves" — it can be their
+ * actual username, OR, if their account has one on file, their email address. This is so a
+ * citizen who registered before email became optional (or who simply prefers typing their
+ * email) can keep logging in the way they're used to, while username stays the one credential
+ * every account is guaranteed to have. Matching on email is case-insensitive, same as a
+ * username; matching on username is exact (usernames are already stored lowercase — see
+ * normalizeUsername at registration).
+ */
 async function login(req, res, next) {
   try {
-    const username = normalizeUsername(req.body.username);
+    const identifier = normalizeUsername(req.body.username);
     const { password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Username and password are required.' });
+    if (!identifier || !password) return res.status(400).json({ error: 'Username (or email) and password are required.' });
 
     const { rows } = await db.query(
       `SELECT u.*, r.role_key, d.department_key, o.name AS office_name FROM users u
        JOIN roles r ON r.role_id = u.role_id
        LEFT JOIN departments d ON d.department_id = u.department_id
        LEFT JOIN offices o ON o.office_id = u.office_id
-       WHERE u.username = $1`,
-      [username]
+       WHERE u.username = $1 OR LOWER(u.email) = $1`,
+      [identifier]
     );
     const found = rows[0];
-    if (!found) return res.status(401).json({ error: 'Invalid username or password.' });
+    if (!found) return res.status(401).json({ error: 'Invalid username/email or password.' });
     if (found.account_status !== 'Active') return res.status(403).json({ error: `Account is ${found.account_status.toLowerCase()}.` });
 
     const match = await bcrypt.compare(password, found.password_hash);
-    if (!match) return res.status(401).json({ error: 'Invalid username or password.' });
+    if (!match) return res.status(401).json({ error: 'Invalid username/email or password.' });
 
     await db.query('UPDATE users SET last_login_at = NOW() WHERE user_id = $1', [found.user_id]);
     const token = signToken(found.user_id);

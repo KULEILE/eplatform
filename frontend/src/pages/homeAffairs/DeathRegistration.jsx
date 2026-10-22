@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../api/client';
@@ -77,6 +78,12 @@ function CitizenReportForm({ t }) {
             { key: 'name', header: t('homeAffairs.deathForm.deceasedName'), render: (r) => `${r.first_name} ${r.last_name}` },
             { key: 'date_of_death', header: t('homeAffairs.deathForm.dateOfDeath'), render: (r) => formatDateOnly(r.date_of_death) },
             { key: 'status', header: t('common.status'), render: (r) => <StatusBadge status={r.status} /> },
+            {
+              key: 'certificate', header: t('homeAffairs.deathForm.certificate'),
+              render: (r) => (r.status === 'Approved' && r.certificate_number)
+                ? <Link to={`/home-affairs/death-certificate/${r.death_record_id}`} className="text-sm font-medium text-gov-navy hover:underline">{t('homeAffairs.deathForm.viewCertificate')}</Link>
+                : <span className="text-sm text-slate-400">—</span>,
+            },
           ]}
         />
       )}
@@ -125,9 +132,15 @@ function OfficerQueue({ t }) {
           { key: 'status', header: t('common.status'), render: (r) => <StatusBadge status={r.status} /> },
           {
             key: 'actions', header: t('common.actions'),
-            render: (r) => r.status === 'Submitted' ? (
-              <button type="button" disabled={busyId === r.death_record_id} className="text-sm font-medium text-gov-navy hover:underline" onClick={() => approve(r.death_record_id)}>{t('common.approve')}</button>
-            ) : <span className="text-sm text-slate-400">—</span>,
+            render: (r) => {
+              if (r.status === 'Submitted') {
+                return <button type="button" disabled={busyId === r.death_record_id} className="text-sm font-medium text-gov-navy hover:underline" onClick={() => approve(r.death_record_id)}>{t('common.approve')}</button>;
+              }
+              if (r.status === 'Approved' && r.certificate_number) {
+                return <Link to={`/home-affairs/death-certificate/${r.death_record_id}`} className="text-sm font-medium text-gov-navy hover:underline">{t('homeAffairs.deathForm.viewCertificate')}</Link>;
+              }
+              return <span className="text-sm text-slate-400">—</span>;
+            },
           },
         ]}
       />

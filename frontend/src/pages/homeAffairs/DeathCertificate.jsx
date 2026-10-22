@@ -7,17 +7,15 @@ import EmptyState from '../../components/ui/EmptyState';
 import { formatDateOnly } from '../../utils/format';
 
 /**
- * The actual certificate a death certificate request produces, once approved — reached from
- * DeathCertificateRequest.jsx's "View certificate" result link (see the resultFields prop
- * there), the same way BirthCertificateReissue.jsx links back to BirthCertificate.jsx. Approving
- * a death certificate request used to just flip a status with nothing to show for it — see
- * migration 049 and approveDeathCertRequest in homeAffairsServices2.controller.js for where the
- * actual certificate_number now gets minted.
+ * The death certificate, generated automatically the moment an officer approves the death
+ * registration (see approveDeath in homeAffairs.controller.js and migration 058) — there is no
+ * longer a separate "Death Certificate Issuance" request to file first; this page reads the
+ * certificate straight off the death registration record (death_record_id, same id used on
+ * DeathRegistration.jsx).
  *
- * This is read-only: the review/approve/reject workflow stays on DeathCertificateRequest.jsx
- * (built on ServiceWorkflowPage), so there's nothing to act on here — just the issued document,
- * styled the same way as BirthCertificate.jsx (numbered fields, certified statement, registrar
- * signature line) since a death certificate is the same kind of vital-record document.
+ * This is read-only: the report/approve workflow stays on DeathRegistration.jsx. Styled the
+ * same way as BirthCertificate.jsx (numbered fields, certified statement, registrar signature
+ * line) since a death certificate is the same kind of vital-record document.
  */
 export default function DeathCertificate() {
   const { id } = useParams();
@@ -27,8 +25,8 @@ export default function DeathCertificate() {
 
   useEffect(() => {
     setLoadError('');
-    api.get(`/home-affairs/death-certificate-request/${id}`)
-      .then((d) => setCert(d.deathCertificateRequest))
+    api.get(`/home-affairs/death-registration/${id}`)
+      .then((d) => setCert(d.deathRegistration))
       .catch((err) => setLoadError(err.message || t('common.somethingWentWrong')));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -54,7 +52,7 @@ export default function DeathCertificate() {
           icon="⏳"
           title={t('homeAffairs.deathCertificateView.notReadyTitle')}
           message={t('homeAffairs.deathCertificateView.notReadyMessage')}
-          action={<Link to="/home-affairs/death-certificate-request" className="btn-secondary">{t('common.back')}</Link>}
+          action={<Link to="/home-affairs/death-registration" className="btn-secondary">{t('common.back')}</Link>}
         />
       </div>
     );
@@ -62,14 +60,14 @@ export default function DeathCertificate() {
 
   const v = (value) => value || t('homeAffairs.birthCertificateView.notRecorded');
   const fields = [
-    [t('homeAffairs.deathCertificateView.field.idNumber'), v(cert.deceased_permanent_identity_number)],
-    [t('homeAffairs.deathCertificateView.field.name'), `${cert.deceased_first_name} ${cert.deceased_middle_name || ''}`.trim()],
-    [t('homeAffairs.deathCertificateView.field.surname'), cert.deceased_last_name],
-    [t('homeAffairs.deathCertificateView.field.sex'), cert.deceased_sex],
-    [t('homeAffairs.deathCertificateView.field.dateOfBirth'), formatDateOnly(cert.deceased_date_of_birth)],
+    [t('homeAffairs.deathCertificateView.field.idNumber'), v(cert.permanent_identity_number)],
+    [t('homeAffairs.deathCertificateView.field.name'), `${cert.first_name} ${cert.middle_name || ''}`.trim()],
+    [t('homeAffairs.deathCertificateView.field.surname'), cert.last_name],
+    [t('homeAffairs.deathCertificateView.field.sex'), cert.sex],
+    [t('homeAffairs.deathCertificateView.field.dateOfBirth'), formatDateOnly(cert.date_of_birth)],
     [t('homeAffairs.deathCertificateView.field.dateOfDeath'), formatDateOnly(cert.date_of_death)],
     [t('homeAffairs.deathCertificateView.field.placeOfDeath'), v(cert.place_of_death)],
-    [t('homeAffairs.deathCertificateView.field.deathRegistrationReference'), cert.death_registration_reference],
+    [t('homeAffairs.deathCertificateView.field.deathRegistrationReference'), cert.registration_reference],
   ];
 
   return (
@@ -125,14 +123,14 @@ export default function DeathCertificate() {
         </div>
       </div>
 
-      {/* System reference — who requested this particular copy; not part of the certificate's
-          own printed fields, same convention as BirthCertificate.jsx's "parent" box below. */}
+      {/* System reference — who reported this death; not part of the certificate's own printed
+          fields, same convention as BirthCertificate.jsx's "parent" box below. */}
       <div className="card mt-4">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthCertificateView.systemReference')}</p>
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <dt className="text-xs text-slate-500">{t('homeAffairs.deathCertificateView.requestedBy')}</dt>
-            <dd className="font-medium">{cert.first_name} {cert.last_name} ({cert.relationship_to_deceased})</dd>
+            <dd className="font-medium">{cert.reporter_first_name} {cert.reporter_last_name}</dd>
           </div>
         </dl>
       </div>
