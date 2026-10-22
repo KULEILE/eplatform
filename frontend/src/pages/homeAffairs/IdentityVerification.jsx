@@ -262,7 +262,7 @@ function OfficerQueue({ t }) {
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="font-mono text-xs text-slate-400">{r.reference_number}</p>
-                    <p className="text-sm text-slate-500">{t('homeAffairs.identityVerificationQueue.applicant')}: <span className="font-medium text-slate-700">{r.applicant_email}</span>{r.applicant_phone ? ` · ${r.applicant_phone}` : ''}</p>
+                    <p className="text-sm text-slate-500">{t('homeAffairs.identityVerificationQueue.applicant')}: <span className="font-medium text-slate-700">{r.applicant_email || r.applicant_username}</span>{r.applicant_phone ? ` · ${r.applicant_phone}` : ''}</p>
                   </div>
                   <StatusBadge status={r.status} />
                 </div>

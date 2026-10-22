@@ -96,7 +96,7 @@ async function listUsers(req, res, next) {
   try {
     const scopedToOffice = req.user.roleKey === 'branch_admin' ? req.user.officeId : null;
     const { rows } = await db.query(
-      `SELECT u.user_id, u.email, u.phone, u.account_status, u.is_provisional, u.must_change_password,
+      `SELECT u.user_id, u.username, u.email, u.phone, u.account_status, u.is_provisional, u.must_change_password,
               u.last_login_at, u.created_at, r.role_key, r.display_name AS role_name,
               d.name AS department_name, o.name AS office_name, dist.name AS district_name,
               c.first_name, c.last_name, appointer.email AS appointed_by_email
@@ -126,11 +126,17 @@ async function listUsers(req, res, next) {
  * Either way, the account is created with a server-generated temporary password and
  * must_change_password = TRUE — the employee is forced to set their own password at first login.
  */
+const USERNAME_RE = /^[a-z0-9_.]{3,50}$/;
+
 async function createUser(req, res, next) {
   try {
     const { email, phone, roleKey } = req.body;
     let { departmentKey, officeId } = req.body;
-    if (!email || !roleKey) return res.status(400).json({ error: 'email and roleKey are required.' });
+    const username = (req.body.username || '').trim().toLowerCase();
+    if (!username || !roleKey) return res.status(400).json({ error: 'username and roleKey are required.' });
+    if (!USERNAME_RE.test(username)) {
+      return res.status(400).json({ error: 'Username must be 3–50 characters, using only lowercase letters, numbers, "_" or ".".' });
+    }
 
     const isBranchAdmin = req.user.roleKey === 'branch_admin';
     const isOfficerRole = Object.prototype.hasOwnProperty.call(OFFICER_ROLE_DEPARTMENT, roleKey);
@@ -171,15 +177,19 @@ async function createUser(req, res, next) {
       officeIdValidated = officeRows[0].office_id;
     }
 
-    const { rows: existingEmail } = await db.query('SELECT 1 FROM users WHERE email = $1', [email]);
-    if (existingEmail.length > 0) return res.status(409).json({ error: 'An account with this email already exists.' });
+    const { rows: existingUsername } = await db.query('SELECT 1 FROM users WHERE username = $1', [username]);
+    if (existingUsername.length > 0) return res.status(409).json({ error: 'That username is already taken.' });
+    if (email) {
+      const { rows: existingEmail } = await db.query('SELECT 1 FROM users WHERE email = $1', [email]);
+      if (existingEmail.length > 0) return res.status(409).json({ error: 'An account with this email already exists.' });
+    }
 
     const tempPassword = generateTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, 10);
     const { rows } = await db.query(
-      `INSERT INTO users (email, phone, password_hash, role_id, department_id, office_id, account_status, must_change_password, appointed_by_user_id)
-       VALUES ($1,$2,$3,$4,$5,$6,'Active', TRUE, $7) RETURNING user_id, email`,
-      [email, phone || null, passwordHash, roleRows[0].role_id, departmentId, officeIdValidated, req.user.userId]
+      `INSERT INTO users (username, email, phone, password_hash, role_id, department_id, office_id, account_status, must_change_password, appointed_by_user_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'Active', TRUE, $8) RETURNING user_id, username, email`,
+      [username, email || null, phone || null, passwordHash, roleRows[0].role_id, departmentId, officeIdValidated, req.user.userId]
     );
     await recordAudit({ userId: req.user.userId, departmentId, action: 'USER_CREATED', targetType: 'user', targetId: rows[0].user_id, metadata: { roleKey, departmentKey, officeId: officeIdValidated } });
     await createNotification({

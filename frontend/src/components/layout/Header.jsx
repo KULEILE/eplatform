@@ -103,6 +103,8 @@ export default function Header() {
           </div>
           <div className="flex items-center gap-4 text-white/80">
             <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white hover:underline">{t('common.help')}</a>
+            <a href="#" onClick={(e) => e.preventDefault()} className="hidden hover:text-white hover:underline sm:inline">{t('common.aboutUs')}</a>
+            <a href="#" onClick={(e) => e.preventDefault()} className="hidden hover:text-white hover:underline sm:inline">{t('common.contact')}</a>
             <div className="flex overflow-hidden rounded border border-white/25">
               {['en', 'st'].map((lng) => (
                 <button
@@ -243,7 +245,7 @@ export default function Header() {
                   className="flex items-center gap-1.5 rounded-full border border-white/25 bg-white/5 py-1 pl-1.5 pr-2.5 text-sm font-medium text-white hover:bg-white/10"
                 >
                   <UserCircleIcon className="h-6 w-6" strokeWidth={1.5} />
-                  <span className="hidden sm:inline">{user.email.split('@')[0]}</span>
+                  <span className="hidden sm:inline">{user.username}</span>
                   <ChevronDownIcon className="h-3.5 w-3.5" />
                 </button>
                 {menuOpen && (

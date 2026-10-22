@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const db = require('../config/db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-secret-change-me';
@@ -15,6 +16,15 @@ async function requireAuth(req, res, next) {
   }
   try {
     const payload = jwt.verify(token, JWT_SECRET);
+    // A password-reset token (see signResetToken below) is signed with this same secret, so it
+    // is a VALID jwt — but it carries a `purpose` claim a normal login token never has, and must
+    // never be accepted as a session here. Without this check, a reset token (which only ever
+    // appears in the forgot-password flow) could be used to call any ordinary API route as that
+    // user for its whole 15-minute life, which defeats the point of it being a separate, narrow
+    // credential.
+    if (payload.purpose) {
+      return res.status(401).json({ error: 'Invalid or expired session.' });
+    }
     // Re-check account status on every request so a suspended account is blocked immediately.
     const { rows } = await db.query(
       `SELECT u.user_id, u.account_status, u.citizen_id, u.is_provisional, u.is_foreign_national, u.preferred_language,
@@ -55,4 +65,43 @@ function signToken(userId) {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '8h' });
 }
 
-module.exports = { requireAuth, signToken, JWT_SECRET };
+/** A short fingerprint of a password hash — just enough to tell "still the same password" from
+ *  "this password has since changed", never enough to help reconstruct the real hash. */
+function passwordFingerprint(passwordHash) {
+  return crypto.createHash('sha256').update(passwordHash).digest('hex').slice(0, 16);
+}
+
+/**
+ * A password-reset token is deliberately NOT a login token: it carries purpose: 'password_reset'
+ * and expires in 15 minutes, so even if one leaked it could never be used to call any ordinary
+ * API route (requireAuth above refuses any token carrying a `purpose`), only the one reset-
+ * password step it was created for. It also carries a fingerprint of the account's CURRENT
+ * password hash at the moment it was issued — there is no server-side token store to revoke it
+ * from otherwise, so this is what stops the same token being used twice: the first successful
+ * reset changes the password hash, so the fingerprint inside the (now old) token stops matching,
+ * and a replay of it is refused even though the token itself is still validly signed and
+ * unexpired. See auth.controller.js's forgotPasswordVerify / forgotPasswordReset.
+ */
+function signResetToken(userId, currentPasswordHash) {
+  return jwt.sign(
+    { userId, purpose: 'password_reset', pwv: passwordFingerprint(currentPasswordHash) },
+    JWT_SECRET,
+    { expiresIn: '15m' }
+  );
+}
+
+/** Returns { userId, pwv } if the token is a valid, unexpired password-reset token — otherwise null.
+ *  The caller (forgotPasswordReset) must still compare pwv against the account's CURRENT password
+ *  hash fingerprint before trusting it — this function only checks the token's own signature and
+ *  shape, not whether it has already been used. */
+function verifyResetToken(token) {
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (payload.purpose !== 'password_reset' || !payload.pwv) return null;
+    return { userId: payload.userId, pwv: payload.pwv };
+  } catch (err) {
+    return null;
+  }
+}
+
+module.exports = { requireAuth, signToken, signResetToken, verifyResetToken, passwordFingerprint, JWT_SECRET };

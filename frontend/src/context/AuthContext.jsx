@@ -22,8 +22,8 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { loadMe(); }, [loadMe]);
 
-  const login = useCallback(async (email, password) => {
-    const { token, user: u } = await api.post('/auth/login', { email, password });
+  const login = useCallback(async (username, password) => {
+    const { token, user: u } = await api.post('/auth/login', { username, password });
     setToken(token);
     setUser(u);
     return u;

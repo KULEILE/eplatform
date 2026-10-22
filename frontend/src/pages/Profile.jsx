@@ -33,7 +33,8 @@ export default function Profile() {
       <div className="card mb-4">
         <h2 className="mb-3 font-semibold text-slate-800">Account</h2>
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div><dt className="text-xs text-slate-500">{t('auth.email')}</dt><dd className="font-medium">{user.email}</dd></div>
+          <div><dt className="text-xs text-slate-500">{t('auth.username')}</dt><dd className="font-medium">{user.username}</dd></div>
+          <div><dt className="text-xs text-slate-500">{t('auth.email')}</dt><dd className="font-medium">{user.email || '—'}</dd></div>
           <div><dt className="text-xs text-slate-500">{t('auth.phone')}</dt><dd className="font-medium">{user.phone || '—'}</dd></div>
           <div><dt className="text-xs text-slate-500">Role</dt><dd className="font-medium">{user.roleKey.replace(/_/g, ' ')}</dd></div>
           {user.departmentKey && <div><dt className="text-xs text-slate-500">{t('applications.department')}</dt><dd className="font-medium">{t(`departments.${user.departmentKey}`)}</dd></div>}

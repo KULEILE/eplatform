@@ -29,10 +29,10 @@ export default function AdminUsers() {
   const [users, setUsers] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [offices, setOffices] = useState([]);
-  const [form, setForm] = useState({ email: '', phone: '', roleKey: isBranchAdmin ? DEPT_FOR_ROLE_KEY(user.departmentKey) : 'branch_admin', departmentKey: '', officeId: '' });
+  const [form, setForm] = useState({ username: '', email: '', phone: '', roleKey: isBranchAdmin ? DEPT_FOR_ROLE_KEY(user.departmentKey) : 'branch_admin', departmentKey: '', officeId: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [created, setCreated] = useState(null); // { email, temporaryPassword }
+  const [created, setCreated] = useState(null); // { username, email, temporaryPassword }
   const [copied, setCopied] = useState(false);
 
   function DEPT_FOR_ROLE_KEY(deptKey) {
@@ -61,15 +61,15 @@ export default function AdminUsers() {
     setCreated(null);
     setBusy(true);
     try {
-      const payload = { email: form.email, phone: form.phone || undefined, roleKey: form.roleKey };
+      const payload = { username: form.username, email: form.email || undefined, phone: form.phone || undefined, roleKey: form.roleKey };
       if (!isBranchAdmin) {
         payload.departmentKey = form.roleKey === 'branch_admin' ? form.departmentKey : DEPT_FOR_ROLE[form.roleKey];
         payload.officeId = form.officeId || undefined;
       }
       const result = await api.post('/admin/users', payload);
-      setCreated({ email: result.user.email, temporaryPassword: result.temporaryPassword });
+      setCreated({ username: result.user.username, email: result.user.email, temporaryPassword: result.temporaryPassword });
       setCopied(false);
-      setForm((f) => ({ ...f, email: '', phone: '', officeId: '' }));
+      setForm((f) => ({ ...f, username: '', email: '', phone: '', officeId: '' }));
       load();
     } catch (err) {
       setError(err.message);
@@ -103,10 +103,13 @@ export default function AdminUsers() {
         {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <FormField label={t('auth.email')} htmlFor="email" required>
-            <input id="email" type="email" required className="form-input" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+          <FormField label={t('auth.username')} htmlFor="username" required help={t('auth.usernameHelp')}>
+            <input id="username" required autoCapitalize="none" className="form-input" value={form.username} onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))} />
           </FormField>
-          <FormField label={t('auth.phone')} htmlFor="phone">
+          <FormField label={t('auth.email')} htmlFor="email" help={t('common.optional')}>
+            <input id="email" type="email" className="form-input" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+          </FormField>
+          <FormField label={t('auth.phone')} htmlFor="phone" help={t('common.optional')}>
             <input id="phone" className="form-input" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
           </FormField>
 
@@ -149,7 +152,7 @@ export default function AdminUsers() {
 
       {created && (
         <div className="card mb-8 border-2 border-emerald-200 bg-emerald-50">
-          <p className="mb-2 text-sm font-semibold text-emerald-800">{t('admin.accountCreatedTitle', { email: created.email })}</p>
+          <p className="mb-2 text-sm font-semibold text-emerald-800">{t('admin.accountCreatedTitle', { username: created.username })}</p>
           <p className="mb-3 text-xs text-emerald-700">{t('admin.accountCreatedHelp')}</p>
           <div className="flex items-center gap-2">
             <code className="flex-1 rounded-md bg-white px-3 py-2 font-mono text-sm text-slate-800 ring-1 ring-emerald-200">{created.temporaryPassword}</code>
@@ -166,7 +169,8 @@ export default function AdminUsers() {
           rowKey="user_id"
           rows={users}
           columns={[
-            { key: 'email', header: t('auth.email') },
+            { key: 'username', header: t('auth.username') },
+            { key: 'email', header: t('auth.email'), render: (r) => r.email || '—' },
             { key: 'role_name', header: t('admin.role') },
             { key: 'department_name', header: t('admin.department'), render: (r) => r.department_name || '—' },
             { key: 'office_name', header: t('offices.branch'), render: (r) => r.office_name || '—' },

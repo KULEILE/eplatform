@@ -123,61 +123,85 @@ async function main() {
   // --- users (portal accounts) ---------------------------------------------------------------
   const pwHash = await hash(DEMO_PASSWORD);
 
+  // Demo accounts log in with username + password now (Stage 2) — email stays only as an
+  // optional reference field. A couple of demo citizens (thabo, teboho) also get the two
+  // security questions a real citizen would set at registration, so the "forgot password" flow
+  // has something real to demonstrate; the rest skip it, same as any account created before this
+  // stage would until its owner sets them (there's no self-service way to add them after the
+  // fact yet — a citizen whose account predates this stage would need a system administrator's
+  // help to recover a forgotten password, exactly like before this stage existed).
   async function makeUser({
-    citizenKey = null, email, phone, roleKey, deptKey = null, officeKey = null,
+    citizenKey = null, username, email, phone, roleKey, deptKey = null, officeKey = null,
     provisional = false, lang = 'en', mustChangePassword = false, appointedBy = null, password = null,
+    securityAnswers = null,
   }) {
     const hashToUse = password ? await hash(password) : pwHash;
     const { rows } = await client.query(
-      `INSERT INTO users (citizen_id, email, phone, password_hash, role_id, department_id, office_id,
+      `INSERT INTO users (citizen_id, username, email, phone, password_hash, role_id, department_id, office_id,
                            is_provisional, preferred_language, account_status, must_change_password, appointed_by_user_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'Active',$10,$11) RETURNING user_id`,
-      [citizenKey ? cid[citizenKey] : null, email, phone, hashToUse, roleId[roleKey],
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'Active',$11,$12) RETURNING user_id`,
+      [citizenKey ? cid[citizenKey] : null, username, email, phone, hashToUse, roleId[roleKey],
        deptKey ? deptId[deptKey] : null, officeKey ? officeId[officeKey] : null, provisional, lang,
        mustChangePassword, appointedBy]
     );
-    return rows[0].user_id;
+    const newUserId = rows[0].user_id;
+    if (securityAnswers) {
+      for (const [questionKey, answer] of Object.entries(securityAnswers)) {
+        const answerHash = await hash(answer.trim().toLowerCase());
+        await client.query(
+          'INSERT INTO user_security_answers (user_id, question_key, answer_hash) VALUES ($1,$2,$3)',
+          [newUserId, questionKey, answerHash]
+        );
+      }
+    }
+    return newUserId;
   }
 
   const uid = {};
-  uid.thabo = await makeUser({ citizenKey: 'thabo', email: 'thabo.mokoena@example.ls', phone: '+26658123456', roleKey: 'citizen' });
-  uid.teboho = await makeUser({ citizenKey: 'teboho', email: 'teboho.ntsane@example.ls', phone: '+26658223344', roleKey: 'citizen' });
-  uid.litsoanelo = await makeUser({ citizenKey: 'litsoanelo', email: 'litsoanelo.mahao@example.ls', phone: '+26658556677', roleKey: 'citizen', lang: 'st' });
-  uid.karabo = await makeUser({ citizenKey: 'karabo', email: 'karabo.foso@example.ls', phone: '+26658334455', roleKey: 'citizen' });
+  uid.thabo = await makeUser({
+    citizenKey: 'thabo', username: 'thabo', email: 'thabo.mokoena@example.ls', phone: '+26658123456', roleKey: 'citizen',
+    securityAnswers: { mothersMaidenName: 'Mokoena', firstSchool: 'Maseru Primary' },
+  });
+  uid.teboho = await makeUser({
+    citizenKey: 'teboho', username: 'teboho', email: 'teboho.ntsane@example.ls', phone: '+26658223344', roleKey: 'citizen',
+    securityAnswers: { firstPetName: 'Spot', birthVillage: 'Teyateyaneng' },
+  });
+  uid.litsoanelo = await makeUser({ citizenKey: 'litsoanelo', username: 'litsoanelo', email: 'litsoanelo.mahao@example.ls', phone: '+26658556677', roleKey: 'citizen', lang: 'st' });
+  uid.karabo = await makeUser({ citizenKey: 'karabo', username: 'karabo', email: 'karabo.foso@example.ls', phone: '+26658334455', roleKey: 'citizen' });
   // Provisional account: no verified citizen record linked yet (Option B in the registration flow)
-  uid.provisional = await makeUser({ email: 'palesa.new@example.ls', phone: '+26658998877', roleKey: 'citizen', provisional: true });
+  uid.provisional = await makeUser({ username: 'palesa', email: 'palesa.new@example.ls', phone: '+26658998877', roleKey: 'citizen', provisional: true });
 
   // System Administrator (head office) — appoints Branch Administrators.
-  uid.admin = await makeUser({ email: 'admin@gov.ls', phone: '+26622110000', roleKey: 'system_administrator' });
+  uid.admin = await makeUser({ username: 'admin', email: 'admin@gov.ls', phone: '+26622110000', roleKey: 'system_administrator' });
 
   // Branch Administrators — appointed by the System Administrator, one per branch shown here.
   // They in turn create the officer accounts for their own branch (see uid.officerHomeAffairs below).
   uid.branchAdminHomeAffairsMaseru = await makeUser({
-    email: 'branchadmin.homeaffairs.maseru@gov.ls', phone: '+26622110010', roleKey: 'branch_admin',
+    username: 'branchadmin_homeaffairs_maseru', email: 'branchadmin.homeaffairs.maseru@gov.ls', phone: '+26622110010', roleKey: 'branch_admin',
     deptKey: 'home_affairs', officeKey: 'Maseru Home Affairs Office', appointedBy: uid.admin,
   });
   uid.branchAdminHomeAffairsLeribe = await makeUser({
-    email: 'branchadmin.homeaffairs.leribe@gov.ls', phone: '+26622110011', roleKey: 'branch_admin',
+    username: 'branchadmin_homeaffairs_leribe', email: 'branchadmin.homeaffairs.leribe@gov.ls', phone: '+26622110011', roleKey: 'branch_admin',
     deptKey: 'home_affairs', officeKey: 'Leribe Home Affairs Office', appointedBy: uid.admin,
   });
 
   // Officers — appointed by their branch's Branch Administrator (not directly by the System
   // Administrator), matching the devolved onboarding model.
   uid.officerHomeAffairs = await makeUser({
-    email: 'officer.homeaffairs@gov.ls', phone: '+26622110001', roleKey: 'home_affairs_officer',
+    username: 'officer_homeaffairs', email: 'officer.homeaffairs@gov.ls', phone: '+26622110001', roleKey: 'home_affairs_officer',
     deptKey: 'home_affairs', officeKey: 'Maseru Home Affairs Office', appointedBy: uid.branchAdminHomeAffairsMaseru,
   });
-  uid.officerTraffic  = await makeUser({ email: 'officer.traffic@gov.ls',  phone: '+26622110002', roleKey: 'traffic_officer',  deptKey: 'traffic',  officeKey: 'Maseru Traffic Office', appointedBy: uid.admin });
-  uid.officerFinance  = await makeUser({ email: 'officer.finance@gov.ls',  phone: '+26622110003', roleKey: 'finance_officer',  deptKey: 'finance',  officeKey: 'Maseru Finance Office', appointedBy: uid.admin });
-  uid.officerPensions = await makeUser({ email: 'officer.pensions@gov.ls', phone: '+26622110004', roleKey: 'pensions_officer', deptKey: 'pensions', officeKey: 'Maseru Pensions Office', appointedBy: uid.admin });
-  uid.officerPolice   = await makeUser({ email: 'officer.police@gov.ls',  phone: '+26622110005', roleKey: 'police_officer',   deptKey: 'police',   officeKey: 'Maseru Central Police Station', appointedBy: uid.admin });
-  uid.officerPassport = await makeUser({ email: 'officer.passport@gov.ls', phone: '+26622110006', roleKey: 'passport_officer', deptKey: 'passport', officeKey: 'Maseru Passport Office', appointedBy: uid.admin });
+  uid.officerTraffic  = await makeUser({ username: 'officer_traffic',  email: 'officer.traffic@gov.ls',  phone: '+26622110002', roleKey: 'traffic_officer',  deptKey: 'traffic',  officeKey: 'Maseru Traffic Office', appointedBy: uid.admin });
+  uid.officerFinance  = await makeUser({ username: 'officer_finance',  email: 'officer.finance@gov.ls',  phone: '+26622110003', roleKey: 'finance_officer',  deptKey: 'finance',  officeKey: 'Maseru Finance Office', appointedBy: uid.admin });
+  uid.officerPensions = await makeUser({ username: 'officer_pensions', email: 'officer.pensions@gov.ls', phone: '+26622110004', roleKey: 'pensions_officer', deptKey: 'pensions', officeKey: 'Maseru Pensions Office', appointedBy: uid.admin });
+  uid.officerPolice   = await makeUser({ username: 'officer_police',   email: 'officer.police@gov.ls',  phone: '+26622110005', roleKey: 'police_officer',   deptKey: 'police',   officeKey: 'Maseru Central Police Station', appointedBy: uid.admin });
+  uid.officerPassport = await makeUser({ username: 'officer_passport', email: 'officer.passport@gov.ls', phone: '+26622110006', roleKey: 'passport_officer', deptKey: 'passport', officeKey: 'Maseru Passport Office', appointedBy: uid.admin });
 
   // A freshly onboarded officer, still on their temporary password — demonstrates the forced
   // change-password-at-first-login flow described in the assignment. Password is intentionally
   // NOT the shared demo password so it's clearly a one-time credential to be changed.
   uid.officerHomeAffairsLeribeNew = await makeUser({
-    email: 'new.officer.homeaffairs.leribe@gov.ls', phone: '+26622110012', roleKey: 'home_affairs_officer',
+    username: 'officer_homeaffairs_leribe_new', email: 'new.officer.homeaffairs.leribe@gov.ls', phone: '+26622110012', roleKey: 'home_affairs_officer',
     deptKey: 'home_affairs', officeKey: 'Leribe Home Affairs Office', appointedBy: uid.branchAdminHomeAffairsLeribe,
     mustChangePassword: true, password: 'TempPass2026!',
   });
@@ -488,7 +512,8 @@ async function main() {
 
   console.log('Seed complete.');
   console.log(`Demo password for all standard seeded accounts: ${DEMO_PASSWORD}`);
-  console.log('Forced-password-change demo account: new.officer.homeaffairs.leribe@gov.ls / TempPass2026!  (will require a password change at first login)');
+  console.log('Log in with the username shown above for each account (e.g. "thabo", "admin", "officer_homeaffairs") and this password.');
+  console.log('Forced-password-change demo account: username officer_homeaffairs_leribe_new / TempPass2026!  (will require a password change at first login)');
   await client.end();
 }
 

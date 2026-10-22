@@ -127,7 +127,7 @@ async function listIdentityRequests(req, res, next) {
     if (['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey)) {
       const { status } = req.query;
       const { rows } = await db.query(
-        `SELECT r.*, u.email AS applicant_email, u.phone AS applicant_phone,
+        `SELECT r.*, u.username AS applicant_username, u.email AS applicant_email, u.phone AS applicant_phone,
                 c.citizen_id AS candidate_citizen_id, c.first_name AS candidate_first_name,
                 c.middle_name AS candidate_middle_name, c.last_name AS candidate_last_name,
                 c.date_of_birth AS candidate_date_of_birth, c.sex AS candidate_sex,
