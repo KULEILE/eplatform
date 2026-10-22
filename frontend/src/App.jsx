@@ -6,6 +6,7 @@ import ProtectedRoute from './components/layout/ProtectedRoute';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import BirthCertificateApplication from './pages/BirthCertificateApplication';
 import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import Departments from './pages/Departments';
@@ -27,7 +28,6 @@ import NationalIdApply from './pages/homeAffairs/NationalIdApply';
 import NationalIdDetail from './pages/homeAffairs/NationalIdDetail';
 import NationalIdList from './pages/homeAffairs/NationalIdList';
 import Corrections from './pages/homeAffairs/Corrections';
-import IdentityVerification from './pages/homeAffairs/IdentityVerification';
 import MarriageRegistrationApply from './pages/homeAffairs/MarriageRegistrationApply';
 import MarriageRegistrationList from './pages/homeAffairs/MarriageRegistrationList';
 import MarriageRegistrationDetail from './pages/homeAffairs/MarriageRegistrationDetail';
@@ -108,6 +108,7 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/apply-for-birth-certificate" element={<BirthCertificateApplication />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
         <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
@@ -130,7 +131,6 @@ export default function App() {
         <Route path="/home-affairs/national-id/apply" element={<ProtectedRoute><NationalIdApply /></ProtectedRoute>} />
         <Route path="/home-affairs/national-id/:id" element={<ProtectedRoute><NationalIdDetail /></ProtectedRoute>} />
         <Route path="/home-affairs/corrections" element={<ProtectedRoute><Corrections /></ProtectedRoute>} />
-        <Route path="/home-affairs/identity-verification" element={<ProtectedRoute><IdentityVerification /></ProtectedRoute>} />
         <Route path="/home-affairs/marriage-registration" element={<ProtectedRoute><MarriageRegistrationList /></ProtectedRoute>} />
         <Route path="/home-affairs/marriage-registration/apply" element={<ProtectedRoute><MarriageRegistrationApply /></ProtectedRoute>} />
         <Route path="/home-affairs/marriage-registration/:id" element={<ProtectedRoute><MarriageRegistrationDetail /></ProtectedRoute>} />

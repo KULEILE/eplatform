@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { api } from '../api/client';
@@ -12,11 +12,17 @@ export default function Register() {
   const { register } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [step, setStep] = useState('choice'); // choice -> verify -> accountForm  |  choice -> accountForm (provisional/foreign)
-  const [mode, setMode] = useState(null); // 'existing' | 'provisional' | 'foreign'
-  const [permanentIdentityNumber, setPin] = useState('');
-  const [dateOfBirth, setDob] = useState('');
+  // Arriving here from the public birth certificate application (see
+  // BirthCertificateApplication.jsx) with a brand new permanent identity number — skip straight
+  // to verifying it, since Home Affairs just created the matching record a moment ago.
+  const prefill = location.state || {};
+
+  const [step, setStep] = useState(prefill.prefillPin ? 'verify' : 'choice'); // choice -> verify -> accountForm  |  choice -> accountForm (foreign)
+  const [mode, setMode] = useState(prefill.prefillPin ? 'existing' : null); // 'existing' | 'foreign'
+  const [permanentIdentityNumber, setPin] = useState(prefill.prefillPin || '');
+  const [dateOfBirth, setDob] = useState(prefill.prefillDob || '');
   const [verifiedCitizen, setVerifiedCitizen] = useState(null);
   const [verifyError, setVerifyError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -46,6 +52,16 @@ export default function Register() {
       setBusy(false);
     }
   }
+
+  // Auto-verify once, the moment we arrive here with a freshly-issued permanent identity number
+  // (see the prefill comment above) — the citizen shouldn't have to re-type what the birth
+  // certificate application just gave them.
+  useEffect(() => {
+    if (prefill.prefillPin && prefill.prefillDob) {
+      onVerify({ preventDefault() {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function onCreateAccount(e) {
     e.preventDefault();
@@ -87,7 +103,7 @@ export default function Register() {
               <button type="button" className="btn-primary" onClick={() => { setMode('existing'); setStep('verify'); }}>
                 {t('auth.haveIdentityNumber')}
               </button>
-              <button type="button" className="btn-secondary" onClick={() => { setMode('provisional'); setStep('accountForm'); }}>
+              <button type="button" className="btn-secondary" onClick={() => navigate('/apply-for-birth-certificate')}>
                 {t('auth.needToRegister')}
               </button>
               <button type="button" className="btn-secondary" onClick={() => { setMode('foreign'); setStep('accountForm'); }}>
@@ -119,9 +135,6 @@ export default function Register() {
               <p className="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-gov-green">
                 ✓ {t('auth.identityVerified')}: {verifiedCitizen.firstName} {verifiedCitizen.lastName}
               </p>
-            )}
-            {mode === 'provisional' && (
-              <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-gov-amber">⚠ {t('auth.provisionalNotice')}</p>
             )}
             {mode === 'foreign' && (
               <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-gov-amber">⚠ {t('auth.foreignNationalNotice')}</p>

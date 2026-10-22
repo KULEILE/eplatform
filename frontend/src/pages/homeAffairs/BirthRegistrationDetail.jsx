@@ -192,6 +192,53 @@ export default function BirthRegistrationDetail() {
               <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.motherResidence')}</dt><dd className="font-medium">{record.mother_residence || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
             </dl>
 
+            {/* Identity-check fields and supporting documents only exist on applications submitted
+                through the new automatic flow (migration 059) — a pre-existing record from the old
+                manual flow simply has nulls here, so this section quietly shows nothing for those. */}
+            {(record.father_identity_number || record.father_passport_number || record.mother_identity_number || record.mother_passport_number) && (
+              <>
+                <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthRegistrationForm.isCitizen')}</p>
+                <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.fatherDetails')}</dt>
+                    <dd className="font-medium">
+                      {record.father_is_citizen
+                        ? `${t('homeAffairs.birthRegistrationForm.identityNumber')}: ${record.father_identity_number}`
+                        : `${t('homeAffairs.birthRegistrationForm.passportNumber')}: ${record.father_passport_number || t('homeAffairs.birthCertificateView.notRecorded')}`}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.motherDetails')}</dt>
+                    <dd className="font-medium">
+                      {record.mother_is_citizen
+                        ? `${t('homeAffairs.birthRegistrationForm.identityNumber')}: ${record.mother_identity_number}`
+                        : `${t('homeAffairs.birthRegistrationForm.passportNumber')}: ${record.mother_passport_number || t('homeAffairs.birthCertificateView.notRecorded')}`}
+                    </dd>
+                  </div>
+                </dl>
+              </>
+            )}
+
+            {(record.chief_letter_image_reference || record.proof_of_birth_image_reference || record.marriage_certificate_image_reference || record.acknowledgement_of_paternity_image_reference) && (
+              <>
+                <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthRegistrationForm.uploadDocuments')}</p>
+                <ul className="flex flex-wrap gap-4">
+                  {record.chief_letter_image_reference && (
+                    <li><a className="text-sm font-medium text-gov-navy hover:underline" href={`/uploads/${record.chief_letter_image_reference}`} target="_blank" rel="noreferrer">{t('homeAffairs.birthRegistrationForm.chiefLetter')}</a></li>
+                  )}
+                  {record.proof_of_birth_image_reference && (
+                    <li><a className="text-sm font-medium text-gov-navy hover:underline" href={`/uploads/${record.proof_of_birth_image_reference}`} target="_blank" rel="noreferrer">{t('homeAffairs.birthRegistrationForm.proofOfBirth')}</a></li>
+                  )}
+                  {record.marriage_certificate_image_reference && (
+                    <li><a className="text-sm font-medium text-gov-navy hover:underline" href={`/uploads/${record.marriage_certificate_image_reference}`} target="_blank" rel="noreferrer">{t('homeAffairs.birthRegistrationForm.marriageCertificate')}</a></li>
+                  )}
+                  {record.acknowledgement_of_paternity_image_reference && (
+                    <li><a className="text-sm font-medium text-gov-navy hover:underline" href={`/uploads/${record.acknowledgement_of_paternity_image_reference}`} target="_blank" rel="noreferrer">{t('homeAffairs.birthRegistrationForm.acknowledgementOfPaternity')}</a></li>
+                  )}
+                </ul>
+              </>
+            )}
+
             <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthRegistrationForm.informantDetails')}</p>
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.informantName')}</dt><dd className="font-medium">{record.informant_name || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>

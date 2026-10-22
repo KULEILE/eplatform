@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
-import { api } from '../../api/client';
 
+// The old self-service "Identity Verification" tile (manual, officer-reviewed) was removed —
+// every account is now verified automatically, either the moment it's created (an existing
+// citizen typing their permanent identity number) or via the public birth certificate
+// application for someone with no record at all. See identity.controller.js and Register.jsx.
 const SERVICES = [
-  { key: 'identityVerification', to: '/home-affairs/identity-verification', icon: '🔎', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'birthRegistration', to: '/home-affairs/birth-registration', icon: '👶', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'nationalIdApplication', to: '/home-affairs/national-id', icon: '🪪', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'marriageRegistration', to: '/home-affairs/marriage-registration', icon: '💍', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
@@ -40,19 +42,12 @@ export default function HomeAffairsHub() {
     if (user.roleKey !== 'citizen') return true;
     if (isLockedOutForeignNational) return s.key === 'naturalization' || s.key === 'applicationTracking';
     // A citizen who was never a foreign national has no reason to see this service. One who
-    // WAS (even if long since naturalised) keeps seeing it, the same way Identity Verification
-    // stays visible to an already-verified citizen — so they can still see their own approved
-    // application and certificate number.
+    // WAS (even if long since naturalised) keeps seeing it, so they can still see their own
+    // approved application and certificate number.
     if (s.key === 'naturalization') return wasForeignNational;
     return true;
   });
   const isOfficer = ['home_affairs_officer', 'system_administrator'].includes(user.roleKey);
-  const [pendingIdentityCount, setPendingIdentityCount] = useState(null);
-
-  useEffect(() => {
-    if (!isOfficer) return;
-    api.get('/identity/requests?status=Pending').then((d) => setPendingIdentityCount((d.requests || []).length)).catch(() => {});
-  }, [isOfficer]);
 
   return (
     <div>
@@ -63,9 +58,6 @@ export default function HomeAffairsHub() {
           <Link key={s.key} to={s.to} className="card flex items-center gap-3 hover:-translate-y-0.5 hover:shadow-md transition">
             <span className="text-2xl" aria-hidden="true">{s.icon}</span>
             <span className="font-semibold text-slate-900">{t(`homeAffairs.${s.key}`)}</span>
-            {s.key === 'identityVerification' && isOfficer && !!pendingIdentityCount && (
-              <span className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-gov-red px-1.5 text-[11px] font-bold text-white">{pendingIdentityCount}</span>
-            )}
           </Link>
         ))}
         {!isLockedOutForeignNational && (

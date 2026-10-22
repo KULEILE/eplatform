@@ -28,12 +28,25 @@ const PHOTO_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const RECEIPT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const BIOMETRIC_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const SIGNATURE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+// Budget documents and tender announcements (migration 056 / finance_publications) are real PDFs
+// an officer publishes for citizens/businesses to download — unlike every other upload type
+// above, which is always a photo of something. Stored in file_blobs (not local disk) for the
+// same durability reason as everything else here — these need to survive a redeploy too, and
+// would be a worse failure if they silently disappeared, since they're public reference
+// documents rather than one citizen's own application evidence.
+const PUBLICATION_TYPES = new Set(['application/pdf', 'image/png', 'image/jpeg']);
+// Chief's letter, proof of birth, marriage certificate, acknowledgement of paternity, a
+// non-citizen parent's passport (see migration 059) — always a photo or scan of a paper
+// document, same as a receipt.
+const APPLICATION_DOCUMENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'application/pdf']);
 const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2MB
 const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024; // 8MB
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_BIOMETRIC_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_SIGNATURE_BYTES = 2 * 1024 * 1024; // 2MB — a signature-pad PNG is small
+const MAX_PUBLICATION_BYTES = 10 * 1024 * 1024; // 10MB — a real budget document can be sizeable
+const MAX_APPLICATION_DOCUMENT_BYTES = 8 * 1024 * 1024; // 8MB
 
 function storageFor(dir) {
   return multer.diskStorage({
@@ -136,7 +149,35 @@ const uploadSignature = multer({
   },
 });
 
+const uploadPublication = multer({
+  storage: memoryStorage,
+  limits: { fileSize: MAX_PUBLICATION_BYTES },
+  fileFilter: (req, file, cb) => {
+    if (!PUBLICATION_TYPES.has(file.mimetype)) {
+      return cb(new Error('Publication must be a PDF, PNG or JPG.'));
+    }
+    cb(null, true);
+  },
+});
+
+// UNAUTHENTICATED on purpose — used by the public birth certificate application (see
+// migration 059 and homeAffairs.controller.js's applyForBirthCertificatePublic), which can be
+// filled in by someone who has no account yet, so there is no session to require here. The same
+// saved-to-file_blobs pattern as every other upload above; nothing about this route is more
+// sensitive than a receipt photo already is.
+const uploadApplicationDocument = multer({
+  storage: memoryStorage,
+  limits: { fileSize: MAX_APPLICATION_DOCUMENT_BYTES },
+  fileFilter: (req, file, cb) => {
+    if (!APPLICATION_DOCUMENT_TYPES.has(file.mimetype)) {
+      return cb(new Error('Document must be a PNG, JPG, WEBP or PDF.'));
+    }
+    cb(null, true);
+  },
+});
+
 module.exports = {
-  uploadLogo, uploadDocument, uploadPhoto, uploadReceipt, uploadBiometric, uploadSignature,
+  uploadLogo, uploadDocument, uploadPhoto, uploadReceipt, uploadBiometric, uploadSignature, uploadPublication,
+  uploadApplicationDocument,
   saveBlob, getBlobComplianceNote, UPLOAD_DIR, DOCUMENTS_DIR,
 };

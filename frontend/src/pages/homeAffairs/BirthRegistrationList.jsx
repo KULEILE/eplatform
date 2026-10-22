@@ -44,7 +44,12 @@ export default function BirthRegistrationList() {
         columns={[
           { key: 'registration_reference', header: t('applications.reference'), render: (r) => <span className="font-mono text-xs">{r.registration_reference}</span> },
           { key: 'child', header: 'Child', render: (r) => `${r.child_first_name} ${r.child_last_name}` },
-          ...(isOfficer ? [{ key: 'parent', header: 'Parent/Guardian', render: (r) => `${r.parent_first_name} ${r.parent_last_name}` }] : []),
+          ...(isOfficer ? [{
+            key: 'parent', header: 'Parent/Guardian',
+            // A self-application (see migration 059 — an adult with no account applying for
+            // their own birth certificate) has no submitting parent at all.
+            render: (r) => (r.parent_first_name ? `${r.parent_first_name} ${r.parent_last_name}` : t('homeAffairs.birthRegistrationForm.selfApplication')),
+          }] : []),
           { key: 'registration_status', header: t('common.status'), render: (r) => <StatusBadge status={r.registration_status} /> },
           {
             key: 'view', header: t('common.actions'),

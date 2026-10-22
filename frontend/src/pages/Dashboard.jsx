@@ -133,8 +133,8 @@ export default function Dashboard() {
                 <div>
                   <p className="flex items-center gap-1.5 font-semibold text-amber-300">⚠ {t('auth.provisionalNoticeShort')}</p>
                   <p className="mt-1 text-sm text-white/80">{profile.message}</p>
-                  <Link to="/home-affairs/identity-verification" className="mt-2 inline-block text-sm font-semibold text-white underline underline-offset-2 hover:text-white/90">
-                    {t('homeAffairs.identityVerification')} →
+                  <Link to="/apply-for-birth-certificate" className="mt-2 inline-block text-sm font-semibold text-white underline underline-offset-2 hover:text-white/90">
+                    {t('homeAffairs.applyForBirthCertificate')} →
                   </Link>
                 </div>
               ) : (

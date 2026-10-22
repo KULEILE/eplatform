@@ -6,65 +6,204 @@ const { createNotification } = require('../utils/notify');
 const { recordAudit } = require('../utils/audit');
 
 // ============================================================================================
-// BIRTH REGISTRATION
+// BIRTH REGISTRATION — now fully automatic. A NEW application is checked and either approved
+// (the certificate is generated in the same step) or rejected (with a clear reason) the moment
+// it is submitted — there is no officer review queue for it any more. See migration 059.
 //
-// registration_status flow (see migration 005):
+// The old manual registration_status flow below is left in place and still works for any
+// application that was already sitting in one of these states before that migration — it is
+// simply never reached by a new submission going forward:
 //   Draft -> Submitted -> Under Review -> [Information Required -> Under Review]
 //         -> Verification in Progress -> Verified -> Approved
 //                                                  \-> Rejected (from any non-terminal state)
-//
-// A citizen identity + permanent_identity_number + birth certificate are created ONLY on
-// approve(). Nothing before that point creates a citizen record for the child.
 // ============================================================================================
+
+/**
+ * Shared by createBirthRegistration (a logged-in parent/guardian registering their child) and
+ * applyForBirthCertificatePublic (an adult with no account at all applying for their OWN birth
+ * certificate, as the very first step of getting one — see Register.jsx). Both collect the same
+ * information and are checked the same way: each parent is either a Lesotho citizen (their
+ * permanent identity number is looked up and must match our records) or a non-citizen (a
+ * passport number + photo is recorded instead, since there is no register of foreign passports
+ * to check it against). Nothing here can check whether an uploaded chief's letter genuinely
+ * carries the chief's stamp — that is a real limitation of an automatic, officer-free process,
+ * not something invented away; the caller is responsible for showing the citizen a clear
+ * instruction about it before they upload (see the frontend form).
+ *
+ * Returns { approved, birthRecordId, referenceNumber, rejectionReason } when rejected, or
+ * { approved: true, birthRecordId, referenceNumber, citizenId, permanentIdentityNumber,
+ *   certificateNumber, birthCertificateId } when approved. Runs inside the caller's own
+ * transaction (does not BEGIN/COMMIT itself) so the caller can add its own notification/audit
+ * entries atomically around it.
+ */
+async function processBirthCertificateApplication(client, fields) {
+  const {
+    childFirstName, childMiddleName, childLastName, dateOfBirth, placeOfBirth, sex, preferredOfficeId,
+    fatherName, fatherNationality, fatherIsCitizen, fatherIdentityNumber, fatherPassportNumber, fatherPassportImageReference,
+    motherName, motherMaidenSurname, motherNationality, motherResidence, motherIsCitizen, motherIdentityNumber, motherPassportNumber, motherPassportImageReference,
+    chiefLetterImageReference, proofOfBirthImageReference, marriageCertificateImageReference, acknowledgementOfPaternityImageReference,
+    submittingParentCitizenId, isSelfApplication,
+  } = fields;
+
+  const missing = [];
+  if (!childFirstName) missing.push('childFirstName');
+  if (!childLastName) missing.push('childLastName');
+  if (!dateOfBirth) missing.push('dateOfBirth');
+  if (!placeOfBirth) missing.push('placeOfBirth');
+  if (!sex) missing.push('sex');
+  // Choosing a collection branch needs the district/office list, which is an authenticated
+  // endpoint (see offices.routes.js) — out of reach for a public, not-logged-in self-applicant.
+  // So this is only required when a logged-in parent is registering a child; a self-application
+  // simply leaves birth_certificates.collection_office_id null (nullable — see migration 006),
+  // and that citizen picks a branch the normal way once they've created and logged into their
+  // account.
+  if (!isSelfApplication && !preferredOfficeId) missing.push('preferredOfficeId');
+  if (!fatherName) missing.push('fatherName');
+  if (!motherName) missing.push('motherName');
+  if (!chiefLetterImageReference) missing.push('chiefLetterImageReference');
+  if (!proofOfBirthImageReference) missing.push('proofOfBirthImageReference');
+  if (typeof fatherIsCitizen !== 'boolean') missing.push('fatherIsCitizen');
+  if (typeof motherIsCitizen !== 'boolean') missing.push('motherIsCitizen');
+  if (fatherIsCitizen && !fatherIdentityNumber) missing.push('fatherIdentityNumber');
+  if (fatherIsCitizen === false && (!fatherPassportNumber || !fatherPassportImageReference)) missing.push('fatherPassportNumber/fatherPassportImageReference');
+  if (motherIsCitizen && !motherIdentityNumber) missing.push('motherIdentityNumber');
+  if (motherIsCitizen === false && (!motherPassportNumber || !motherPassportImageReference)) missing.push('motherPassportNumber/motherPassportImageReference');
+  if (missing.length > 0) {
+    throw Object.assign(new Error(`The following are required: ${missing.join(', ')}.`), { status: 400 });
+  }
+
+  let fatherCitizenId = null;
+  let motherCitizenId = null;
+  const rejectionReasons = [];
+
+  if (fatherIsCitizen) {
+    const { rows } = await client.query('SELECT citizen_id, is_deceased FROM citizens WHERE permanent_identity_number = $1', [fatherIdentityNumber]);
+    if (rows.length === 0) rejectionReasons.push("The father's permanent identity number does not match any record at Home Affairs.");
+    else if (rows[0].is_deceased) rejectionReasons.push("The father's identity record is recorded as deceased.");
+    else fatherCitizenId = rows[0].citizen_id;
+  }
+  if (motherIsCitizen) {
+    const { rows } = await client.query('SELECT citizen_id, is_deceased FROM citizens WHERE permanent_identity_number = $1', [motherIdentityNumber]);
+    if (rows.length === 0) rejectionReasons.push("The mother's permanent identity number does not match any record at Home Affairs.");
+    else if (rows[0].is_deceased) rejectionReasons.push("The mother's identity record is recorded as deceased.");
+    else motherCitizenId = rows[0].citizen_id;
+  }
+  // Not an official Home Affairs rule — a safeguard of this system's own, so an application
+  // cannot be auto-approved from two unverifiable claims with nothing behind them.
+  if (!fatherCitizenId && !motherCitizenId) {
+    rejectionReasons.push('At least one parent must be a Lesotho citizen whose permanent identity number matches our records.');
+  }
+
+  const referenceNumber = generateReference('BR');
+  const approved = rejectionReasons.length === 0;
+
+  const { rows: inserted } = await client.query(
+    `INSERT INTO birth_records (
+        parent_citizen_id, is_self_application, registration_reference,
+        child_first_name, child_middle_name, child_last_name, date_of_birth, place_of_birth, sex,
+        father_name, father_nationality, father_is_citizen, father_identity_number, father_citizen_id, father_passport_number, father_passport_image_reference,
+        mother_name, mother_maiden_surname, mother_nationality, mother_residence, mother_is_citizen, mother_identity_number, mother_citizen_id, mother_passport_number, mother_passport_image_reference,
+        chief_letter_image_reference, proof_of_birth_image_reference, marriage_certificate_image_reference, acknowledgement_of_paternity_image_reference,
+        preferred_office_id, registration_status, rejection_reason, submitted_at, approved_at
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,NOW(),$33)
+     RETURNING *`,
+    [submittingParentCitizenId || null, !!isSelfApplication, referenceNumber,
+     childFirstName, childMiddleName || null, childLastName, dateOfBirth, placeOfBirth, sex,
+     fatherName, fatherNationality || 'Mosotho', fatherIsCitizen, fatherIsCitizen ? fatherIdentityNumber : null, fatherCitizenId,
+     fatherIsCitizen ? null : fatherPassportNumber, fatherIsCitizen ? null : fatherPassportImageReference,
+     motherName, motherMaidenSurname || null, motherNationality || 'Mosotho', motherResidence || null, motherIsCitizen,
+     motherIsCitizen ? motherIdentityNumber : null, motherCitizenId, motherIsCitizen ? null : motherPassportNumber, motherIsCitizen ? null : motherPassportImageReference,
+     chiefLetterImageReference, proofOfBirthImageReference, marriageCertificateImageReference || null, acknowledgementOfPaternityImageReference || null,
+     preferredOfficeId || null, approved ? 'Approved' : 'Rejected', approved ? null : rejectionReasons.join(' '), approved ? new Date() : null]
+  );
+  const record = inserted[0];
+
+  // applications.citizen_id is NOT NULL — it can only be indexed against a citizen who already
+  // exists. A logged-in parent/guardian always has one (submittingParentCitizenId), so that case
+  // is indexed immediately, same as before. A self-application (migration 059) has none at
+  // submission time: if it's approved, one is created just below and indexed then instead; if
+  // it's rejected, no citizen is ever created for it, so there is nothing to index against — the
+  // rejected self-application still exists as a birth_records row (visible to officers via
+  // listBirthRegistrations), it just doesn't appear in the generic /applications tracker.
+  if (submittingParentCitizenId) {
+    await indexApplication(client, {
+      citizenId: submittingParentCitizenId, departmentKey: 'home_affairs', serviceType: 'Birth Registration',
+      referenceNumber, sourceTable: 'birth_records', sourceId: record.birth_record_id, status: approved ? 'Approved' : 'Rejected',
+    });
+  }
+
+  if (!approved) {
+    return { approved: false, birthRecordId: record.birth_record_id, referenceNumber, rejectionReason: record.rejection_reason };
+  }
+
+  // Approved — create the new citizen identity and the certificate immediately, the same way
+  // the old manual approveBirthRegistration() used to (see further down this file for the
+  // officer-driven version, still used by any pre-existing application in 'Verified' status).
+  const citizenId = await withUniquePermanentId(dateOfBirth, async (candidatePin) => {
+    const { rows } = await client.query(
+      `INSERT INTO citizens (permanent_identity_number, first_name, middle_name, last_name,
+          date_of_birth, place_of_birth, sex, citizenship_status, identity_verification_status,
+          parent_citizen_id, is_demo_data)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'Citizen','Verified',$8,TRUE) RETURNING citizen_id, permanent_identity_number`,
+      [candidatePin, childFirstName, childMiddleName || null, childLastName, dateOfBirth, placeOfBirth, sex, submittingParentCitizenId || null]
+    );
+    return rows[0];
+  });
+
+  await client.query('UPDATE birth_records SET citizen_id = $1, updated_at = NOW() WHERE birth_record_id = $2', [citizenId.citizen_id, record.birth_record_id]);
+
+  // The self-application case deferred from above — the citizen now exists, so index it here.
+  if (!submittingParentCitizenId) {
+    await indexApplication(client, {
+      citizenId: citizenId.citizen_id, departmentKey: 'home_affairs', serviceType: 'Birth Registration',
+      referenceNumber, sourceTable: 'birth_records', sourceId: record.birth_record_id, status: 'Approved',
+    });
+  }
+
+  const certificateNumber = generateReference('BC');
+  const { rows: certRows } = await client.query(
+    `INSERT INTO birth_certificates (citizen_id, birth_record_id, certificate_number, issue_date, status, collection_office_id)
+     VALUES ($1,$2,$3, CURRENT_DATE, 'Certificate Generated', $4) RETURNING birth_certificate_id`,
+    [citizenId.citizen_id, record.birth_record_id, certificateNumber, preferredOfficeId || null]
+  );
+
+  return {
+    approved: true, birthRecordId: record.birth_record_id, referenceNumber,
+    citizenId: citizenId.citizen_id, permanentIdentityNumber: citizenId.permanent_identity_number,
+    certificateNumber, birthCertificateId: certRows[0].birth_certificate_id,
+  };
+}
 
 /** POST /api/home-affairs/birth-registration — parent/guardian submits (citizen only). */
 async function createBirthRegistration(req, res, next) {
   try {
     if (!req.user.citizenId) {
-      return res.status(403).json({ error: 'A verified identity is required to register a birth. Provisional accounts cannot yet submit this application.' });
+      return res.status(403).json({ error: 'A verified identity is required to register a birth.' });
     }
-    const {
-      childFirstName, childMiddleName, childLastName, dateOfBirth, placeOfBirth, sex, preferredOfficeId,
-      // The real Kingdom of Lesotho birth certificate records the parents and the informant who
-      // reported the birth — see migration 025. All optional here (an officer can still request
-      // this information later via "request information") so older/partial submissions don't fail.
-      fatherName, fatherNationality, motherName, motherMaidenSurname, motherNationality, motherResidence,
-      informantName, informantCapacity, informantResidence,
-    } = req.body;
-    if (!childFirstName || !childLastName || !dateOfBirth || !placeOfBirth || !sex) {
-      return res.status(400).json({ error: 'childFirstName, childLastName, dateOfBirth, placeOfBirth and sex are required.' });
-    }
-    if (!preferredOfficeId) {
-      return res.status(400).json({ error: 'preferredOfficeId is required — choose the branch where you will collect the certificate.' });
-    }
-    const referenceNumber = generateReference('BR');
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
-      const { rows } = await client.query(
-        `INSERT INTO birth_records (parent_citizen_id, registration_reference, child_first_name,
-            child_middle_name, child_last_name, date_of_birth, place_of_birth, sex,
-            registration_status, submitted_at, preferred_office_id,
-            father_name, father_nationality, mother_name, mother_maiden_surname, mother_nationality,
-            mother_residence, informant_name, informant_capacity, informant_residence)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'Submitted', NOW(), $9, $10,$11,$12,$13,$14,$15,$16,$17,$18)
-         RETURNING birth_record_id`,
-        [req.user.citizenId, referenceNumber, childFirstName, childMiddleName || null, childLastName, dateOfBirth, placeOfBirth, sex, preferredOfficeId,
-         fatherName || null, fatherNationality || 'Mosotho', motherName || null, motherMaidenSurname || null, motherNationality || 'Mosotho',
-         motherResidence || null, informantName || null, informantCapacity || null, informantResidence || null]
-      );
-      const birthRecordId = rows[0].birth_record_id;
-      await indexApplication(client, {
-        citizenId: req.user.citizenId, departmentKey: 'home_affairs', serviceType: 'Birth Registration',
-        referenceNumber, sourceTable: 'birth_records', sourceId: birthRecordId, status: 'Submitted',
-      });
+      const result = await processBirthCertificateApplication(client, { ...req.body, submittingParentCitizenId: req.user.citizenId, isSelfApplication: false });
       await client.query('COMMIT');
+
+      if (result.approved) {
+        await createNotification({
+          userId: req.user.userId, title: 'Birth registration approved',
+          message: `Birth registration ${result.referenceNumber} has been approved. A birth certificate (${result.certificateNumber}) has been generated.`,
+          type: 'Approval',
+        });
+        await recordAudit({
+          userId: req.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'BIRTH_REGISTRATION_APPROVED',
+          targetType: 'birth_record', targetId: result.birthRecordId, metadata: { citizenId: result.citizenId, certificateNumber: result.certificateNumber },
+        });
+        return res.status(201).json({ birthRecordId: result.birthRecordId, referenceNumber: result.referenceNumber, status: 'Approved', citizenId: result.citizenId, permanentIdentityNumber: result.permanentIdentityNumber, certificateNumber: result.certificateNumber });
+      }
       await createNotification({
-        userId: req.user.userId, title: 'Birth registration submitted',
-        message: `Your birth registration application ${referenceNumber} for ${childFirstName} ${childLastName} has been submitted and is awaiting review.`,
-        type: 'Application Submitted',
+        userId: req.user.userId, title: 'Birth registration could not be approved',
+        message: `Reference ${result.referenceNumber}: ${result.rejectionReason}`,
+        type: 'Rejection',
       });
-      res.status(201).json({ birthRecordId, referenceNumber, status: 'Submitted' });
+      return res.status(201).json({ birthRecordId: result.birthRecordId, referenceNumber: result.referenceNumber, status: 'Rejected', rejectionReason: result.rejectionReason });
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -76,15 +215,52 @@ async function createBirthRegistration(req, res, next) {
   }
 }
 
+/**
+ * POST /api/birth-certificate-applications — PUBLIC, no login required. For an adult with no
+ * matching citizen record at all, applying for their OWN birth certificate as the first step
+ * toward getting an account (see Register.jsx: once this succeeds, they come back and type the
+ * new permanent identity number it returns into "I already have one", and that account gets
+ * created and verified automatically — the same way any already-registered citizen's does).
+ */
+async function applyForBirthCertificatePublic(req, res, next) {
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+    const result = await processBirthCertificateApplication(client, {
+      ...req.body,
+      // childFirstName/childMiddleName/childLastName/dateOfBirth/placeOfBirth/sex here describe
+      // the APPLICANT themselves, not a baby — same fields, different meaning, since the shared
+      // function only ever creates one new citizen record either way.
+      submittingParentCitizenId: null, isSelfApplication: true,
+    });
+    await client.query('COMMIT');
+    if (result.approved) {
+      return res.status(201).json({
+        referenceNumber: result.referenceNumber, status: 'Approved',
+        permanentIdentityNumber: result.permanentIdentityNumber, certificateNumber: result.certificateNumber,
+      });
+    }
+    return res.status(201).json({ referenceNumber: result.referenceNumber, status: 'Rejected', rejectionReason: result.rejectionReason });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    next(err);
+  } finally {
+    client.release();
+  }
+}
+
 /** GET /api/home-affairs/birth-registration — citizen: own applications. Officer: queue (optionally ?status=). */
 async function listBirthRegistrations(req, res, next) {
   try {
     if (req.user.roleKey === 'home_affairs_officer' || req.user.roleKey === 'system_administrator') {
       const { status } = req.query;
       const { rows } = await db.query(
+        // LEFT JOIN — a self-application (see migration 059) has no submitting parent at all,
+        // so parent_citizen_id is NULL; parent_first_name/parent_last_name just come back NULL
+        // for those rows instead of the row being silently dropped from an officer's queue.
         `SELECT br.*, c.first_name AS parent_first_name, c.last_name AS parent_last_name,
                 c.permanent_identity_number AS parent_permanent_identity_number
-         FROM birth_records br JOIN citizens c ON c.citizen_id = br.parent_citizen_id
+         FROM birth_records br LEFT JOIN citizens c ON c.citizen_id = br.parent_citizen_id
          WHERE $1::text IS NULL OR br.registration_status = $1
          ORDER BY br.submitted_at DESC NULLS LAST`,
         [status || null]
@@ -93,7 +269,9 @@ async function listBirthRegistrations(req, res, next) {
     }
     if (!req.user.citizenId) return res.json({ birthRegistrations: [] });
     const { rows } = await db.query(
-      `SELECT * FROM birth_records WHERE parent_citizen_id = $1 ORDER BY submitted_at DESC NULLS LAST`,
+      // OR citizen_id = $1 — picks up this citizen's OWN self-application (migration 059), which
+      // has no submitting parent at all (parent_citizen_id NULL) but did create this citizen_id.
+      `SELECT * FROM birth_records WHERE parent_citizen_id = $1 OR citizen_id = $1 ORDER BY submitted_at DESC NULLS LAST`,
       [req.user.citizenId]
     );
     res.json({ birthRegistrations: rows });
@@ -116,7 +294,11 @@ async function getBirthRegistration(req, res, next) {
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Birth registration not found.' });
     const record = rows[0];
-    const isOwner = req.user.citizenId && record.parent_citizen_id === req.user.citizenId;
+    // A self-application (migration 059 — someone with no account applying for their own birth
+    // certificate) has no submitting parent, so parent_citizen_id is null for it; once that
+    // applicant has created and logged into their own account, they own this record through
+    // citizen_id instead (the identity it created), not parent_citizen_id.
+    const isOwner = !!req.user.citizenId && (record.parent_citizen_id === req.user.citizenId || record.citizen_id === req.user.citizenId);
     const isOfficer = ['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey);
     if (!isOwner && !isOfficer) return res.status(403).json({ error: 'You do not have access to this application.' });
     res.json({ birthRegistration: record });
@@ -1321,7 +1503,7 @@ async function getDivorceCertificate(req, res, next) {
 }
 
 module.exports = {
-  createBirthRegistration, listBirthRegistrations, getBirthRegistration,
+  createBirthRegistration, applyForBirthCertificatePublic, listBirthRegistrations, getBirthRegistration,
   startReviewBirthRegistration, requestInformationBirthRegistration, resubmitBirthRegistration,
   verifyBirthRegistration, confirmVerificationBirthRegistration, approveBirthRegistration, rejectBirthRegistration,
   getBirthCertificate, markCertificateReadyForCollection, collectBirthCertificate,

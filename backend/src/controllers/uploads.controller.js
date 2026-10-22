@@ -110,6 +110,24 @@ async function uploadReceipt(req, res, next) {
   }
 }
 
+/**
+ * POST /api/birth-certificate-applications/upload — multipart upload, field name 'document'.
+ * UNAUTHENTICATED on purpose — used for the chief's letter, proof of birth, marriage
+ * certificate, acknowledgement of paternity, or a non-citizen parent's passport, on the public
+ * birth certificate application (see migration 059 and homeAffairs.controller.js). Mounted by
+ * birthCertificateApplications.routes.js, not uploads.routes.js, since every route in that
+ * router requires a session and this one deliberately cannot.
+ */
+async function uploadApplicationDocument(req, res, next) {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'A document file is required (field name "document").' });
+    const documentReference = await saveBlob('birth-certificate-applications', req.file);
+    res.status(201).json({ documentReference });
+  } catch (err) {
+    next(err);
+  }
+}
+
 /** POST /api/uploads/biometric — multipart upload, field name 'biometric'. Citizen applicant only
  *  — always captured as part of the citizen's own National ID application (see
  *  applyNationalId in homeAffairs.controller.js). Same convention as uploadPhoto: this prototype
@@ -140,4 +158,22 @@ async function uploadSignature(req, res, next) {
   }
 }
 
-module.exports = { uploadPhoto, uploadReceipt, uploadBiometric, uploadSignature, getPhotoComplianceNote };
+/** POST /api/uploads/publication — multipart upload, field name 'publication'. finance_officer
+ *  or system_administrator only — this is an officer publishing a document for the public to
+ *  read, never a citizen's own upload. Stores into file_blobs (see upload.js's uploadPublication
+ *  multer config, PDF/PNG/JPG, up to 10MB) and hands back the reference string plus the original
+ *  filename, which POST /api/finance/publications then saves alongside the title/description. */
+async function uploadPublicationFile(req, res, next) {
+  try {
+    if (!['finance_officer', 'system_administrator'].includes(req.user.roleKey)) {
+      return res.status(403).json({ error: 'Officer only.' });
+    }
+    if (!req.file) return res.status(400).json({ error: 'A file is required (field name "publication").' });
+    const fileReference = await saveBlob('publications', req.file);
+    res.status(201).json({ fileReference, originalFilename: req.file.originalname });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { uploadPhoto, uploadReceipt, uploadBiometric, uploadSignature, getPhotoComplianceNote, uploadPublicationFile, uploadApplicationDocument };
