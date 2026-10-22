@@ -19,6 +19,7 @@ const STATUS_KIND = {
   'Passport Produced': 'info', 'Ready for Collection': 'positive', 'Collected': 'positive',
   'Completed': 'positive', 'Flagged for Correction': 'warning', 'Application Submitted': 'info',
   'Stopped (Deceased)': 'negative',
+  'Paid': 'positive',
   'Active': 'positive', 'Suspended': 'warning', 'Deactivated': 'negative',
   'Match Found': 'positive', 'No Match': 'neutral', 'Possible Mismatch': 'warning',
   'Verified Identity': 'positive', 'Provisional': 'warning',

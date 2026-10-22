@@ -3,8 +3,11 @@ const { makeDepartmentController } = require('../utils/simpleDepartmentControlle
 const { getDepartmentId } = require('../utils/lookup');
 const { recordAudit } = require('../utils/audit');
 const { createNotification } = require('../utils/notify');
+const { makeRespondHandler } = require('../utils/respondToEnquiry');
 
 const RETIREMENT_SERVICE_TYPE = 'Government Employee Retirement Declaration';
+const SUPPLIER_PAYMENT_SERVICE_TYPE = 'Government Supplier Payment Tracking';
+const COMPLAINT_SERVICE_TYPE = 'Finance Complaint or Enquiry';
 const EMPLOYEE_CATEGORIES = ['General Civil Servant', 'Uniformed/Disciplined Services'];
 const RETIREMENT_REASONS = ['Standard', 'Ill-health', 'Medical Boarding', 'Compulsory Retirement', 'Redundancy', 'Other'];
 
@@ -14,7 +17,29 @@ const RETIREMENT_REASONS = ['Standard', 'Ill-health', 'Medical Boarding', 'Compu
  *  government employee (if Finance has them wrong, that's what the corrections mechanism is
  *  for — see corrections.controller.js — not a path to self-declare retirement). */
 async function beforeApply(req) {
-  if (req.body.serviceType !== RETIREMENT_SERVICE_TYPE) return null;
+  const { serviceType } = req.body;
+
+  // Supplier payment tracking: the invoice details are what the officer checks and pays against.
+  if (serviceType === SUPPLIER_PAYMENT_SERVICE_TYPE) {
+    const { supplierName, invoiceNumber, invoiceAmount, invoiceDate } = req.body;
+    if (!supplierName || !String(supplierName).trim()) return { status: 400, error: 'Supplier/business name is required.' };
+    if (!invoiceNumber || !String(invoiceNumber).trim()) return { status: 400, error: 'Invoice number is required.' };
+    const amount = Number(invoiceAmount);
+    if (!Number.isFinite(amount) || amount <= 0) return { status: 400, error: 'Invoice amount must be a number greater than 0.' };
+    if (!invoiceDate || Number.isNaN(Date.parse(invoiceDate))) return { status: 400, error: 'A valid invoice date is required.' };
+    if (new Date(invoiceDate) > new Date()) return { status: 400, error: 'Invoice date cannot be in the future.' };
+    return null;
+  }
+
+  // Complaint or enquiry: just needs the citizen's actual text.
+  if (serviceType === COMPLAINT_SERVICE_TYPE) {
+    if (!req.body.complaintText || !String(req.body.complaintText).trim()) {
+      return { status: 400, error: 'Please describe your complaint or enquiry.' };
+    }
+    return null;
+  }
+
+  if (serviceType !== RETIREMENT_SERVICE_TYPE) return null;
   const { retirementReason, retirementReasonDetails, retirementDocumentReference } = req.body;
   if (!RETIREMENT_REASONS.includes(retirementReason)) {
     return { status: 400, error: `retirementReason must be one of: ${RETIREMENT_REASONS.join(', ')}` };
@@ -56,13 +81,22 @@ const controller = makeDepartmentController({
   deptKey: 'finance',
   officerRoleKey: 'finance_officer',
   refPrefix: 'FIN',
-  serviceTypes: ['Supplier Registration Validation', 'Payment Information Update', 'Tax Identity Confirmation', 'Financial Records Correction', RETIREMENT_SERVICE_TYPE],
+  serviceTypes: [
+    'Supplier Registration Validation', 'Payment Information Update', 'Tax Identity Confirmation', 'Financial Records Correction',
+    RETIREMENT_SERVICE_TYPE, SUPPLIER_PAYMENT_SERVICE_TYPE, COMPLAINT_SERVICE_TYPE,
+  ],
   extraInsertFields: [
     { column: 'retirement_reason', fromBody: 'retirementReason' },
     { column: 'retirement_reason_details', fromBody: 'retirementReasonDetails' },
     { column: 'retirement_document_reference', fromBody: 'retirementDocumentReference' },
+    { column: 'supplier_name', fromBody: 'supplierName' },
+    { column: 'invoice_number', fromBody: 'invoiceNumber' },
+    { column: 'invoice_amount', fromBody: 'invoiceAmount' },
+    { column: 'invoice_date', fromBody: 'invoiceDate' },
+    { column: 'complaint_text', fromBody: 'complaintText' },
+    { column: 'evidence_reference', fromBody: 'evidenceReference' },
   ],
-  finalStatuses: ['Rejected', 'Completed'],
+  finalStatuses: ['Rejected', 'Completed', 'Paid'],
   beforeApply,
   afterTransition,
   statusFlow: {
@@ -72,11 +106,27 @@ const controller = makeDepartmentController({
     'process': { from: 'Documents Checked', to: 'Processing' },
     'complete': {
       from: 'Processing', to: 'Completed',
-      extra: (record) => record.service_type === RETIREMENT_SERVICE_TYPE
-        ? null
-        : { setSql: `validated_information_note = $3`, params: ['Identity and supporting information validated against Home Affairs and departmental records.'] },
+      extra: (record) => {
+        if (record.service_type === SUPPLIER_PAYMENT_SERVICE_TYPE) return { error: "A supplier payment is finished with 'Mark as paid', not 'Completed'." };
+        if (record.service_type === COMPLAINT_SERVICE_TYPE) return { error: 'A complaint or enquiry is finished by responding to it.' };
+        return record.service_type === RETIREMENT_SERVICE_TYPE
+          ? null
+          : { setSql: `validated_information_note = $3`, params: ['Identity and supporting information validated against Home Affairs and departmental records.'] };
+      },
+    },
+    // Supplier payments only: the invoice has been paid out.
+    'mark-paid': {
+      from: 'Processing', to: 'Paid',
+      extra: (record) => record.service_type === SUPPLIER_PAYMENT_SERVICE_TYPE
+        ? { setSql: 'paid_at = NOW()', params: [] }
+        : { error: "Only a supplier payment can be marked as paid." },
     },
   },
+});
+
+// POST /api/finance/:id/respond — officer answers a complaint/enquiry (see utils/respondToEnquiry.js).
+const respond = makeRespondHandler({
+  table: 'finance_records', idColumn: 'finance_record_id', officerRoleKey: 'finance_officer', serviceType: COMPLAINT_SERVICE_TYPE,
 });
 
 // ============================================================================================
@@ -131,4 +181,24 @@ async function declareGovernmentEmployee(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { ...controller, lookupGovernmentEmployment, declareGovernmentEmployee };
+/** A supplier payment marked 'Paid' is finished — the shared factory's reject/request-information
+ *  only block 'Rejected'/'Completed'/'Collected', so guard 'Paid' here without touching the
+ *  factory (which Traffic and Police also use). */
+function blockIfPaid(handler) {
+  return async (req, res, next) => {
+    try {
+      const { rows } = await db.query('SELECT status FROM finance_records WHERE finance_record_id = $1', [req.params.id]);
+      if (rows[0]?.status === 'Paid') return res.status(409).json({ error: 'This supplier payment has already been paid.' });
+      return handler(req, res, next);
+    } catch (err) { next(err); }
+  };
+}
+
+module.exports = {
+  ...controller,
+  reject: blockIfPaid(controller.reject),
+  requestInformation: blockIfPaid(controller.requestInformation),
+  respond,
+  lookupGovernmentEmployment,
+  declareGovernmentEmployee,
+};

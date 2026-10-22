@@ -23,7 +23,9 @@ import DistrictOfficeSelect from './DistrictOfficeSelect';
  * same way ServiceWorkflowPage's `fields` do, and this renders + requires it before the citizen
  * can submit, and lets them fix it up and resubmit if an officer asks for more information.
  *
- * config: { apiBase, idColumn, titleKey, serviceTypes: string[], serviceTypeNs, officerRoleKey,
+ * config: { apiBase, idColumn, titleKey, introKey?, serviceTypes: string[], serviceTypeNs, officerRoleKey,
+ *           listFilter?: (record) => boolean, extraColumns?: [{ key, header, render }],
+ *           finalStatuses?: string[] (hides reject/request-info), applyLabelKey?,
  *           departmentKey (for 'office'-type fields, defaults to 'traffic'),
  *           extraFields?: [{ name, label, type, required, options, help, defaultValue }],
  *           transitions: { [status]: { action, labelKey } | [{ action, labelKey }] } }
@@ -109,9 +111,15 @@ export default function DepartmentServicePage({ config }) {
 
   if (!records) return <Loading />;
 
+  // Optional: a page that shares this department's table but only shows some service types
+  // (e.g. Supplier Payment Tracking) passes config.listFilter = (record) => boolean.
+  const visibleRecords = config.listFilter ? records.filter(config.listFilter) : records;
+  const finalStatuses = config.finalStatuses || ['Rejected', 'Completed', 'Collected'];
+
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold text-slate-900">{t(config.titleKey)}</h1>
+      <h1 className={`${config.introKey ? 'mb-2' : 'mb-6'} text-2xl font-bold text-slate-900`}>{t(config.titleKey)}</h1>
+      {config.introKey && <p className="mb-6 text-sm text-slate-600">{t(config.introKey)}</p>}
 
       {!isOfficer && (
         <form onSubmit={apply} className="card mb-8" noValidate>
@@ -128,17 +136,18 @@ export default function DepartmentServicePage({ config }) {
 
           <FieldInputs fields={extraFields} form={form} onChange={updateField} departmentKey={config.departmentKey || 'traffic'} />
 
-          <button type="submit" disabled={missingRequired} className="btn-primary">{t(`${config.serviceTypeNs}.apply`)}</button>
+          <button type="submit" disabled={missingRequired} className="btn-primary">{t(config.applyLabelKey || `${config.serviceTypeNs}.apply`)}</button>
         </form>
       )}
 
       <DataTable
         rowKey={idColumn}
-        rows={records}
+        rows={visibleRecords}
         columns={[
           { key: 'application_reference', header: t('applications.reference'), render: (r) => <span className="font-mono text-xs">{r.application_reference}</span> },
           ...(isOfficer ? [{ key: 'name', header: t('common.citizen'), render: (r) => `${r.first_name} ${r.last_name}` }] : []),
           { key: 'service_type', header: t(`${config.serviceTypeNs}.serviceType`), render: (r) => t(`${config.serviceTypeNs}.${r.service_type}`) },
+          ...(config.extraColumns || []),
           { key: 'status', header: t('common.status'), render: (r) => <StatusBadge status={r.status} /> },
           ...(isOfficer ? [{
             key: 'actions', header: t('common.actions'),
@@ -153,7 +162,7 @@ export default function DepartmentServicePage({ config }) {
                       {t(opt.labelKey)}
                     </button>
                   ))}
-                  {!['Rejected', 'Completed', 'Collected'].includes(r.status) && (
+                  {!finalStatuses.includes(r.status) && (
                     <>
                       <button type="button" className="text-sm font-medium text-slate-500 hover:underline" onClick={() => setModal({ record: r, kind: 'request-information' })}>{t('common.requestInformation')}</button>
                       <button type="button" className="text-sm font-medium text-gov-red hover:underline" onClick={() => setModal({ record: r, kind: 'reject' })}>{t('common.reject')}</button>

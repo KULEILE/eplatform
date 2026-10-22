@@ -10,6 +10,7 @@ router.get('/:id', c.getOne);
 router.post('/:id/resubmit', c.resubmit);
 router.post('/:id/request-information', c.requestInformation);
 router.post('/:id/reject', c.reject);
+router.post('/:id/respond', c.respond); // pension enquiry response — must stay above '/:id/:action'
 router.post('/:id/:action', c.transition);
 
 module.exports = router;

@@ -1,5 +1,8 @@
 const db = require('../config/db');
 const { makeDepartmentController } = require('../utils/simpleDepartmentController');
+const { makeRespondHandler } = require('../utils/respondToEnquiry');
+
+const ENQUIRY_SERVICE_TYPE = 'Pension Status Enquiry';
 
 // Lesotho's Old Age Pension is a universal, non-contributory benefit paid from age 70. A
 // citizen's date_of_birth is already verified by Home Affairs at enrolment, so a claim here
@@ -38,6 +41,11 @@ async function beforeApply(req) {
   );
   if (rows.length === 0) return { status: 400, error: 'Citizen record not found.' };
   const citizen = rows[0];
+
+  // Pension Enquiry and Tracking: the citizen's actual question is required.
+  if (serviceType === ENQUIRY_SERVICE_TYPE && (!req.body.enquiryText || !String(req.body.enquiryText).trim())) {
+    return { status: 400, error: 'Please type your question.' };
+  }
 
   // A citizen Home Affairs has on record as deceased cannot submit any pension service — most
   // importantly, they can never "prove" they are alive. (See approveDeath in
@@ -111,7 +119,10 @@ const controller = makeDepartmentController({
   deptKey: 'pensions',
   officerRoleKey: 'pensions_officer',
   refPrefix: 'PEN',
-  serviceTypes: ['New Pension Enrolment', 'Proof of Life Verification', 'Beneficiary Correction', 'Pension Status Enquiry', AGE_CLAIM, CIVIL_SERVICE_CLAIM],
+  serviceTypes: ['New Pension Enrolment', 'Proof of Life Verification', 'Beneficiary Correction', ENQUIRY_SERVICE_TYPE, AGE_CLAIM, CIVIL_SERVICE_CLAIM],
+  extraInsertFields: [
+    { column: 'enquiry_text', fromBody: 'enquiryText' },
+  ],
   finalStatuses: ['Rejected', 'Completed', 'Stopped (Deceased)'],
   beforeApply,
   statusFlow: {
@@ -132,4 +143,9 @@ const controller = makeDepartmentController({
   },
 });
 
-module.exports = controller;
+// POST /api/pensions/:id/respond — officer answers a pension enquiry (see utils/respondToEnquiry.js).
+const respond = makeRespondHandler({
+  table: 'pension_records', idColumn: 'pension_record_id', officerRoleKey: 'pensions_officer', serviceType: ENQUIRY_SERVICE_TYPE,
+});
+
+module.exports = { ...controller, respond };
