@@ -12,9 +12,12 @@ import { formatDateOnly } from '../../utils/format';
 
 /**
  * Certificate layout follows the numbered-field structure of the real Kingdom of Lesotho birth
- * certificate (Entry No., child's particulars, then father/mother/informant, then date of
- * registration) so the generated document reads like the real thing in structure and
- * terminology. It is still clearly marked as a demo — this is a prototype, not a legal document.
+ * certificate (Entry No., child's particulars, then father/mother, then date of registration) so
+ * the generated document reads like the real thing in structure and terminology. There is no
+ * informant field any more — nobody but the person it's about (or, formerly, their own
+ * parent/guardian) ever submits a birth certificate application, so there is no separate
+ * "informant" role left to record (see migration 059). It is still clearly marked as a demo —
+ * this is a prototype, not a legal document.
  * The flag at the top uses the same downloaded image as LesothoFlag.jsx (see that file for the
  * expected path).
  */
@@ -98,8 +101,6 @@ export default function BirthCertificate() {
     [t('homeAffairs.birthCertificateView.field.motherMaidenSurname'), v(cert.mother_maiden_surname)],
     [t('homeAffairs.birthCertificateView.field.motherNationality'), v(cert.mother_nationality)],
     [t('homeAffairs.birthCertificateView.field.motherResidence'), v(cert.mother_residence)],
-    [t('homeAffairs.birthCertificateView.field.informant'), cert.informant_name ? `${cert.informant_name}${cert.informant_capacity ? ` (${cert.informant_capacity})` : ''}` : t('homeAffairs.birthCertificateView.notRecorded')],
-    [t('homeAffairs.birthCertificateView.field.informantResidence'), v(cert.informant_residence)],
     [t('homeAffairs.birthCertificateView.field.dateOfRegistration'), cert.date_of_registration ? formatDateOnly(cert.date_of_registration) : formatDateOnly(cert.issue_date)],
   ];
 
@@ -163,7 +164,12 @@ export default function BirthCertificate() {
       <div className="card mt-4">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthCertificateView.systemReference')}</p>
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthCertificateView.parent')}</dt><dd className="font-medium">{cert.parent_first_name} {cert.parent_last_name}</dd></div>
+          <div>
+            <dt className="text-xs text-slate-500">{t('homeAffairs.birthCertificateView.parent')}</dt>
+            {/* A self-application (migration 059) has no registering parent at all — cert.parent_first_name
+                comes back null for it, rather than crash into "null null". */}
+            <dd className="font-medium">{cert.parent_first_name ? `${cert.parent_first_name} ${cert.parent_last_name}` : t('homeAffairs.birthRegistrationForm.selfApplication')}</dd>
+          </div>
         </dl>
       </div>
 

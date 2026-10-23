@@ -311,7 +311,7 @@
     "pensions": "Pensions",
     "police": "Police",
     "passport": "Passport Services",
-    "home_affairs_desc": "Birth registration, national identity, civil registration and passport services.",
+    "home_affairs_desc": "Birth certificates, national identity, civil registration and passport services.",
     "traffic_desc": "Driving licences and vehicle registration.",
     "finance_desc": "Financial services requiring verified identity.",
     "pensions_desc": "Pension beneficiary verification and services.",
@@ -393,7 +393,7 @@
   },
   "homeAffairs": {
     "services": "Home Affairs services",
-    "birthRegistration": "Birth Registration",
+    "birthRegistration": "Birth Certificate",
     "birthCertificate": "Birth Certificate",
     "nationalIdApplication": "National ID Application",
     "nationalIdCard": "National ID Card",
@@ -403,7 +403,7 @@
     "applyForBirthCertificate": "Apply for a birth certificate",
     "applicationTracking": "Application Tracking",
     "birthRegistrationForm": {
-      "title": "Register a birth",
+      "title": "Apply for a birth certificate",
       "automaticNotice": "Your application is checked automatically against the Home Affairs civil register and approved or rejected immediately — there is no officer review queue.",
       "childFirstName": "Child's first name",
       "childMiddleName": "Child's middle name",
@@ -420,12 +420,6 @@
       "motherMaidenSurname": "Mother's maiden surname",
       "motherNationality": "Mother's nationality",
       "motherResidence": "Mother's residence",
-      "informantDetails": "Informant's details",
-      "informantHelp": "The informant is the person reporting this birth to Home Affairs — usually a parent, but can be another relative or responsible adult.",
-      "informantName": "Informant's name(s) and surname",
-      "informantCapacity": "Informant's capacity (relationship to child)",
-      "informantCapacityHelp": "For example: Mother, Father, Grandparent, Guardian.",
-      "informantResidence": "Informant's residence",
       "uploadDocuments": "Upload supporting documents",
       "isCitizen": "Is this parent a Lesotho citizen?",
       "isCitizenYes": "Yes, Lesotho citizen",
@@ -447,7 +441,7 @@
       "approvedResult": "Application approved. Certificate {{certificateNumber}} has been generated.",
       "rejectedResult": "Application could not be approved: {{reason}}",
       "applyAgain": "Submit a new application",
-      "submit": "Submit birth registration"
+      "submit": "Submit birth certificate application"
     },
     "birthCertificateApplicationForm": {
       "title": "Apply for your birth certificate",
@@ -463,7 +457,8 @@
       "approvedBody": "Your permanent identity number is {{pin}}. Your birth certificate ({{certificateNumber}}) has been generated.",
       "continueToRegister": "Continue to create your account",
       "rejectedTitle": "Application could not be approved",
-      "backToRegister": "Back to account creation"
+      "backToRegister": "Back to account creation",
+      "goToReissue": "Request a certificate reissue instead"
     },
     "birthCertificateView": {
       "title": "Birth Certificate",
@@ -500,8 +495,6 @@
         "motherMaidenSurname": "Maiden surname of mother",
         "motherNationality": "Nationality of mother",
         "motherResidence": "Residence of mother",
-        "informant": "Name(s) and capacity of informant",
-        "informantResidence": "Residence of informant",
         "dateOfRegistration": "Date of registration"
       }
     },
@@ -604,11 +597,14 @@
     "birthCertificateReissue": "Birth certificate reissue",
     "birthCertificateReissueForm": {
       "intro": "Request a new copy of your birth certificate if the original was lost, damaged, or never collected.",
+      "doesNotExpireNotice": "A birth certificate does not expire, so this is not a renewal — it only replaces a copy that was lost, damaged, or never collected. You must state your reason and upload proof supporting it (for example a police report for a lost certificate, or a photo of a damaged one).",
       "field": {
         "birthRecordId": "Birth record ID",
         "birthRecordIdHelp": "The reference number of your approved birth registration (see your birth certificate or My Applications).",
         "reason": "Reason for reissue",
-        "details": "Additional details"
+        "details": "Additional details",
+        "proof": "Proof of reason",
+        "proofHelp": "Upload evidence supporting your reason — e.g. a police report for a lost certificate, or a photo of the damaged one."
       },
       "certificateReady": "View certificate"
     },
@@ -1495,7 +1491,9 @@
     "startReview": "Start review",
     "requestInfo": "Request more information",
     "reason": "Reason",
-    "notProvided": "Not provided"
+    "notProvided": "Not provided",
+    "viewDocument": "View document",
+    "fieldRequired": "{{field}} is required."
   },
   "profile": {
     "biometricEnrollment": "Hand biometric enrolment",

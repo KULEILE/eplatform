@@ -47,8 +47,7 @@ export default function BirthRegistrationDetail() {
       dateOfBirth: record.date_of_birth ? record.date_of_birth.slice(0, 10) : '', placeOfBirth: record.place_of_birth || '', sex: record.sex || 'Male',
       fatherName: record.father_name || '', fatherNationality: record.father_nationality || 'Mosotho',
       motherName: record.mother_name || '', motherMaidenSurname: record.mother_maiden_surname || '', motherNationality: record.mother_nationality || 'Mosotho',
-      motherResidence: record.mother_residence || '', informantName: record.informant_name || '', informantCapacity: record.informant_capacity || '',
-      informantResidence: record.informant_residence || '',
+      motherResidence: record.mother_residence || '',
     });
     setEditing(true);
   }
@@ -157,13 +156,6 @@ export default function BirthRegistrationDetail() {
               <div><label className="form-label">{t('homeAffairs.birthRegistrationForm.motherResidence')}</label><input className="form-input" value={edit.motherResidence} onChange={(e) => setEdit({ ...edit, motherResidence: e.target.value })} /></div>
             </dl>
 
-            <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthRegistrationForm.informantDetails')}</p>
-            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div><label className="form-label">{t('homeAffairs.birthRegistrationForm.informantName')}</label><input className="form-input" value={edit.informantName} onChange={(e) => setEdit({ ...edit, informantName: e.target.value })} /></div>
-              <div><label className="form-label">{t('homeAffairs.birthRegistrationForm.informantCapacity')}</label><input className="form-input" value={edit.informantCapacity} onChange={(e) => setEdit({ ...edit, informantCapacity: e.target.value })} /></div>
-              <div><label className="form-label">{t('homeAffairs.birthRegistrationForm.informantResidence')}</label><input className="form-input" value={edit.informantResidence} onChange={(e) => setEdit({ ...edit, informantResidence: e.target.value })} /></div>
-            </dl>
-
             <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
               <button type="button" disabled={busy} className="btn-primary" onClick={submitResubmit}>{t('common.resubmitForReview')}</button>
               <button type="button" disabled={busy} className="btn-secondary" onClick={() => setEditing(false)}>{t('common.cancel')}</button>
@@ -238,13 +230,6 @@ export default function BirthRegistrationDetail() {
                 </ul>
               </>
             )}
-
-            <p className="mb-2 mt-5 border-t border-slate-100 pt-4 text-xs font-semibold uppercase tracking-wide text-slate-400">{t('homeAffairs.birthRegistrationForm.informantDetails')}</p>
-            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.informantName')}</dt><dd className="font-medium">{record.informant_name || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
-              <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.informantCapacity')}</dt><dd className="font-medium">{record.informant_capacity || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
-              <div><dt className="text-xs text-slate-500">{t('homeAffairs.birthRegistrationForm.informantResidence')}</dt><dd className="font-medium">{record.informant_residence || t('homeAffairs.birthCertificateView.notRecorded')}</dd></div>
-            </dl>
 
             <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
               {canResubmit && (

@@ -41,11 +41,19 @@ function isOfficer(req) { return OFFICER_ROLES.includes(req.user.roleKey); }
 // ============================================================================================
 
 /** POST /api/home-affairs/birth-certificate-reissue  body: { birthRecordId, reason, details } */
+/**
+ * A birth certificate never expires, so there is no "renewal" of one — this is always a REISSUE:
+ * a replacement copy of a certificate that was lost, damaged, or never collected. Because of
+ * that, a stated reason alone is no longer enough to get a new copy — the citizen must also
+ * upload proof supporting it (a police report for "Lost", a photo of the damaged certificate for
+ * "Damaged", and so on). See migration 060.
+ */
 async function requestBirthCertificateReissue(req, res, next) {
   try {
     if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required to request a reissue.' });
-    const { birthRecordId, reason, details } = req.body;
+    const { birthRecordId, reason, details, proofImageReference } = req.body;
     if (!birthRecordId || !reason) return res.status(400).json({ error: 'birthRecordId and reason are required.' });
+    if (!proofImageReference) return res.status(400).json({ error: 'Proof supporting your reason for requesting a reissue is required.' });
     const { rows: brRows } = await db.query('SELECT * FROM birth_records WHERE birth_record_id = $1', [birthRecordId]);
     if (brRows.length === 0) return res.status(404).json({ error: 'Birth record not found.' });
     const birthRecord = brRows[0];
@@ -57,9 +65,9 @@ async function requestBirthCertificateReissue(req, res, next) {
       await client.query('BEGIN');
       const reissueReference = generateReference('BCR');
       const { rows } = await client.query(
-        `INSERT INTO birth_certificate_reissue_requests (citizen_id, birth_record_id, reason, details, reissue_reference)
-         VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-        [req.user.citizenId, birthRecordId, reason, details || null, reissueReference]
+        `INSERT INTO birth_certificate_reissue_requests (citizen_id, birth_record_id, reason, details, proof_image_reference, reissue_reference)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        [req.user.citizenId, birthRecordId, reason, details || null, proofImageReference, reissueReference]
       );
       await indexApplication(client, {
         citizenId: req.user.citizenId, departmentKey: 'home_affairs', serviceType: 'Birth Certificate Reissue',
@@ -141,14 +149,15 @@ function requestInformationReissue(req, res, next) {
 }
 
 function resubmitReissue(req, res, next) {
-  const { reason, details } = req.body;
+  const { reason, details, proofImageReference } = req.body;
   return transitionReissue(req, res, next, {
     from: ['Additional Information Required', 'Rejected'], to: 'Under Review', allowOwner: true,
     sideEffect: async (client, record) => {
       if (!reason) throw Object.assign(new Error('reason is required.'), { status: 400 });
+      if (!proofImageReference) throw Object.assign(new Error('Proof supporting your reason for requesting a reissue is required.'), { status: 400 });
       await client.query(
-        `UPDATE birth_certificate_reissue_requests SET status = 'Under Review', rejection_reason = NULL, reason = $1, details = $2, updated_at = NOW() WHERE reissue_request_id = $3`,
-        [reason, details || null, record.reissue_request_id]
+        `UPDATE birth_certificate_reissue_requests SET status = 'Under Review', rejection_reason = NULL, reason = $1, details = $2, proof_image_reference = $3, updated_at = NOW() WHERE reissue_request_id = $4`,
+        [reason, details || null, proofImageReference, record.reissue_request_id]
       );
       await syncApplicationStatus(client, { sourceTable: 'birth_certificate_reissue_requests', sourceId: record.reissue_request_id, status: 'Under Review', note: 'Citizen resubmitted.' });
       return { status: 'Under Review' };

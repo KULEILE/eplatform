@@ -61,6 +61,39 @@ async function requireAuth(req, res, next) {
   }
 }
 
+/**
+ * Like requireAuth, but never blocks the request — used on the handful of routes that are
+ * genuinely public (no login needed to call them) but still want to know WHO is calling, if
+ * anyone happens to be logged in. Sets req.user exactly as requireAuth would when a valid
+ * session token is present; otherwise leaves req.user undefined and continues anyway. Any
+ * problem with the token (missing, expired, malformed, a reset token, a suspended account) is
+ * treated the same as "no one is logged in" here, never as an error — this middleware's whole
+ * point is to not get in the way of an anonymous caller.
+ *
+ * First use: POST /api/birth-certificate-applications, so an already-verified citizen who
+ * happens to be logged in can be told to request a certificate reissue instead of letting them
+ * silently create a second identity for themselves (see applyForBirthCertificatePublic).
+ */
+async function attachUserIfPresent(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return next();
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (payload.purpose) return next();
+    const { rows } = await db.query(
+      `SELECT u.user_id, u.account_status, u.citizen_id, r.role_key FROM users u
+       JOIN roles r ON r.role_id = u.role_id WHERE u.user_id = $1`,
+      [payload.userId]
+    );
+    const user = rows[0];
+    if (user && user.account_status === 'Active') {
+      req.user = { userId: user.user_id, roleKey: user.role_key, citizenId: user.citizen_id };
+    }
+  } catch { /* an invalid/expired token just means "not logged in" here, not an error */ }
+  next();
+}
+
 function signToken(userId) {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '8h' });
 }
@@ -104,4 +137,4 @@ function verifyResetToken(token) {
   }
 }
 
-module.exports = { requireAuth, signToken, signResetToken, verifyResetToken, passwordFingerprint, JWT_SECRET };
+module.exports = { requireAuth, attachUserIfPresent, signToken, signResetToken, verifyResetToken, passwordFingerprint, JWT_SECRET };

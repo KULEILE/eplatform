@@ -1,0 +1,15 @@
+-- 060_birth_certificate_reissue_proof.sql
+--
+-- A birth certificate reissue request can no longer be made on a stated reason alone — the
+-- citizen must also upload proof supporting that reason (e.g. a police report for "Lost", a
+-- photo of the damaged certificate for "Damaged"). A birth certificate never expires, so this
+-- stays a REISSUE (a replacement copy of something that was lost/damaged/never collected), never
+-- a "renewal" — see requestBirthCertificateReissue and resubmitReissue in
+-- homeAffairsServices2.controller.js, and BirthCertificateReissue.jsx.
+--
+-- Nullable at the database level on purpose: this table may already hold reissue requests
+-- submitted before this requirement existed (this feature shipped before this change), and a
+-- NOT NULL constraint would break the migration against them. The requirement itself is
+-- enforced in the application layer instead, same as birthRecordId/reason already are above the
+-- database's own NOT NULL columns on this table.
+ALTER TABLE birth_certificate_reissue_requests ADD COLUMN IF NOT EXISTS proof_image_reference VARCHAR(255);

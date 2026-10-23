@@ -8,6 +8,7 @@ import DataTable from './ui/DataTable';
 import StatusBadge from './ui/StatusBadge';
 import FormField from './ui/FormField';
 import Modal from './ui/Modal';
+import DocumentCapture from './DocumentCapture';
 import { formatDateOnly } from '../utils/format';
 
 /**
@@ -25,7 +26,7 @@ import { formatDateOnly } from '../utils/format';
  * MarriageSolemnisation.jsx.
  */
 export default function ServiceWorkflowPage({
-  title, intro, apiBase, idField, listKey, singleKey,
+  title, intro, notice, apiBase, idField, listKey, singleKey,
   referenceField, fields, columns = [], resultFields = [],
   initialStatus = 'Submitted', reviewableStatus = 'Under Review',
 }) {
@@ -36,7 +37,7 @@ export default function ServiceWorkflowPage({
     ? <OfficerQueue t={t} apiBase={apiBase} idField={idField} listKey={listKey} columns={columns} resultFields={resultFields}
         referenceField={referenceField} initialStatus={initialStatus} reviewableStatus={reviewableStatus} title={title} intro={intro} fields={fields} />
     : <CitizenView t={t} apiBase={apiBase} idField={idField} listKey={listKey} singleKey={singleKey} referenceField={referenceField}
-        fields={fields} columns={columns} resultFields={resultFields} title={title} intro={intro} />;
+        fields={fields} columns={columns} resultFields={resultFields} title={title} intro={intro} notice={notice} />;
 }
 
 // fields[].name is camelCase (matches the JS payload the citizen submits); the row data that
@@ -77,12 +78,24 @@ function DetailModal({ t, open, onClose, row, fields }) {
     >
       {row && (
         <dl className="space-y-3">
-          {visibleFields.map((f) => (
-            <div key={f.name}>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">{f.label}</dt>
-              <dd className="text-sm text-slate-800">{formatFieldValueForDisplay(f, row) || t('services.notProvided')}</dd>
-            </div>
-          ))}
+          {visibleFields.map((f) => {
+            // A file field's raw value is an opaque file_blobs reference (e.g.
+            // "documents/1700000000000-123456789.jpg"), not something to print as text — link to
+            // it the same way DocumentCapture's own preview does (see /uploads/* in app.js).
+            const raw = row[snakeCaseKey(f.name)];
+            return (
+              <div key={f.name}>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">{f.label}</dt>
+                <dd className="text-sm text-slate-800">
+                  {f.type === 'file'
+                    ? (raw
+                      ? <a href={`/uploads/${raw}`} target="_blank" rel="noreferrer" className="font-semibold text-gov-navy underline">{t('services.viewDocument')}</a>
+                      : t('services.notProvided'))
+                    : (formatFieldValueForDisplay(f, row) || t('services.notProvided'))}
+                </dd>
+              </div>
+            );
+          })}
           {row.rejection_reason && (
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t('services.reason')}</dt>
@@ -117,7 +130,19 @@ function emptyFormFromFields(fields) {
 function FieldInputs({ fields, form, onChange }) {
   return (
     <>
-      {fields.map((f) => (
+      {fields.map((f) => f.type === 'file' ? (
+        // DocumentCapture draws its own label/required-marker/help inside its bordered box
+        // (same as BirthCertificateApplication.jsx's documents) — wrapping it in FormField too
+        // would print the label twice, so it's rendered on its own here instead.
+        <DocumentCapture
+          key={f.name}
+          label={f.label}
+          help={f.help}
+          required={f.required}
+          value={form[f.name] ?? ''}
+          onChange={(value) => onChange(f.name, value)}
+        />
+      ) : (
         <FormField key={f.name} label={f.label} htmlFor={f.name} required={f.required} help={f.help}>
           {f.type === 'textarea' ? (
             <textarea id={f.name} required={f.required} rows={3} className="form-input"
@@ -138,7 +163,7 @@ function FieldInputs({ fields, form, onChange }) {
   );
 }
 
-function CitizenView({ t, apiBase, idField, listKey, singleKey, referenceField, fields, columns, resultFields, title, intro }) {
+function CitizenView({ t, apiBase, idField, listKey, singleKey, referenceField, fields, columns, resultFields, title, intro, notice }) {
   const [rows, setRows] = useState(null);
   const [form, setForm] = useState(() => emptyFormFromFields(fields));
   const [error, setError] = useState('');
@@ -152,9 +177,21 @@ function CitizenView({ t, apiBase, idField, listKey, singleKey, referenceField, 
 
   function update(name, value) { setForm((f) => ({ ...f, [name]: value })); }
 
+  // A required file field (DocumentCapture) has no native HTML "required" enforcement the way
+  // a required text/select/textarea input does inside this <form> — it's its own file input with
+  // no `required` attribute, driven entirely by this component's own state. Checked explicitly
+  // here so a missing required document is caught before the request is sent, the same as a
+  // missing required text field already is by the browser.
+  function missingRequiredFile(fieldsToCheck, formToCheck) {
+    return fieldsToCheck.find((f) => f.type === 'file' && f.required && !formToCheck[f.name]);
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
-    setError(''); setSuccess(''); setBusy(true);
+    setError(''); setSuccess('');
+    const missing = missingRequiredFile(fields, form);
+    if (missing) { setError(t('services.fieldRequired', { field: missing.label })); return; }
+    setBusy(true);
     try {
       const result = await api.post(apiBase, form);
       const ref = result[singleKey]?.[referenceField];
@@ -176,7 +213,10 @@ function CitizenView({ t, apiBase, idField, listKey, singleKey, referenceField, 
 
   async function onResubmit(e) {
     e.preventDefault();
-    setError(''); setSuccess(''); setBusy(true);
+    setError(''); setSuccess('');
+    const missing = missingRequiredFile(resubmitFields, resubmitForm);
+    if (missing) { setError(t('services.fieldRequired', { field: missing.label })); return; }
+    setBusy(true);
     try {
       await api.post(`${apiBase}/${resubmitTarget}/resubmit`, resubmitForm);
       setSuccess(t('services.resubmitted'));
@@ -204,6 +244,7 @@ function CitizenView({ t, apiBase, idField, listKey, singleKey, referenceField, 
     <div>
       <h1 className="mb-2 text-2xl font-bold text-slate-900">{title}</h1>
       <p className="mb-6 text-sm text-slate-600">{intro}</p>
+      {notice && <p className="mb-4 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800">ℹ {notice}</p>}
 
       {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}
       {success && <p className="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-gov-green" role="status">✓ {success}</p>}

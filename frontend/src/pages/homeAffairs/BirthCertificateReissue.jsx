@@ -21,11 +21,18 @@ export default function BirthCertificateReissue() {
       ],
     },
     { name: 'details', label: t('homeAffairs.birthCertificateReissueForm.field.details'), type: 'textarea', help: t('common.optional') },
+    // Required, and NOT omitted on resubmit — a rejected request can be resubmitted with
+    // stronger proof, prefilled from whatever was already uploaded (see ServiceWorkflowPage.jsx's
+    // startResubmit, which reads proof_image_reference off the row). A birth certificate never
+    // expires, so this whole form is a REISSUE (a replacement copy), never a "renewal" — the
+    // citizen must show a reason AND evidence for it, not just pick a reason from a list.
+    { name: 'proofImageReference', label: t('homeAffairs.birthCertificateReissueForm.field.proof'), type: 'file', required: true, help: t('homeAffairs.birthCertificateReissueForm.field.proofHelp') },
   ];
   return (
     <ServiceWorkflowPage
       title={t('homeAffairs.birthCertificateReissue')}
       intro={t('homeAffairs.birthCertificateReissueForm.intro')}
+      notice={t('homeAffairs.birthCertificateReissueForm.doesNotExpireNotice')}
       apiBase="/home-affairs/birth-certificate-reissue"
       idField="reissue_request_id"
       listKey="reissueRequests"

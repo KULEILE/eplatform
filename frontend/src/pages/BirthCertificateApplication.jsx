@@ -31,6 +31,7 @@ export default function BirthCertificateApplication() {
   const [marriageCertificateImageReference, setMarriageCertificateImageReference] = useState('');
   const [acknowledgementOfPaternityImageReference, setAcknowledgementOfPaternityImageReference] = useState('');
   const [error, setError] = useState('');
+  const [alreadyVerified, setAlreadyVerified] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null); // { status, permanentIdentityNumber?, certificateNumber?, rejectionReason? }
 
@@ -39,6 +40,7 @@ export default function BirthCertificateApplication() {
   async function onSubmit(e) {
     e.preventDefault();
     setError('');
+    setAlreadyVerified(false);
     setBusy(true);
     try {
       const payload = {
@@ -55,6 +57,10 @@ export default function BirthCertificateApplication() {
       setResult(r);
     } catch (err) {
       setError(err.message || t('common.somethingWentWrong'));
+      // A logged-in citizen who already has an identity gets refused here (see
+      // homeAffairs.controller.js's applyForBirthCertificatePublic) — point them at a reissue
+      // instead of leaving them stuck on a plain error with no next step.
+      setAlreadyVerified(!!err.data?.alreadyVerified);
     } finally {
       setBusy(false);
     }
@@ -98,7 +104,18 @@ export default function BirthCertificateApplication() {
       <h1 className="mb-2 text-2xl font-bold text-slate-900">{t('homeAffairs.birthCertificateApplicationForm.title')}</h1>
       <p className="mb-4 text-sm text-slate-600">{t('homeAffairs.birthCertificateApplicationForm.intro')}</p>
       <p className="mb-4 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800">ℹ {t('homeAffairs.birthRegistrationForm.automaticNotice')}</p>
-      {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}
+      {error && (
+        <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">
+          <p>⚠ {error}</p>
+          {alreadyVerified && (
+            <p className="mt-2">
+              <Link to="/home-affairs/birth-certificate-reissue" className="font-semibold underline">
+                {t('homeAffairs.birthCertificateApplicationForm.goToReissue')}
+              </Link>
+            </p>
+          )}
+        </div>
+      )}
       <form onSubmit={onSubmit} className="card" noValidate>
         <FormField label={t('homeAffairs.birthCertificateApplicationForm.applicantFirstName')} htmlFor="cfn" required>
           <input id="cfn" required className="form-input" value={form.childFirstName} onChange={(e) => update('childFirstName', e.target.value)} />

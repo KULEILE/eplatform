@@ -311,7 +311,7 @@
     "pensions": "Pentjhene",
     "police": "Sepolesa",
     "passport": "Ditshebeletso tsa Pasepoto",
-    "home_affairs_desc": "Ngodiso ya tswalo, boitsebiso ba naha, ngodiso ya baahi le ditshebeletso tsa pasepoto.",
+    "home_affairs_desc": "Disetifikeiti tsa tswalo, boitsebiso ba naha, ngodiso ya baahi le ditshebeletso tsa pasepoto.",
     "traffic_desc": "Dilaesense tsa ho kganna le ngodiso ya dikoloi.",
     "finance_desc": "Ditshebeletso tsa ditjhelete tse hlokang boitsebiso bo netefaditsweng.",
     "pensions_desc": "Netefatso ya bahlohleledi ba pentjhene le ditshebeletso.",
@@ -393,7 +393,7 @@
   },
   "homeAffairs": {
     "services": "Ditshebeletso tsa Home Affairs",
-    "birthRegistration": "Ngodiso ya Tswalo",
+    "birthRegistration": "Setifikeiti sa Tswalo",
     "birthCertificate": "Setifikeiti sa Tswalo",
     "nationalIdApplication": "Kopo ya ID ya Naha",
     "nationalIdCard": "Karete ya ID ya Naha",
@@ -403,7 +403,7 @@
     "applyForBirthCertificate": "Kopa setifikeiti sa tswalo",
     "applicationTracking": "Ho Latela Kopo",
     "birthRegistrationForm": {
-      "title": "Ngodisa tswalo",
+      "title": "Kopa setifikeiti sa tswalo",
       "automaticNotice": "Kopo ya hao e hlahlojwa ka botsitso khahlanong le rekoto ya baahi ya Litaba tsa Selehae mme e amoheloa kapa e haniwe hang-hang — ha ho na mohlanka ya hlahlobang dikopo.",
       "childFirstName": "Lebitso la pele la ngwana",
       "childMiddleName": "Lebitso le bohareng la ngwana",
@@ -420,12 +420,6 @@
       "motherMaidenSurname": "Fane ya mme ya tswalo",
       "motherNationality": "Bochaba ba mme",
       "motherResidence": "Moaho wa mme",
-      "informantDetails": "Lintlha tsa ya tlalehang",
-      "informantHelp": "Ya tlalehang ke motho ya tlalehang tswalo ena ho Home Affairs — hangata e ba motswadi, empa e ka ba leloko le leng kapa motho e mong ya ikarabellang.",
-      "informantName": "Mabitso a ya tlalehang le fane",
-      "informantCapacity": "Boemo ba ya tlalehang (kamano le ngwana)",
-      "informantCapacityHelp": "Mohlala: Mme, Ntate, Nkgono/Ntatemoholo, Mohlokomedi.",
-      "informantResidence": "Moaho wa ya tlalehang",
       "uploadDocuments": "Kenya ditokomane tsa tshehetso",
       "isCitizen": "Na motswadi enwa ke moahi wa Lesotho?",
       "isCitizenYes": "E, moahi wa Lesotho",
@@ -447,7 +441,7 @@
       "approvedResult": "Kopo e amohetswe. Setifikeiti {{certificateNumber}} se entswe.",
       "rejectedResult": "Kopo ha e a amoheloa: {{reason}}",
       "applyAgain": "Romela kopo e ntjha",
-      "submit": "Romela ngodiso ya tswalo"
+      "submit": "Romela kopo ya setifikeiti sa tswalo"
     },
     "birthCertificateApplicationForm": {
       "title": "Kopa setifikeiti sa hao sa tswalo",
@@ -463,7 +457,8 @@
       "approvedBody": "Nomoro ya hao ya boitsebiso e sa fetoheng ke {{pin}}. Setifikeiti sa hao sa tswalo ({{certificateNumber}}) se entswe.",
       "continueToRegister": "Tswela pele ho theha akhaonto ya hao",
       "rejectedTitle": "Kopo ha e a amoheloa",
-      "backToRegister": "Kgutlela ho theha akhaonto"
+      "backToRegister": "Kgutlela ho theha akhaonto",
+      "goToReissue": "Kopa hore setifikeiti se hatiswe hape"
     },
     "birthCertificateView": {
       "title": "Setifikeiti sa Tswalo",
@@ -500,8 +495,6 @@
         "motherMaidenSurname": "Fane ya mme ya tswalo",
         "motherNationality": "Bochaba ba mme",
         "motherResidence": "Moaho wa mme",
-        "informant": "Mabitso le boemo ba ya tlalehang",
-        "informantResidence": "Moaho wa ya tlalehang",
         "dateOfRegistration": "Letsatsi la ngodiso"
       }
     },
@@ -604,11 +597,14 @@
     "birthCertificateReissue": "Phetiso ya Setifikeiti sa Tswalo",
     "birthCertificateReissueForm": {
       "intro": "Kopa khopi e ntjha ya setifikeiti sa hau sa tswalo haeba se ne se lahlehile, se senyehile, kapa se ne se so ke se nkuwe.",
+      "doesNotExpireNotice": "Setifikeiti sa tswalo ha se fele nako, kahoo hase ho se ntjhafatsa — se feela se nkela setifikeiti se lahlehileng, se senyehileng, kapa se so ke se nkuwe sebaka. O lokela ho hlalosa lebaka la hau le ho kenya bopaki bo tshehetsang lebaka leo (mohlala, tlaleho ya sepolesa bakeng sa setifikeiti se lahlehileng, kapa setshwantsho sa se senyehileng).",
       "field": {
         "birthRecordId": "Nomoro ya Rekoto ya Tswalo",
         "birthRecordIdHelp": "Nomoro ya tshupiso ya ngodiso ya hau ya tswalo e amohetsweng (sheba setifikeiti sa hau sa tswalo kapa Dikopo tsa Ka).",
         "reason": "Lebaka la ho fumana bocha",
-        "details": "Dintlha tse eketsehileng"
+        "details": "Dintlha tse eketsehileng",
+        "proof": "Bopaki ba lebaka",
+        "proofHelp": "Kenya bopaki bo tshehetsang lebaka la hau — mohlala tlaleho ya sepolesa bakeng sa setifikeiti se lahlehileng, kapa setshwantsho sa se senyehileng."
       },
       "certificateReady": "Sheba setifikeiti"
     },
@@ -1495,7 +1491,9 @@
     "startReview": "Qala tlhahlobo",
     "requestInfo": "Kopa tlhahisoleseling e eketsehileng",
     "reason": "Lebaka",
-    "notProvided": "Ha ho a fanwe"
+    "notProvided": "Ha ho a fanwe",
+    "viewDocument": "Sheba tokomane",
+    "fieldRequired": "{{field}} e hlokahala."
   },
   "profile": {
     "biometricEnrollment": "Ngoliso ea sebopeho sa letsoho",

@@ -221,8 +221,20 @@ async function createBirthRegistration(req, res, next) {
  * toward getting an account (see Register.jsx: once this succeeds, they come back and type the
  * new permanent identity number it returns into "I already have one", and that account gets
  * created and verified automatically — the same way any already-registered citizen's does).
+ *
+ * A birth certificate never expires and is never renewed — once someone's identity exists here,
+ * no new one can be created for them through this form; attachUserIfPresent (see that router)
+ * lets this still-public endpoint notice when the caller happens to be logged in and already
+ * has one, so it can refuse and point them at a certificate reissue instead of silently minting
+ * a second identity for the same person.
  */
 async function applyForBirthCertificatePublic(req, res, next) {
+  if (req.user && req.user.citizenId) {
+    return res.status(409).json({
+      error: 'You already have a verified identity and birth certificate. A birth certificate cannot be applied for again — if you need a replacement copy, request a certificate reissue instead.',
+      alreadyVerified: true,
+    });
+  }
   const client = await db.getClient();
   try {
     await client.query('BEGIN');
@@ -382,7 +394,6 @@ function resubmitBirthRegistration(req, res, next) {
   const {
     childFirstName, childMiddleName, childLastName, dateOfBirth, placeOfBirth, sex,
     fatherName, fatherNationality, motherName, motherMaidenSurname, motherNationality, motherResidence,
-    informantName, informantCapacity, informantResidence,
   } = req.body;
   return transitionBirthRegistration(req, res, next, {
     from: ['Information Required', 'Rejected'], to: 'Under Review', allowOwner: true,
@@ -390,15 +401,20 @@ function resubmitBirthRegistration(req, res, next) {
       if (!childFirstName || !childLastName || !dateOfBirth || !placeOfBirth || !sex) {
         throw Object.assign(new Error('childFirstName, childLastName, dateOfBirth, placeOfBirth and sex are required.'), { status: 400 });
       }
+      // informant_name/informant_capacity/informant_residence are no longer collected anywhere
+      // (nobody registers someone else's birth any more — see migration 059 and
+      // BirthRegistrationDetail.jsx) — left untouched here rather than overwritten with nulls, so
+      // any informant data already on an old, still-pending legacy record isn't silently erased
+      // by a resubmit that has nothing to say about it.
       await client.query(
         `UPDATE birth_records SET registration_status = 'Under Review', rejection_reason = NULL,
             child_first_name = $1, child_middle_name = $2, child_last_name = $3, date_of_birth = $4, place_of_birth = $5, sex = $6,
             father_name = $7, father_nationality = $8, mother_name = $9, mother_maiden_surname = $10, mother_nationality = $11,
-            mother_residence = $12, informant_name = $13, informant_capacity = $14, informant_residence = $15, updated_at = NOW()
-         WHERE birth_record_id = $16`,
+            mother_residence = $12, updated_at = NOW()
+         WHERE birth_record_id = $13`,
         [childFirstName, childMiddleName || null, childLastName, dateOfBirth, placeOfBirth, sex,
          fatherName || null, fatherNationality || 'Mosotho', motherName || null, motherMaidenSurname || null, motherNationality || 'Mosotho',
-         motherResidence || null, informantName || null, informantCapacity || null, informantResidence || null, record.birth_record_id]
+         motherResidence || null, record.birth_record_id]
       );
       await syncApplicationStatus(client, { sourceTable: 'birth_records', sourceId: record.birth_record_id, status: 'Under Review' });
       return { status: 'Under Review' };
@@ -513,27 +529,34 @@ function rejectBirthRegistration(req, res, next) {
 async function getBirthCertificate(req, res, next) {
   try {
     const { rows } = await db.query(
+      // LEFT JOIN on the parent — a self-application (migration 059: someone with no account
+      // applying for their OWN birth certificate) has no submitting parent at all, so
+      // parent_citizen_id is NULL for it. This used to be an inner JOIN, which silently excluded
+      // every self-application's certificate from this query entirely — "Birth certificate not
+      // found" even though it plainly existed. Fixed.
       `SELECT bc.*, c.first_name, c.middle_name, c.last_name, c.date_of_birth, c.place_of_birth,
               c.sex, c.permanent_identity_number, o.name AS collection_office_name,
-              p.first_name AS parent_first_name, p.last_name AS parent_last_name,
+              br.parent_citizen_id, p.first_name AS parent_first_name, p.last_name AS parent_last_name,
               br.father_name, br.father_nationality, br.mother_name, br.mother_maiden_surname,
-              br.mother_nationality, br.mother_residence, br.informant_name, br.informant_capacity,
-              br.informant_residence, br.approved_at AS date_of_registration
+              br.mother_nationality, br.mother_residence, br.approved_at AS date_of_registration
        FROM birth_certificates bc
        JOIN citizens c ON c.citizen_id = bc.citizen_id
        JOIN birth_records br ON br.birth_record_id = bc.birth_record_id
-       JOIN citizens p ON p.citizen_id = br.parent_citizen_id
+       LEFT JOIN citizens p ON p.citizen_id = br.parent_citizen_id
        LEFT JOIN offices o ON o.office_id = bc.collection_office_id
        WHERE bc.birth_certificate_id = $1`,
       [req.params.id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Birth certificate not found.' });
     const cert = rows[0];
-    const isOwnerParent = req.user.citizenId && cert.parent_first_name && (
-      (await db.query('SELECT parent_citizen_id FROM birth_records WHERE birth_record_id = $1', [cert.birth_record_id])).rows[0].parent_citizen_id === req.user.citizenId
-    );
+    // Two different people can legitimately own this certificate: the parent/guardian who
+    // registered it (parent_citizen_id), or the person it's actually FOR (bc.citizen_id) — the
+    // latter is the only one who can own a self-application's certificate, since that flow has
+    // no registering parent at all, and it's also just as true for a certificate a parent
+    // registered once that child grows up, creates their own account, and logs in.
+    const isOwner = !!req.user.citizenId && (cert.citizen_id === req.user.citizenId || cert.parent_citizen_id === req.user.citizenId);
     const isOfficer = ['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey);
-    if (!isOwnerParent && !isOfficer) return res.status(403).json({ error: 'You do not have access to this certificate.' });
+    if (!isOwner && !isOfficer) return res.status(403).json({ error: 'You do not have access to this certificate.' });
     res.json({ birthCertificate: cert });
   } catch (err) {
     next(err);
