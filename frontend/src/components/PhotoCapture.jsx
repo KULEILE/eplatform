@@ -103,6 +103,13 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
   // Whether to show the "Switch camera" button at all — only meaningful once we actually know the
   // device has more than one camera (see openCamera below); stays false on a typical laptop.
   const [multiCamera, setMultiCamera] = useState(false);
+  // Whether the currently-open camera track actually exposes a torch ('flashlight') capability —
+  // checked via getCapabilities() right after permission is granted (see openCamera below), the
+  // same pattern multiCamera already uses. Most front/selfie cameras and virtually all desktop/
+  // laptop webcams don't have one at all, so this stays false there and the button never shows;
+  // it's mainly the back camera on a phone (Chrome/Android) that supports it.
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -115,6 +122,10 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+    // The torch turns off on its own once the track stops, but the button's own on/off state
+    // needs resetting too, or it would show "on" the next time a torch-capable camera opens.
+    setTorchSupported(false);
+    setTorchOn(false);
   }
   useEffect(() => () => stopStream(), []);
 
@@ -149,6 +160,13 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
           .then((devices) => setMultiCamera(devices.filter((d) => d.kind === 'videoinput').length > 1))
           .catch(() => {}); // harmless to skip — the switch button just stays hidden
       }
+      // Flashlight: only the device's own camera hardware can expose this, and only some devices
+      // (mainly a phone's back camera) actually have one — getCapabilities() is how a track
+      // reports whether 'torch' is one of the constraints it accepts at all; never assumed.
+      const track = stream.getVideoTracks()[0];
+      const capabilities = track && track.getCapabilities ? track.getCapabilities() : {};
+      setTorchSupported(!!capabilities.torch);
+      setTorchOn(false);
     } catch {
       // Permission denied, no camera present, or an insecure context — fall back rather than
       // leaving the citizen stuck with no way to proceed at all.
@@ -164,6 +182,18 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
   // when multiCamera is true (see openCamera above).
   function switchCamera() {
     openCamera(facingMode === 'user' ? 'environment' : 'user');
+  }
+
+  // Toggles the camera's own hardware flashlight via applyConstraints — only rendered when
+  // torchSupported is true (see openCamera above), so this is never called on a camera that
+  // doesn't actually have one.
+  function toggleTorch() {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const next = !torchOn;
+    track.applyConstraints({ advanced: [{ torch: next }] })
+      .then(() => setTorchOn(next))
+      .catch(() => {}); // harmless to skip — the citizen can still take the photo without it
   }
 
   function cancelCamera() {
@@ -362,15 +392,20 @@ export default function PhotoCapture({ value, onChange, label, help, faceCheck =
         <div className="flex flex-col items-center gap-3">
           {/* Live front-camera feed — a real capture, not a file picker — see the class doc
               comment above for why this replaced a plain <input type="file"> on faceCheck fields. */}
-          <div className="relative mx-auto h-40 w-36 overflow-hidden rounded border-2 border-gov-navy bg-black">
+          <div className="relative mx-auto h-72 w-64 overflow-hidden rounded border-2 border-gov-navy bg-black">
             <video ref={videoRef} muted playsInline className="h-full w-full object-cover" />
             <div className="pointer-events-none absolute inset-2 rounded border-2 border-dashed border-white/70" />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             <button type="button" className="btn-primary !py-1 !text-xs" onClick={captureNow}>{t('photoCapture.captureNow')}</button>
             {multiCamera && (
               <button type="button" className="btn-secondary !py-1 !text-xs" onClick={switchCamera}>
                 {t('photoCapture.switchCamera')}
+              </button>
+            )}
+            {torchSupported && (
+              <button type="button" className="btn-secondary !py-1 !text-xs" onClick={toggleTorch}>
+                {torchOn ? `💡 ${t('photoCapture.flashlightOff')}` : `💡 ${t('photoCapture.flashlightOn')}`}
               </button>
             )}
             <button type="button" className="btn-secondary !py-1 !text-xs" onClick={cancelCamera}>{t('common.cancel')}</button>

@@ -138,6 +138,8 @@
     "startCamera": "Open camera",
     "captureNow": "Take photo",
     "switchCamera": "Switch camera",
+    "flashlightOn": "Turn on flashlight",
+    "flashlightOff": "Turn off flashlight",
     "cameraUnavailable": "Your camera couldn't be opened on this device — choose an existing photo instead.",
     "cameraFallbackHint": "PNG, JPG or WEBP, up to 5MB.",
     "scanInProgressHint": "Center your face in the frame, then tap Take photo.",

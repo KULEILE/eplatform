@@ -138,6 +138,8 @@
     "startCamera": "Bula khamera",
     "captureNow": "Nka setshwantsho",
     "switchCamera": "Fetola khamera",
+    "flashlightOn": "Bulela lebone la khamera",
+    "flashlightOff": "Tima lebone la khamera",
     "cameraUnavailable": "Khamera ha e khone ho bulwa mochining ona — kgetha setshwantsho se seng sa pele ho eng hore.",
     "cameraFallbackHint": "PNG, JPG kapa WEBP, ho fihla ho 5MB.",
     "scanInProgressHint": "Beha sefahleho sa hau bohareng ba foto, ebe o tobetsa Nka setshwantsho.",
