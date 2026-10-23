@@ -602,10 +602,15 @@ async function disputeParentage(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** GET /api/home-affairs/parentage-disputes — officer-only queue. One row per disputed PARENT
- * SLOT, not per birth record — if both the father and mother slots are independently disputed on
- * the same record (rare, but possible since migration 062 made the two slots fully independent),
- * both appear as separate rows so an officer can resolve each on its own merits. */
+/** GET /api/home-affairs/parentage-disputes — officer-only queue. One row per disputed-or-
+ * awaiting-correction PARENT SLOT, not per birth record — if both the father and mother slots are
+ * independently disputed on the same record (rare, but possible since migration 062 made the two
+ * slots fully independent), both appear as separate rows so an officer can act on each on its own
+ * merits. Covers two stages: 'Disputed' (needs resolveParentageDispute — Dismiss or Uphold) and
+ * 'Dispute Upheld' (already cleared; now needs correctParentageDispute once the applicant and the
+ * disputing parent have come in and discussed it — see that function's notification). A row that
+ * named_parent_first_name is null for was already cleared by an upheld dispute, so there's no
+ * named person left to show until the correction is entered. */
 async function listParentageDisputes(req, res, next) {
   try {
     if (!['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey)) {
@@ -621,7 +626,7 @@ async function listParentageDisputes(req, res, next) {
        LEFT JOIN citizens c ON c.citizen_id = br.citizen_id
        LEFT JOIN citizens p ON p.citizen_id = br.parent_citizen_id
        LEFT JOIN citizens named ON named.citizen_id = br.father_citizen_id
-       WHERE br.father_confirmation_status = 'Disputed'
+       WHERE br.father_confirmation_status IN ('Disputed', 'Dispute Upheld')
        UNION ALL
        SELECT br.birth_record_id, br.registration_reference, br.child_first_name, br.child_last_name,
               'mother' AS disputed_role, br.mother_confirmation_status AS confirmation_status, br.mother_dispute_reason AS dispute_reason, br.updated_at,
@@ -632,7 +637,7 @@ async function listParentageDisputes(req, res, next) {
        LEFT JOIN citizens c ON c.citizen_id = br.citizen_id
        LEFT JOIN citizens p ON p.citizen_id = br.parent_citizen_id
        LEFT JOIN citizens named ON named.citizen_id = br.mother_citizen_id
-       WHERE br.mother_confirmation_status = 'Disputed'
+       WHERE br.mother_confirmation_status IN ('Disputed', 'Dispute Upheld')
        ORDER BY updated_at DESC`
     );
     res.json({ disputes: rows });
@@ -703,18 +708,141 @@ async function resolveParentageDispute(req, res, next) {
       });
       await client.query('COMMIT');
 
-      const notifyIds = [record.parent_citizen_id, record.father_citizen_id, record.mother_citizen_id].filter(Boolean);
+      // Only the two people actually party to THIS dispute — the applicant who registered the
+      // birth, and the parent who disputed being named in this role — are notified; the other,
+      // uninvolved parent (if there is one) is left alone. Upheld needs both to physically sort
+      // this out before anything more can happen, so they're explicitly told to visit an office;
+      // Dismissed just reports the outcome.
+      const notifyIds = [record.parent_citizen_id, record[`${role}_citizen_id`]].filter(Boolean);
+      const upheldMessage = `The dispute over the ${role} named on birth registration ${record.registration_reference} was upheld — the ${role} has been removed from the record and the certificate has been flagged for correction. Please visit a Home Affairs office with the other party to discuss this, so an officer can enter the correct parent details.${notes ? ` Officer's notes: ${notes}` : ''}`;
+      const dismissedMessage = `The dispute over the ${role} named on birth registration ${record.registration_reference} was dismissed — the registration and certificate stand as they were.${notes ? ` Officer's notes: ${notes}` : ''}`;
       for (const citizenId of notifyIds) {
         const { rows: userRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [citizenId]);
         if (userRows[0]) {
           await createNotification({
             userId: userRows[0].user_id, title: 'Parentage dispute resolved',
-            message: `The dispute over the ${role} named on birth registration ${record.registration_reference} was ${resolution.toLowerCase()}.${resolution === 'Upheld' ? ' The certificate has been flagged for correction.' : ''}${notes ? ` Officer's notes: ${notes}` : ''}`,
+            message: resolution === 'Upheld' ? upheldMessage : dismissedMessage,
             type: 'Status Change',
           });
         }
       }
       res.json({ birthRecordId: record.birth_record_id, role, status: newStatus });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    }
+  } catch (err) { next(err); } finally { client.release(); }
+}
+
+/**
+ * POST /api/home-affairs/birth-registration/:id/correct-parent
+ * body: { role: 'father'|'mother', name, nationality, isCitizen, identityNumber, passportNumber,
+ *         passportImageReference, declaredStatus }
+ *
+ * The other half of resolveParentageDispute's Upheld path. Upholding a dispute only clears the
+ * wrong parent out — it deliberately does NOT guess who the right one is. This is where an
+ * officer, after the applicant and the disputing parent have come in and discussed it in person
+ * (as the dispute-resolved notification tells them to), enters what was actually agreed and
+ * closes the correction out. Only usable on a slot that is currently 'Dispute Upheld' — there is
+ * nothing to "correct" on a slot that was never cleared in the first place.
+ *
+ * Reuses the exact same resolveParentDetails() verification (and the same minimum age-gap check)
+ * used at registration time, so an officer can't enter something that wouldn't have been accepted
+ * from a citizen either — a real identity number that doesn't match a citizen, or a parent who
+ * isn't old enough to be this child's parent, is rejected here exactly the same way.
+ */
+async function correctParentageDispute(req, res, next) {
+  if (!['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey)) {
+    return res.status(403).json({ error: 'Officer only.' });
+  }
+  const { role } = req.body;
+  if (!['father', 'mother'].includes(role)) return res.status(400).json({ error: "role must be 'father' or 'mother'." });
+  const declaredStatus = validateDeclaredStatus(role, req.body.declaredStatus);
+  const client = await db.getClient();
+  try {
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query('SELECT * FROM birth_records WHERE birth_record_id = $1 FOR UPDATE', [req.params.id]);
+      if (rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Birth record not found.' }); }
+      const record = rows[0];
+      const statusCol = `${role}_confirmation_status`;
+      if (record[statusCol] !== 'Dispute Upheld') {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: `This parent slot is not awaiting correction (status: ${record[statusCol]}).` });
+      }
+
+      const resolved = await resolveParentDetails(client, {
+        label: role, name: req.body.name, isCitizen: req.body.isCitizen, identityNumber: req.body.identityNumber,
+        passportNumber: req.body.passportNumber, passportImageReference: req.body.passportImageReference, declaredStatus,
+      });
+      const problems = [...resolved.missing.map((f) => `${f} is required.`), ...resolved.rejections];
+      if (violatesMinParentAgeGap(resolved.stored.dateOfBirth, record.date_of_birth)) {
+        problems.push(`The ${role}'s date of birth on record is not consistent with being this child's parent (must be at least ${MIN_PARENT_AGE_GAP_YEARS} years older).`);
+      }
+      if (problems.length > 0) { await client.query('ROLLBACK'); return res.status(400).json({ error: problems.join(' ') }); }
+
+      // Same eligibility rule as a brand-new registration: a corrected parent who resolves to a
+      // real citizen with no declared status is sent through the normal non-blocking confirm/
+      // dispute flow again (they get notified and can confirm or dispute this too); Unknown/
+      // Absent/Inactive/Deceased settle immediately since there's no account to reach or nothing
+      // left to confirm.
+      const newConfirmationStatus = (resolved.stored.citizenId && !declaredStatus) ? 'Pending' : 'Not Applicable';
+
+      await client.query(
+        `UPDATE birth_records SET
+                ${role}_name = $1, ${role}_nationality = $2, ${role}_is_citizen = $3, ${role}_identity_number = $4,
+                ${role}_citizen_id = $5, ${role}_passport_number = $6, ${role}_passport_image_reference = $7,
+                ${role}_declared_status = $8, ${role}_confirmation_status = $9, ${role}_confirmed_at = NULL,
+                ${role}_confirmation_signature_reference = NULL, ${role}_dispute_reason = NULL,
+                updated_at = NOW()
+         WHERE birth_record_id = $10`,
+        [resolved.stored.name, req.body.nationality || 'Mosotho', resolved.stored.isCitizen, resolved.stored.identityNumber,
+         resolved.stored.citizenId, resolved.stored.passportNumber, resolved.stored.passportImageReference,
+         declaredStatus, newConfirmationStatus, record.birth_record_id]
+      );
+      await client.query(
+        `UPDATE birth_certificates SET status = 'Ready for Collection', ready_for_collection_at = NOW(), updated_at = NOW()
+         WHERE birth_record_id = $1 AND status = 'Flagged for Correction'`,
+        [record.birth_record_id]
+      );
+      if (record.citizen_id) {
+        const departmentId = await getDepartmentId('home_affairs');
+        await client.query(
+          `INSERT INTO corrections (citizen_id, requested_by_user_id, department_id, field_name, current_value, requested_value, reason, status, reviewed_by_user_id, reviewed_at)
+           VALUES ($1,$2,$3,$4,'Unknown (cleared)',$5,$6,'Approved',$2,NOW())`,
+          [record.citizen_id, req.user.userId, departmentId, `${role}_name`,
+           resolved.stored.name || `${role} marked ${declaredStatus || 'Present'}`,
+           'Corrected in person after an upheld parentage dispute — applicant and the disputing parent met with an officer.']
+        );
+      }
+      await recordAudit({
+        userId: req.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'PARENTAGE_CORRECTED',
+        targetType: 'birth_record', targetId: record.birth_record_id, metadata: { role },
+      });
+      await client.query('COMMIT');
+
+      if (record.parent_citizen_id) {
+        const { rows: submitterUserRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.parent_citizen_id]);
+        if (submitterUserRows[0]) {
+          await createNotification({
+            userId: submitterUserRows[0].user_id, title: 'Birth record corrected',
+            message: `The ${role} on birth registration ${record.registration_reference} has been corrected by a Home Affairs officer. The certificate is ready for collection again.`,
+            type: 'Status Change',
+          });
+        }
+      }
+      if (newConfirmationStatus === 'Pending' && resolved.stored.citizenId) {
+        const { rows: newParentUserRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [resolved.stored.citizenId]);
+        if (newParentUserRows[0]) {
+          await createNotification({
+            userId: newParentUserRows[0].user_id, title: 'You were named as a parent on a birth registration',
+            message: `Birth registration ${record.registration_reference} names you as a parent, following a correction by a Home Affairs officer. Please review and confirm or dispute it in your account.`,
+            type: 'Verification',
+          });
+        }
+      }
+
+      res.json({ birthRecordId: record.birth_record_id, role, confirmationStatus: newConfirmationStatus });
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -1933,7 +2061,7 @@ module.exports = {
   startReviewBirthRegistration, requestInformationBirthRegistration, resubmitBirthRegistration,
   verifyBirthRegistration, confirmVerificationBirthRegistration, approveBirthRegistration, rejectBirthRegistration,
   getBirthCertificate, markCertificateReadyForCollection, collectBirthCertificate,
-  listPendingParentConfirmations, confirmParentage, disputeParentage, listParentageDisputes, resolveParentageDispute,
+  listPendingParentConfirmations, confirmParentage, disputeParentage, listParentageDisputes, resolveParentageDispute, correctParentageDispute,
   applyNationalId, applyNationalIdRenewalReplacement, listNationalId, getNationalId, transitionNationalId,
   reportDeath, approveDeath, listDeathRegistrations, getDeathRegistration,
   createMarriageRegistration, listMarriageRegistrations, getMarriageRegistration,

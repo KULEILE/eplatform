@@ -73,6 +73,15 @@ async function requestBirthCertificateReissue(req, res, next) {
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
+      // A certificate flagged for correction (an upheld parentage dispute — see
+      // resolveParentageDispute/correctParentageDispute in homeAffairs.controller.js) must not be
+      // silently re-opened for collection by an ordinary "lost/damaged" reissue — that would wipe
+      // the flag without anyone having actually fixed the underlying parent data.
+      const { rows: certRows } = await client.query('SELECT * FROM birth_certificates WHERE birth_record_id = $1 FOR UPDATE', [birthRecordId]);
+      if (certRows[0] && certRows[0].status === 'Flagged for Correction') {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'This certificate is flagged for correction following a parentage dispute. Please visit a Home Affairs office to have it corrected before requesting a reissue.' });
+      }
       const reissueReference = generateReference('BCR');
       const { rows } = await client.query(
         `INSERT INTO birth_certificate_reissue_requests (citizen_id, birth_record_id, reason, details, proof_image_reference, reissue_reference, status, reviewed_at)

@@ -822,7 +822,10 @@
       "namedOtherParent": "Motswadi e mong ya boletsweng",
       "notesLabel": "Dintlha tsa mohlanka",
       "dismissAction": "Hana kgohlano (ngodiso e dula e le ntle)",
-      "upholdAction": "Tshehetsa kgohlano"
+      "upholdAction": "Tshehetsa kgohlano",
+      "awaitingCorrectionNotice": "Kgohlano ena e tshehetswe — motswadi o tlositswe tlalehong mme setifikeiti se phehelletswe bakeng sa tokiso. Mokopi le motswadi ya hanyeditseng ba boleletswe ho etela ofisi ya Litaba tsa Lapeng. Ha ba se ba buile ka seo le wena ka sebele, kenya lintlha tse nepahetseng tsa motswadi ka tlase.",
+      "enterCorrectionAction": "Kenya tokiso",
+      "saveCorrectionAction": "Boloka tokiso"
     },
     "parentageDisputes": "Dikgohlano tsa Bomotswadi"
   },

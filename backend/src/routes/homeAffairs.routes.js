@@ -29,6 +29,7 @@ router.post('/birth-registration/:id/confirm-parentage', hac.confirmParentage);
 router.post('/birth-registration/:id/dispute-parentage', hac.disputeParentage);
 router.get('/parentage-disputes', hac.listParentageDisputes);
 router.post('/parentage-disputes/:id/resolve', hac.resolveParentageDispute);
+router.post('/birth-registration/:id/correct-parent', hac.correctParentageDispute);
 
 // Birth certificate
 router.get('/my-birth-certificates', hac2.listMyBirthCertificates);

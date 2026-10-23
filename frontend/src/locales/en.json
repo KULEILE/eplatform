@@ -822,7 +822,10 @@
       "namedOtherParent": "Named other parent",
       "notesLabel": "Officer notes",
       "dismissAction": "Dismiss dispute (registration stands)",
-      "upholdAction": "Uphold dispute"
+      "upholdAction": "Uphold dispute",
+      "awaitingCorrectionNotice": "This dispute was upheld — the parent has been cleared from the record and the certificate flagged for correction. The applicant and the disputing parent were told to visit a Home Affairs office. Once they have discussed it with you in person, enter the correct parent details below.",
+      "enterCorrectionAction": "Enter correction",
+      "saveCorrectionAction": "Save correction"
     },
     "parentageDisputes": "Parentage Disputes"
   },
