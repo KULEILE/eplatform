@@ -33,6 +33,21 @@ const { recordAudit } = require('../utils/audit');
 //               certificate.
 const PARENT_DECLARED_STATUSES = ['Unknown', 'Absent', 'Inactive', 'Deceased'];
 
+// A parent must be at least this many years older than the child they're being named on — a
+// safeguard of this system's own (not an official Home Affairs rule), catching an impossible or
+// nonsensical age gap (e.g. registering a "child" older than, or only a few years younger than,
+// the person named as their parent). Only checked when the named parent resolved to a real
+// citizen record we actually have a date of birth for (a plain "Absent"/"Unknown" declaration, or
+// a non-citizen with only a passport on file, can't be checked this way and is left as-is).
+const MIN_PARENT_AGE_GAP_YEARS = 12;
+
+function violatesMinParentAgeGap(parentDateOfBirth, childDateOfBirth) {
+  if (!parentDateOfBirth || !childDateOfBirth) return false;
+  const minChildDate = new Date(parentDateOfBirth);
+  minChildDate.setUTCFullYear(minChildDate.getUTCFullYear() + MIN_PARENT_AGE_GAP_YEARS);
+  return new Date(childDateOfBirth) < minChildDate;
+}
+
 function validateDeclaredStatus(label, declaredStatus) {
   if (declaredStatus === undefined || declaredStatus === null || declaredStatus === '') return null;
   if (!PARENT_DECLARED_STATUSES.includes(declaredStatus)) {
@@ -44,7 +59,7 @@ function validateDeclaredStatus(label, declaredStatus) {
 async function resolveParentDetails(client, { label, name, isCitizen, identityNumber, passportNumber, passportImageReference, declaredStatus }) {
   const missing = [];
   const rejections = [];
-  const stored = { name: null, isCitizen: null, identityNumber: null, citizenId: null, passportNumber: null, passportImageReference: null };
+  const stored = { name: null, isCitizen: null, identityNumber: null, citizenId: null, passportNumber: null, passportImageReference: null, dateOfBirth: null };
 
   if (declaredStatus === 'Unknown') {
     // Nothing is known about this parent at all — nothing required, nothing stored.
@@ -55,7 +70,7 @@ async function resolveParentDetails(client, { label, name, isCitizen, identityNu
     if (declaredStatus === 'Inactive' && !identityNumber) missing.push(`${label}IdentityNumber`);
     stored.name = name || null;
     if (name && identityNumber) {
-      const { rows } = await client.query('SELECT citizen_id, is_deceased FROM citizens WHERE permanent_identity_number = $1', [identityNumber]);
+      const { rows } = await client.query('SELECT citizen_id, is_deceased, date_of_birth FROM citizens WHERE permanent_identity_number = $1', [identityNumber]);
       if (rows.length === 0) {
         rejections.push(`The ${label}'s permanent identity number does not match any record at Home Affairs.`);
       } else if (declaredStatus === 'Deceased' && !rows[0].is_deceased) {
@@ -66,6 +81,7 @@ async function resolveParentDetails(client, { label, name, isCitizen, identityNu
         stored.citizenId = rows[0].citizen_id;
         stored.isCitizen = true;
         stored.identityNumber = identityNumber;
+        stored.dateOfBirth = rows[0].date_of_birth;
       }
     }
     // Deceased with no identity number given at all: the declaration is taken at face value —
@@ -79,7 +95,7 @@ async function resolveParentDetails(client, { label, name, isCitizen, identityNu
     stored.name = name || null;
     stored.isCitizen = typeof isCitizen === 'boolean' ? isCitizen : null;
     if (isCitizen && identityNumber) {
-      const { rows } = await client.query('SELECT citizen_id, is_deceased FROM citizens WHERE permanent_identity_number = $1', [identityNumber]);
+      const { rows } = await client.query('SELECT citizen_id, is_deceased, date_of_birth FROM citizens WHERE permanent_identity_number = $1', [identityNumber]);
       if (rows.length === 0) {
         rejections.push(`The ${label}'s permanent identity number does not match any record at Home Affairs.`);
       } else if (rows[0].is_deceased) {
@@ -87,6 +103,7 @@ async function resolveParentDetails(client, { label, name, isCitizen, identityNu
       } else {
         stored.citizenId = rows[0].citizen_id;
         stored.identityNumber = identityNumber;
+        stored.dateOfBirth = rows[0].date_of_birth;
       }
     } else if (isCitizen === false) {
       stored.passportNumber = passportNumber || null;
@@ -117,7 +134,8 @@ async function resolveParentDetails(client, { label, name, isCitizen, identityNu
  *
  * Returns { approved, birthRecordId, referenceNumber, rejectionReason } when rejected, or
  * { approved: true, birthRecordId, referenceNumber, citizenId, permanentIdentityNumber,
- *   certificateNumber, birthCertificateId, otherParentCitizenId, otherParentConfirmationStatus }
+ *   certificateNumber, birthCertificateId, fatherCitizenId, motherCitizenId,
+ *   fatherConfirmationStatus, motherConfirmationStatus }
  * when approved. Runs inside the caller's own transaction (does not BEGIN/COMMIT itself) so the
  * caller can add its own notification/audit entries atomically around it.
  */
@@ -172,6 +190,16 @@ async function processBirthCertificateApplication(client, fields) {
     rejectionReasons.push('At least one parent must be a Lesotho citizen whose permanent identity number matches our records.');
   }
 
+  // Another safeguard of this system's own: a named parent we actually have a date of birth for
+  // must be at least MIN_PARENT_AGE_GAP_YEARS years older than the child — otherwise the two
+  // records plainly can't describe a real parent/child relationship.
+  if (violatesMinParentAgeGap(fatherResolved.stored.dateOfBirth, dateOfBirth)) {
+    rejectionReasons.push(`The father's date of birth on record is not consistent with being this child's parent (must be at least ${MIN_PARENT_AGE_GAP_YEARS} years older).`);
+  }
+  if (violatesMinParentAgeGap(motherResolved.stored.dateOfBirth, dateOfBirth)) {
+    rejectionReasons.push(`The mother's date of birth on record is not consistent with being this child's parent (must be at least ${MIN_PARENT_AGE_GAP_YEARS} years older).`);
+  }
+
   // The core anti-fraud control: a logged-in parent registering a child must themselves be one
   // of the two named parents.
   let submitterIsFather = false;
@@ -193,16 +221,22 @@ async function processBirthCertificateApplication(client, fields) {
   const referenceNumber = generateReference('BR');
   const approved = rejectionReasons.length === 0;
 
-  // The OTHER named parent (not the submitter) — who gets a non-blocking, after-the-fact chance
-  // to confirm or dispute this registration if they are a real citizen with no declared status
-  // (i.e. reachable through their own account). See migration 061 and confirmParentage/
-  // disputeParentage below. Only computed for an approved, parent-submitted registration.
-  let otherParentCitizenId = null;
-  let otherParentConfirmationStatus = 'Not Applicable';
-  if (approved && !isSelfApplication && submittingParentCitizenId) {
-    otherParentCitizenId = submitterIsFather ? motherCitizenId : fatherCitizenId;
-    const otherDeclared = submitterIsFather ? motherDeclared : fatherDeclared;
-    if (otherParentCitizenId && !otherDeclared) otherParentConfirmationStatus = 'Pending';
+  // Each named parent who (a) resolved to a real citizen record, (b) has no declared status
+  // (Unknown/Absent/Inactive/Deceased are excluded from confirmation entirely — there's no
+  // account to reach, or nothing to confirm), and (c) is not the submitter themselves (a
+  // submitting parent already attests to their own involvement just by submitting this) gets a
+  // non-blocking, after-the-fact chance to confirm or dispute being named — see migration 061/062
+  // and confirmParentage/disputeParentage below. A parent-submitted registration only ever leaves
+  // the OTHER parent pending (the submitter is excluded); a self-application (migration 059) has
+  // no submitting parent at all — the applicant IS the child, not either parent — so BOTH named
+  // parents are eligible. Only computed for an approved application.
+  let fatherConfirmationStatus = 'Not Applicable';
+  let motherConfirmationStatus = 'Not Applicable';
+  if (approved) {
+    const fatherIsSubmitter = !isSelfApplication && submitterIsFather;
+    const motherIsSubmitter = !isSelfApplication && submitterIsMother;
+    if (fatherCitizenId && !fatherDeclared && !fatherIsSubmitter) fatherConfirmationStatus = 'Pending';
+    if (motherCitizenId && !motherDeclared && !motherIsSubmitter) motherConfirmationStatus = 'Pending';
   }
 
   const { rows: inserted } = await client.query(
@@ -213,7 +247,7 @@ async function processBirthCertificateApplication(client, fields) {
         mother_name, mother_maiden_surname, mother_nationality, mother_residence, mother_is_citizen, mother_identity_number, mother_citizen_id, mother_passport_number, mother_passport_image_reference, mother_declared_status,
         chief_letter_image_reference, proof_of_birth_image_reference, marriage_certificate_image_reference, acknowledgement_of_paternity_image_reference,
         preferred_office_id, registration_status, rejection_reason, submitted_at, approved_at,
-        other_parent_citizen_id, other_parent_confirmation_status
+        father_confirmation_status, mother_confirmation_status
      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,NOW(),$35,$36,$37)
      RETURNING *`,
     [submittingParentCitizenId || null, !!isSelfApplication, referenceNumber,
@@ -224,7 +258,7 @@ async function processBirthCertificateApplication(client, fields) {
      motherResolved.stored.identityNumber, motherCitizenId, motherResolved.stored.passportNumber, motherResolved.stored.passportImageReference, motherDeclared,
      chiefLetterImageReference, proofOfBirthImageReference, marriageCertificateImageReference || null, acknowledgementOfPaternityImageReference || null,
      preferredOfficeId || null, approved ? 'Approved' : 'Rejected', approved ? null : rejectionReasons.join(' '), approved ? new Date() : null,
-     otherParentCitizenId, otherParentConfirmationStatus]
+     fatherConfirmationStatus, motherConfirmationStatus]
   );
   const record = inserted[0];
 
@@ -281,7 +315,8 @@ async function processBirthCertificateApplication(client, fields) {
     approved: true, birthRecordId: record.birth_record_id, referenceNumber,
     citizenId: citizenId.citizen_id, permanentIdentityNumber: citizenId.permanent_identity_number,
     certificateNumber, birthCertificateId: certRows[0].birth_certificate_id,
-    otherParentCitizenId: record.other_parent_citizen_id, otherParentConfirmationStatus: record.other_parent_confirmation_status,
+    fatherCitizenId: record.father_citizen_id, motherCitizenId: record.mother_citizen_id,
+    fatherConfirmationStatus: record.father_confirmation_status, motherConfirmationStatus: record.mother_confirmation_status,
   };
 }
 
@@ -307,12 +342,16 @@ async function createBirthRegistration(req, res, next) {
           userId: req.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'BIRTH_REGISTRATION_APPROVED',
           targetType: 'birth_record', targetId: result.birthRecordId, metadata: { citizenId: result.citizenId, certificateNumber: result.certificateNumber },
         });
-        // If the other named parent is a real citizen reachable through their own account (no
-        // declared status, not the submitter), let them know they can review and confirm/dispute
-        // this registration — see confirmParentage/disputeParentage below. This never blocks or
-        // delays the certificate, which has already been issued above either way.
-        if (result.otherParentConfirmationStatus === 'Pending' && result.otherParentCitizenId) {
-          const { rows: otherUserRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [result.otherParentCitizenId]);
+        // Any named parent left Pending (the other parent, not the submitter — see
+        // processBirthCertificateApplication) who is a real citizen reachable through their own
+        // account gets notified they can review and confirm/dispute this registration — see
+        // confirmParentage/disputeParentage below. This never blocks or delays the certificate,
+        // which has already been issued above either way.
+        const pendingParentIds = [];
+        if (result.fatherConfirmationStatus === 'Pending' && result.fatherCitizenId) pendingParentIds.push(result.fatherCitizenId);
+        if (result.motherConfirmationStatus === 'Pending' && result.motherCitizenId) pendingParentIds.push(result.motherCitizenId);
+        for (const pendingCitizenId of pendingParentIds) {
+          const { rows: otherUserRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [pendingCitizenId]);
           if (otherUserRows[0]) {
             await createNotification({
               userId: otherUserRows[0].user_id, title: 'You were named as a parent on a birth registration',
@@ -372,6 +411,24 @@ async function applyForBirthCertificatePublic(req, res, next) {
     });
     await client.query('COMMIT');
     if (result.approved) {
+      // There is no "submitter" here to exclude — the applicant IS the child, not either parent
+      // — so BOTH named parents can be left Pending by processBirthCertificateApplication. Each
+      // one who is a real citizen reachable through their own account gets notified they can
+      // review and confirm/dispute being named, exactly as a parent-submitted registration does
+      // in createBirthRegistration above. This was previously missing entirely for this form.
+      const pendingParentIds = [];
+      if (result.fatherConfirmationStatus === 'Pending' && result.fatherCitizenId) pendingParentIds.push(result.fatherCitizenId);
+      if (result.motherConfirmationStatus === 'Pending' && result.motherCitizenId) pendingParentIds.push(result.motherCitizenId);
+      for (const pendingCitizenId of pendingParentIds) {
+        const { rows: parentUserRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [pendingCitizenId]);
+        if (parentUserRows[0]) {
+          await createNotification({
+            userId: parentUserRows[0].user_id, title: 'You were named as a parent on a birth certificate application',
+            message: `A birth certificate self-application (${result.referenceNumber}) names you as a parent. Please review and confirm or dispute it in your account.`,
+            type: 'Verification',
+          });
+        }
+      }
       return res.status(201).json({
         referenceNumber: result.referenceNumber, status: 'Approved',
         permanentIdentityNumber: result.permanentIdentityNumber, certificateNumber: result.certificateNumber,
@@ -453,16 +510,30 @@ async function getBirthRegistration(req, res, next) {
 // where a Home Affairs officer is ever involved.
 // ============================================================================================
 
+// Which parent slot (if any) this citizen was named in on this birth record — 'father', 'mother',
+// or null if they weren't named as either. Used by confirmParentage/disputeParentage below to
+// work out which pair of columns applies, since either or both slots can independently be
+// Pending/Disputed per migration 062.
+function resolveParentRoleForCitizen(record, citizenId) {
+  if (!citizenId) return null;
+  if (record.father_citizen_id === citizenId) return 'father';
+  if (record.mother_citizen_id === citizenId) return 'mother';
+  return null;
+}
+
 /** GET /api/home-affairs/birth-registration/pending-confirmations */
 async function listPendingParentConfirmations(req, res, next) {
   try {
     if (!req.user.citizenId) return res.json({ pendingConfirmations: [] });
     const { rows } = await db.query(
       `SELECT br.birth_record_id, br.registration_reference, br.child_first_name, br.child_last_name,
-              br.other_parent_confirmation_status, p.first_name AS submitted_by_first_name, p.last_name AS submitted_by_last_name
+              CASE WHEN br.father_citizen_id = $1 THEN 'father' ELSE 'mother' END AS parent_role,
+              CASE WHEN br.father_citizen_id = $1 THEN br.father_confirmation_status ELSE br.mother_confirmation_status END AS confirmation_status,
+              p.first_name AS submitted_by_first_name, p.last_name AS submitted_by_last_name
        FROM birth_records br
        LEFT JOIN citizens p ON p.citizen_id = br.parent_citizen_id
-       WHERE br.other_parent_citizen_id = $1 AND br.other_parent_confirmation_status = 'Pending'
+       WHERE (br.father_citizen_id = $1 AND br.father_confirmation_status = 'Pending')
+          OR (br.mother_citizen_id = $1 AND br.mother_confirmation_status = 'Pending')
        ORDER BY br.created_at DESC`,
       [req.user.citizenId]
     );
@@ -478,22 +549,24 @@ async function confirmParentage(req, res, next) {
     const { rows } = await db.query('SELECT * FROM birth_records WHERE birth_record_id = $1', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Birth record not found.' });
     const record = rows[0];
-    if (!req.user.citizenId || record.other_parent_citizen_id !== req.user.citizenId) return res.status(403).json({ error: 'You were not named as the other parent on this registration.' });
-    if (record.other_parent_confirmation_status !== 'Pending') return res.status(409).json({ error: `This confirmation is no longer pending (status: ${record.other_parent_confirmation_status}).` });
+    const role = resolveParentRoleForCitizen(record, req.user.citizenId);
+    if (!role) return res.status(403).json({ error: 'You were not named as a parent on this registration.' });
+    const statusCol = `${role}_confirmation_status`;
+    if (record[statusCol] !== 'Pending') return res.status(409).json({ error: `This confirmation is no longer pending (status: ${record[statusCol]}).` });
     await db.query(
-      `UPDATE birth_records SET other_parent_confirmation_status = 'Confirmed', other_parent_confirmed_at = NOW(),
-              other_parent_signature_reference = $1, updated_at = NOW() WHERE birth_record_id = $2`,
+      `UPDATE birth_records SET ${role}_confirmation_status = 'Confirmed', ${role}_confirmed_at = NOW(),
+              ${role}_confirmation_signature_reference = $1, updated_at = NOW() WHERE birth_record_id = $2`,
       [signatureReference, record.birth_record_id]
     );
     const { rows: submitterUserRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.parent_citizen_id]);
     if (submitterUserRows[0]) {
       await createNotification({
         userId: submitterUserRows[0].user_id, title: 'Parentage confirmed',
-        message: `The other parent named on birth registration ${record.registration_reference} has confirmed it.`,
+        message: `The ${role} named on birth registration ${record.registration_reference} has confirmed it.`,
         type: 'Status Change',
       });
     }
-    res.json({ birthRecordId: record.birth_record_id, status: 'Confirmed' });
+    res.json({ birthRecordId: record.birth_record_id, role, status: 'Confirmed' });
   } catch (err) { next(err); }
 }
 
@@ -505,84 +578,148 @@ async function disputeParentage(req, res, next) {
     const { rows } = await db.query('SELECT * FROM birth_records WHERE birth_record_id = $1', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Birth record not found.' });
     const record = rows[0];
-    if (!req.user.citizenId || record.other_parent_citizen_id !== req.user.citizenId) return res.status(403).json({ error: 'You were not named as the other parent on this registration.' });
-    if (record.other_parent_confirmation_status !== 'Pending') return res.status(409).json({ error: `This confirmation is no longer pending (status: ${record.other_parent_confirmation_status}).` });
+    const role = resolveParentRoleForCitizen(record, req.user.citizenId);
+    if (!role) return res.status(403).json({ error: 'You were not named as a parent on this registration.' });
+    const statusCol = `${role}_confirmation_status`;
+    if (record[statusCol] !== 'Pending') return res.status(409).json({ error: `This confirmation is no longer pending (status: ${record[statusCol]}).` });
     await db.query(
-      `UPDATE birth_records SET other_parent_confirmation_status = 'Disputed', other_parent_dispute_reason = $1, updated_at = NOW() WHERE birth_record_id = $2`,
+      `UPDATE birth_records SET ${role}_confirmation_status = 'Disputed', ${role}_dispute_reason = $1, updated_at = NOW() WHERE birth_record_id = $2`,
       [reason, record.birth_record_id]
     );
     const { rows: submitterUserRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.parent_citizen_id]);
     if (submitterUserRows[0]) {
       await createNotification({
         userId: submitterUserRows[0].user_id, title: 'Parentage disputed',
-        message: `The other parent named on birth registration ${record.registration_reference} has disputed it. A Home Affairs officer will review this.`,
+        message: `The ${role} named on birth registration ${record.registration_reference} has disputed it. A Home Affairs officer will review this.`,
         type: 'Status Change',
       });
     }
     await recordAudit({
       userId: req.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'PARENTAGE_DISPUTED',
-      targetType: 'birth_record', targetId: record.birth_record_id, reason,
+      targetType: 'birth_record', targetId: record.birth_record_id, reason, metadata: { role },
     });
-    res.json({ birthRecordId: record.birth_record_id, status: 'Disputed' });
+    res.json({ birthRecordId: record.birth_record_id, role, status: 'Disputed' });
   } catch (err) { next(err); }
 }
 
-/** GET /api/home-affairs/parentage-disputes — officer-only queue. */
+/** GET /api/home-affairs/parentage-disputes — officer-only queue. One row per disputed PARENT
+ * SLOT, not per birth record — if both the father and mother slots are independently disputed on
+ * the same record (rare, but possible since migration 062 made the two slots fully independent),
+ * both appear as separate rows so an officer can resolve each on its own merits. */
 async function listParentageDisputes(req, res, next) {
   try {
     if (!['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey)) {
       return res.status(403).json({ error: 'Officer only.' });
     }
     const { rows } = await db.query(
-      `SELECT br.*, c.first_name AS child_first_name_full, c.last_name AS child_last_name_full,
+      `SELECT br.birth_record_id, br.registration_reference, br.child_first_name, br.child_last_name,
+              'father' AS disputed_role, br.father_confirmation_status AS confirmation_status, br.father_dispute_reason AS dispute_reason, br.updated_at,
+              c.first_name AS child_first_name_full, c.last_name AS child_last_name_full,
               p.first_name AS submitted_by_first_name, p.last_name AS submitted_by_last_name,
-              o.first_name AS other_parent_first_name, o.last_name AS other_parent_last_name
+              named.first_name AS named_parent_first_name, named.last_name AS named_parent_last_name
        FROM birth_records br
        LEFT JOIN citizens c ON c.citizen_id = br.citizen_id
        LEFT JOIN citizens p ON p.citizen_id = br.parent_citizen_id
-       LEFT JOIN citizens o ON o.citizen_id = br.other_parent_citizen_id
-       WHERE br.other_parent_confirmation_status = 'Disputed'
-       ORDER BY br.updated_at DESC`
+       LEFT JOIN citizens named ON named.citizen_id = br.father_citizen_id
+       WHERE br.father_confirmation_status = 'Disputed'
+       UNION ALL
+       SELECT br.birth_record_id, br.registration_reference, br.child_first_name, br.child_last_name,
+              'mother' AS disputed_role, br.mother_confirmation_status AS confirmation_status, br.mother_dispute_reason AS dispute_reason, br.updated_at,
+              c.first_name AS child_first_name_full, c.last_name AS child_last_name_full,
+              p.first_name AS submitted_by_first_name, p.last_name AS submitted_by_last_name,
+              named.first_name AS named_parent_first_name, named.last_name AS named_parent_last_name
+       FROM birth_records br
+       LEFT JOIN citizens c ON c.citizen_id = br.citizen_id
+       LEFT JOIN citizens p ON p.citizen_id = br.parent_citizen_id
+       LEFT JOIN citizens named ON named.citizen_id = br.mother_citizen_id
+       WHERE br.mother_confirmation_status = 'Disputed'
+       ORDER BY updated_at DESC`
     );
     res.json({ disputes: rows });
   } catch (err) { next(err); }
 }
 
-/** POST /api/home-affairs/parentage-disputes/:id/resolve  body: { resolution: 'Upheld'|'Dismissed', notes } */
+/** POST /api/home-affairs/parentage-disputes/:id/resolve  body: { resolution: 'Upheld'|'Dismissed', role: 'father'|'mother', notes }
+ * Dismissed just records the officer's decision and notifies both sides — the registration and
+ * certificate were correct all along. Upheld means the officer agrees the named person really
+ * isn't this child's parent: that parent's fields are cleared from the birth record (name,
+ * citizen link, identity/passport details all wiped back to an unset "Unknown" slot) and the
+ * linked birth certificate is flagged 'Flagged for Correction' so it's visibly no longer fully
+ * trusted. A corrections-table entry is also logged (already-Approved, since the officer is
+ * enacting it directly here) so this shows up in Home Affairs' normal corrections audit trail. */
 async function resolveParentageDispute(req, res, next) {
+  if (!['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey)) {
+    return res.status(403).json({ error: 'Officer only.' });
+  }
+  const { resolution, role, notes } = req.body;
+  if (!['Upheld', 'Dismissed'].includes(resolution)) return res.status(400).json({ error: "resolution must be 'Upheld' or 'Dismissed'." });
+  if (!['father', 'mother'].includes(role)) return res.status(400).json({ error: "role must be 'father' or 'mother'." });
+  const client = await db.getClient();
   try {
-    if (!['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey)) {
-      return res.status(403).json({ error: 'Officer only.' });
-    }
-    const { resolution, notes } = req.body;
-    if (!['Upheld', 'Dismissed'].includes(resolution)) return res.status(400).json({ error: "resolution must be 'Upheld' or 'Dismissed'." });
-    const { rows } = await db.query('SELECT * FROM birth_records WHERE birth_record_id = $1', [req.params.id]);
-    if (rows.length === 0) return res.status(404).json({ error: 'Dispute not found.' });
-    const record = rows[0];
-    if (record.other_parent_confirmation_status !== 'Disputed') return res.status(409).json({ error: 'This record is not currently disputed.' });
-    const newStatus = resolution === 'Upheld' ? 'Dispute Upheld' : 'Dispute Dismissed';
-    await db.query(
-      `UPDATE birth_records SET other_parent_confirmation_status = $1, other_parent_dispute_resolved_by_user_id = $2,
-              other_parent_dispute_resolved_at = NOW(), updated_at = NOW() WHERE birth_record_id = $3`,
-      [newStatus, req.user.userId, record.birth_record_id]
-    );
-    await recordAudit({
-      userId: req.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'PARENTAGE_DISPUTE_RESOLVED',
-      targetType: 'birth_record', targetId: record.birth_record_id, reason: notes || null, metadata: { resolution },
-    });
-    const notifyIds = [record.parent_citizen_id, record.other_parent_citizen_id].filter(Boolean);
-    for (const citizenId of notifyIds) {
-      const { rows: userRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [citizenId]);
-      if (userRows[0]) {
-        await createNotification({
-          userId: userRows[0].user_id, title: 'Parentage dispute resolved',
-          message: `The dispute over birth registration ${record.registration_reference} was ${resolution.toLowerCase()}.${notes ? ` Officer's notes: ${notes}` : ''}`,
-          type: 'Status Change',
-        });
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query('SELECT * FROM birth_records WHERE birth_record_id = $1 FOR UPDATE', [req.params.id]);
+      if (rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Dispute not found.' }); }
+      const record = rows[0];
+      const statusCol = `${role}_confirmation_status`;
+      if (record[statusCol] !== 'Disputed') { await client.query('ROLLBACK'); return res.status(409).json({ error: 'This parent slot is not currently disputed.' }); }
+      const newStatus = resolution === 'Upheld' ? 'Dispute Upheld' : 'Dispute Dismissed';
+
+      if (resolution === 'Upheld') {
+        await client.query(
+          `UPDATE birth_records SET
+                  ${role}_name = NULL, ${role}_is_citizen = NULL, ${role}_identity_number = NULL,
+                  ${role}_citizen_id = NULL, ${role}_passport_number = NULL, ${role}_passport_image_reference = NULL,
+                  ${role}_declared_status = 'Unknown',
+                  ${role}_confirmation_status = $1, ${role}_dispute_resolved_by_user_id = $2, ${role}_dispute_resolved_at = NOW(), updated_at = NOW()
+           WHERE birth_record_id = $3`,
+          [newStatus, req.user.userId, record.birth_record_id]
+        );
+        await client.query(
+          `UPDATE birth_certificates SET status = 'Flagged for Correction', updated_at = NOW() WHERE birth_record_id = $1`,
+          [record.birth_record_id]
+        );
+        if (record.citizen_id) {
+          const departmentId = await getDepartmentId('home_affairs');
+          await client.query(
+            `INSERT INTO corrections (citizen_id, requested_by_user_id, department_id, field_name, current_value, requested_value, reason, status, reviewed_by_user_id, reviewed_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,'Approved',$2,NOW())`,
+            [record.citizen_id, req.user.userId, departmentId, `${role}_citizen_id`,
+             record[`${role}_citizen_id`] != null ? String(record[`${role}_citizen_id`]) : null,
+             'Cleared — parentage dispute upheld',
+             [record[`${role}_dispute_reason`], notes].filter(Boolean).join(' | ') || 'Parentage dispute upheld; this parent slot was cleared.']
+          );
+        }
+      } else {
+        await client.query(
+          `UPDATE birth_records SET ${role}_confirmation_status = $1, ${role}_dispute_resolved_by_user_id = $2,
+                  ${role}_dispute_resolved_at = NOW(), updated_at = NOW() WHERE birth_record_id = $3`,
+          [newStatus, req.user.userId, record.birth_record_id]
+        );
       }
+      await recordAudit({
+        userId: req.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'PARENTAGE_DISPUTE_RESOLVED',
+        targetType: 'birth_record', targetId: record.birth_record_id, reason: notes || null, metadata: { resolution, role },
+      });
+      await client.query('COMMIT');
+
+      const notifyIds = [record.parent_citizen_id, record.father_citizen_id, record.mother_citizen_id].filter(Boolean);
+      for (const citizenId of notifyIds) {
+        const { rows: userRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [citizenId]);
+        if (userRows[0]) {
+          await createNotification({
+            userId: userRows[0].user_id, title: 'Parentage dispute resolved',
+            message: `The dispute over the ${role} named on birth registration ${record.registration_reference} was ${resolution.toLowerCase()}.${resolution === 'Upheld' ? ' The certificate has been flagged for correction.' : ''}${notes ? ` Officer's notes: ${notes}` : ''}`,
+            type: 'Status Change',
+          });
+        }
+      }
+      res.json({ birthRecordId: record.birth_record_id, role, status: newStatus });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
     }
-    res.json({ birthRecordId: record.birth_record_id, status: newStatus });
-  } catch (err) { next(err); }
+  } catch (err) { next(err); } finally { client.release(); }
 }
 
 // allowOwner: when true, the citizen who owns the record may also call this transition (in

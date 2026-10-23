@@ -804,9 +804,12 @@
       "intro": "O kentswe lebitso jwalo ka motswadi kopong ya ngodiso ya tswalo. Sheba tlase mona mme o netefatse kapa o hanyetse — sena ha se ame setifikeiti se seng se ntshitsweng.",
       "empty": "Ha ho na dinetefatso tse emetseng tsa bomotswadi.",
       "registeredBy": "E ngodisitswe ke {{name}}",
+      "namedAs": "O kentswe lebitso e le: {{role}}",
+      "roleFather": "ntate",
+      "roleMother": "mme",
       "confirmAction": "Netefatsa",
       "disputeAction": "Hanyetsa",
-      "confirmHelp": "Saena ka tlase ho netefatsa hore ke wena motswadi wa bobedi wa ngwana enwa, jwalo ka ha a kentswe lebitso kopong ena.",
+      "confirmHelp": "Saena ka tlase ho netefatsa hore ke wena motswadi wa ngwana enwa, jwalo ka ha a kentswe lebitso kopong ena.",
       "disputeReasonLabel": "Hobaneng o hanyetsa sena?",
       "disputeReasonRequired": "Lebaka le hlokahala ho hanyetsa sena.",
       "signatureRequired": "Tshaeno e hlokahala ho netefatsa."

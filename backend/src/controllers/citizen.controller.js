@@ -28,12 +28,15 @@ async function getProfile(req, res, next) {
       [req.user.citizenId]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Citizen record not found.' });
-    // Birth registrations naming this citizen as the OTHER parent, waiting on them to confirm or
-    // dispute (see migration 061 and homeAffairs.controller.js's confirmParentage/
-    // disputeParentage) — drives the Dashboard's "pending parentage confirmation" banner.
+    // Birth registrations naming this citizen as a parent (father or mother slot — either or
+    // both, see migration 062), waiting on them to confirm or dispute (see
+    // homeAffairs.controller.js's confirmParentage/disputeParentage) — drives the Dashboard's
+    // "pending parentage confirmation" banner.
     const { rows: pendingRows } = await db.query(
       `SELECT birth_record_id, registration_reference, child_first_name, child_last_name
-       FROM birth_records WHERE other_parent_citizen_id = $1 AND other_parent_confirmation_status = 'Pending'`,
+       FROM birth_records
+       WHERE (father_citizen_id = $1 AND father_confirmation_status = 'Pending')
+          OR (mother_citizen_id = $1 AND mother_confirmation_status = 'Pending')`,
       [req.user.citizenId]
     );
     res.json({ provisional: false, citizen: rows[0], pendingParentConfirmations: pendingRows });

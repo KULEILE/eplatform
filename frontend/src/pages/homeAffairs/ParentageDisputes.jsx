@@ -32,7 +32,7 @@ export default function ParentageDisputes() {
         <div className="card text-sm text-slate-600">{t('homeAffairs.parentageDisputesForm.empty')}</div>
       ) : (
         <div className="space-y-4">
-          {rows.map((row) => <DisputeCard key={row.birth_record_id} row={row} t={t} onDone={load} />)}
+          {rows.map((row) => <DisputeCard key={`${row.birth_record_id}-${row.disputed_role}`} row={row} t={t} onDone={load} />)}
         </div>
       )}
     </div>
@@ -46,12 +46,13 @@ function DisputeCard({ row, t, onDone }) {
 
   const childName = [row.child_first_name_full, row.child_last_name_full].filter(Boolean).join(' ') || `${row.child_first_name} ${row.child_last_name}`;
   const submittedByName = row.submitted_by_first_name ? `${row.submitted_by_first_name} ${row.submitted_by_last_name}` : t('homeAffairs.birthRegistrationForm.selfApplication');
-  const otherParentName = row.other_parent_first_name ? `${row.other_parent_first_name} ${row.other_parent_last_name}` : '—';
+  const namedParentName = row.named_parent_first_name ? `${row.named_parent_first_name} ${row.named_parent_last_name}` : '—';
+  const roleLabel = t(`homeAffairs.parentConfirmations.role${row.disputed_role === 'mother' ? 'Mother' : 'Father'}`);
 
   async function resolve(resolution) {
     setBusy(true); setError('');
     try {
-      await api.post(`/home-affairs/parentage-disputes/${row.birth_record_id}/resolve`, { resolution, notes: notes || undefined });
+      await api.post(`/home-affairs/parentage-disputes/${row.birth_record_id}/resolve`, { resolution, role: row.disputed_role, notes: notes || undefined });
       onDone();
     } catch (err) { setError(err.message || t('common.somethingWentWrong')); } finally { setBusy(false); }
   }
@@ -60,15 +61,15 @@ function DisputeCard({ row, t, onDone }) {
     <div className="card">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-semibold text-slate-900">{childName}</p>
-        <StatusBadge status={row.other_parent_confirmation_status} />
+        <StatusBadge status={row.confirmation_status} />
       </div>
       <p className="font-mono text-xs text-slate-500">{row.registration_reference}</p>
       <dl className="mt-3 grid grid-cols-1 gap-1 text-sm text-slate-600 sm:grid-cols-2">
         <div><dt className="text-xs text-slate-400">{t('homeAffairs.parentageDisputesForm.registeredBy')}</dt><dd>{submittedByName}</dd></div>
-        <div><dt className="text-xs text-slate-400">{t('homeAffairs.parentageDisputesForm.namedOtherParent')}</dt><dd>{otherParentName}</dd></div>
+        <div><dt className="text-xs text-slate-400">{t('homeAffairs.parentageDisputesForm.namedOtherParent')}</dt><dd>{namedParentName} ({roleLabel})</dd></div>
       </dl>
-      {row.other_parent_dispute_reason && (
-        <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-gov-amber">⚠ {row.other_parent_dispute_reason}</p>
+      {row.dispute_reason && (
+        <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-gov-amber">⚠ {row.dispute_reason}</p>
       )}
       {error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}
       <FormField label={t('homeAffairs.parentageDisputesForm.notesLabel')} htmlFor={`notes-${row.birth_record_id}`} help={t('common.optional')}>

@@ -804,9 +804,12 @@
       "intro": "You've been named as a parent on a birth registration. Review it below and confirm or dispute it — this never affects a certificate that has already been issued.",
       "empty": "You have no pending parentage confirmations.",
       "registeredBy": "Registered by {{name}}",
+      "namedAs": "Named as: {{role}}",
+      "roleFather": "father",
+      "roleMother": "mother",
       "confirmAction": "Confirm",
       "disputeAction": "Dispute",
-      "confirmHelp": "Sign below to confirm you are this child's other parent, as named on this registration.",
+      "confirmHelp": "Sign below to confirm you are this child's parent, as named on this registration.",
       "disputeReasonLabel": "Why are you disputing this?",
       "disputeReasonRequired": "A reason is required to dispute this.",
       "signatureRequired": "A signature is required to confirm."

@@ -38,7 +38,7 @@ export default function ParentConfirmations() {
       ) : (
         <div className="space-y-4">
           {rows.map((row) => (
-            <ConfirmationCard key={row.birth_record_id} row={row} t={t} onDone={load} />
+            <ConfirmationCard key={`${row.birth_record_id}-${row.parent_role}`} row={row} t={t} onDone={load} />
           ))}
         </div>
       )}
@@ -79,6 +79,9 @@ function ConfirmationCard({ row, t, onDone }) {
       <p className="font-semibold text-slate-900">{row.child_first_name} {row.child_last_name}</p>
       <p className="font-mono text-xs text-slate-500">{row.registration_reference}</p>
       <p className="mt-2 text-sm text-slate-600">{t('homeAffairs.parentConfirmations.registeredBy', { name: submittedByName })}</p>
+      <p className="text-sm text-slate-600">
+        {t('homeAffairs.parentConfirmations.namedAs', { role: t(`homeAffairs.parentConfirmations.role${row.parent_role === 'mother' ? 'Mother' : 'Father'}`) })}
+      </p>
       {error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}
 
       {!mode && (
