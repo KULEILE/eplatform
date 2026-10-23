@@ -395,7 +395,8 @@
     "Completed": "This service is complete.",
     "Flagged for Correction": "A mismatch was found and is being corrected. You do not need to do anything yet.",
     "Requested": "Your booking request has been received and is waiting for an officer to confirm a date and officiant.",
-    "Confirmed": "Your booking is confirmed. Please attend on the confirmed date."
+    "Confirmed": "Your booking is confirmed. Please attend on the confirmed date.",
+    "Awaiting Biometric Capture": "Please visit your chosen police station to have your biometrics captured. Your card will be approved automatically once that's done."
   },
   "homeAffairs": {
     "services": "Home Affairs services",
@@ -538,8 +539,17 @@
       "reuseNotice": "Your name, date of birth, sex, place of birth and permanent identity number are reused from your verified Home Affairs record.",
       "noNewNumberNotice": "Your existing permanent identity number will be used. A new number is never issued.",
       "photoCapture": "Photo capture (simulated)",
-      "biometricCapture": "Biometric capture (simulated)",
-      "submit": "Submit National ID application"
+      "biometricCapture": "Biometric capture",
+      "biometricCaptureHelp": "Choose the police station where you will visit in person to have both hands scanned. This is captured only once — it will be reused automatically for every service that needs it in future.",
+      "biometricsOnFile": "You already have biometrics on file from an earlier service — no police-station visit is needed. Your card will be approved automatically on submission.",
+      "policeStationRequired": "Choose the police station where you will have your biometrics captured.",
+      "submit": "Submit National ID application",
+      "tooYoung": "You must be at least {{minimumAge}} years old to apply for a National ID card (you are {{age}}).",
+      "alreadyInProgress": "You already have a National ID card application in progress. Check its status on the National ID page.",
+      "alreadyHaveCard": "You have already obtained a National ID card. Use the renewal or replacement service instead.",
+      "submittedTitle": "Application submitted",
+      "submittedAwaitingBiometrics": "Please visit the police station you chose to have your biometrics captured — your card will be approved and sent for production automatically once that's done.",
+      "submittedAutoApproved": "Your biometrics were already on file, so your card has been approved automatically and sent for production."
     },
     "correctionForm": {
       "title": "Report an error in your civil record",
@@ -719,17 +729,27 @@
     },
     "nationalIdRenewReplace": "National ID renewal & replacement",
     "nationalIdRenewReplaceForm": {
-      "intro": "Apply to renew an expiring National ID card, or replace one that was lost, stolen or damaged.",
+      "intro": "Apply to renew an expired National ID card, or replace one that was lost, stolen or damaged.",
       "field": {
         "applicationType": "Application type",
         "replacementReason": "Reason for replacement",
         "replacementDetails": "Additional details",
+        "replacementProof": "Supporting document",
+        "replacementProofHelp": "Upload evidence supporting your reason — e.g. a police report for a lost or stolen card, or a photo of the damaged one.",
+        "reportedLostAt": "Date you {{reason}} the card",
         "photo": "Photo",
         "photoHelp": "Optional — your previous photo will be reused if you skip this."
       },
       "renewal": "Renewal",
       "replacement": "Replacement",
-      "previousCard": "Previous card number"
+      "previousCard": "Previous card number",
+      "currentCard": "Your current card",
+      "expired": "expired",
+      "notExpired": "not yet expired",
+      "noCardFound": "No collected National ID card was found on your record. Use the standard National ID Application for a first-time card.",
+      "notYetExpiredNotice": "Your current card is not yet expired — it expires on {{expiryDate}}. Renewal is only available once it has expired.",
+      "waitNotice": "A {{months}}-month wait applies before a lost/stolen card can be replaced. You will be able to apply from {{date}}.",
+      "waitPassedNotice": "The {{months}}-month wait has passed — you can submit this replacement."
     },
     "nationalIdApplicationType": {
       "New": "New",
@@ -1278,6 +1298,15 @@
     "manualLookup": "Manual",
     "caseHistoryTitle": "Case/arrest/sentence history on record",
     "noCaseHistory": "No cases, arrests or sentences on record for this person.",
+    "nationalIdBiometrics": {
+      "title": "National ID Biometric Capture",
+      "intro": "Citizens who chose your station for their National ID hand-biometric capture. Scanning both hands enrols them for every future service and approves their card automatically.",
+      "emptyTitle": "Nothing waiting",
+      "emptyMessage": "No citizens are currently waiting for biometric capture at your station.",
+      "startCapture": "Capture biometrics",
+      "confirmCapture": "Confirm and submit",
+      "captureSuccess": "Biometrics captured. The card has been approved and sent for production."
+    },
     "cases": {
       "title": "Case Management",
       "navLabel": "Case Management",

@@ -4,6 +4,7 @@ const { generateReference } = require('../utils/referenceGenerator');
 const { indexApplication, syncApplicationStatus, getDepartmentId } = require('../utils/lookup');
 const { createNotification } = require('../utils/notify');
 const { recordAudit } = require('../utils/audit');
+const { isValidTemplate } = require('../utils/handMatch');
 
 // ============================================================================================
 // BIRTH REGISTRATION — now fully automatic. A NEW application is checked and either approved
@@ -1145,7 +1146,124 @@ async function collectBirthCertificate(req, res, next) {
 
 // ============================================================================================
 // NATIONAL ID CARD — reuses the existing permanent identity number. Never generates a new one.
+//
+// Enhanced per the client's explicit requirements (see migration 063):
+//  1. 16+ only for a first ("New") application.
+//  2. Once a citizen has actually COLLECTED a card, applyNationalId is closed to them forever —
+//     renewal/replacement is the only path back in.
+//  3. Renewal is blocked unless the current card has actually expired.
+//  4. Replacement (Lost/Stolen/Damaged) requires a supporting document; Lost/Stolen additionally
+//     impose a 3-month wait from the date the citizen reports losing it.
+//  5. Hand-biometric capture happens once per citizen (citizen_biometrics, migration 052) and is
+//     reused for every later application. The FIRST time a citizen ever needs it captured, they
+//     choose a police station and a police_officer there captures it in person
+//     (captureNationalIdBiometrics below); every other application — because the citizen is
+//     already enrolled — skips that step entirely. Either way, the moment biometrics are
+//     confirmed (fresh capture or reuse) the card is auto-approved and sent straight to
+//     production — only the physical Card Production -> Ready for Collection -> Collected steps
+//     are left for an officer, exactly like a birth certificate.
 // ============================================================================================
+
+const MIN_NATIONAL_ID_AGE = 16;
+const NATIONAL_ID_VALIDITY_YEARS = 10; // matches the INTERVAL '10 years' used in getNationalId
+const NATIONAL_ID_LOST_WAIT_MONTHS = 3;
+
+function calculateAgeYears(dateOfBirth) {
+  const dob = new Date(dateOfBirth);
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthDiff = today.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) age -= 1;
+  return age;
+}
+
+/** Adds `months` calendar months to a date (UTC), the same style of date math used elsewhere in
+ *  this file (violatesMinParentAgeGap) rather than a rough "90 days" approximation. */
+function addMonthsUTC(date, months) {
+  const d = new Date(date);
+  d.setUTCMonth(d.getUTCMonth() + months);
+  return d;
+}
+
+function generateCardNumber() {
+  return 'NID-' + generateReference('').replace(/^-/, '').replace(/-/g, '');
+}
+
+/** True once BOTH hands are on file in citizen_biometrics for this citizen, from ANY earlier
+ *  service — the "captured once, reused everywhere" rule the client asked for. */
+async function hasBothHandsEnrolled(queryable, citizenId) {
+  const { rows } = await queryable.query(
+    'SELECT left_hand_captured_at, right_hand_captured_at FROM citizen_biometrics WHERE citizen_id = $1',
+    [citizenId]
+  );
+  return !!(rows[0] && rows[0].left_hand_captured_at && rows[0].right_hand_captured_at);
+}
+
+/** Confirms officeId is a real office belonging to the Police department — used to validate the
+ *  citizen's chosen biometric-capture station (as distinct from preferredOfficeId, which is
+ *  always a Home Affairs branch, for card collection). */
+async function isPoliceOffice(queryable, officeId) {
+  const { rows } = await queryable.query(
+    `SELECT 1 FROM offices o JOIN departments d ON d.department_id = o.department_id WHERE o.office_id = $1 AND d.department_key = 'police'`,
+    [officeId]
+  );
+  return rows.length > 0;
+}
+
+/** Moves a just-approved national_id_cards row straight to 'Card Production' with a freshly
+ *  assigned card number — the one place "fully automatic, same as birth certificates" actually
+ *  happens, used identically whether biometrics were just captured at a police station or were
+ *  already on file from an earlier service. Must be called inside an open transaction on `client`
+ *  with the row already locked (SELECT ... FOR UPDATE). */
+async function autoProduceNationalId(client, nationalIdCardId) {
+  const cardNumber = generateCardNumber();
+  await client.query(
+    `UPDATE national_id_cards SET production_status = 'Card Production', approval_date = CURRENT_DATE,
+        card_number = $1, biometric_status = 'Enrolled', updated_at = NOW()
+     WHERE national_id_card_id = $2`,
+    [cardNumber, nationalIdCardId]
+  );
+  await syncApplicationStatus(client, { sourceTable: 'national_id_cards', sourceId: nationalIdCardId, status: 'Card Production' });
+  return cardNumber;
+}
+
+/** GET /api/home-affairs/national-id/eligibility — everything NationalIdApply.jsx and
+ *  NationalIdRenewReplace.jsx need to decide what to show, computed server-side so the actual
+ *  eligibility rules live in exactly one place. */
+async function getNationalIdEligibility(req, res, next) {
+  try {
+    if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required.' });
+    const { rows: citizenRows } = await db.query('SELECT date_of_birth FROM citizens WHERE citizen_id = $1', [req.user.citizenId]);
+    if (citizenRows.length === 0) return res.status(404).json({ error: 'Citizen record not found.' });
+    const age = calculateAgeYears(citizenRows[0].date_of_birth);
+
+    const { rows } = await db.query(
+      `SELECT national_id_card_id, production_status, card_number, approval_date,
+              (approval_date + (${NATIONAL_ID_VALIDITY_YEARS} || ' years')::interval)::date AS expiry_date
+       FROM national_id_cards WHERE citizen_id = $1 ORDER BY application_date DESC`,
+      [req.user.citizenId]
+    );
+    const collectedCard = rows.find((r) => r.production_status === 'Collected') || null;
+    const hasInProgressApplication = rows.some((r) => !['Rejected', 'Collected'].includes(r.production_status));
+    const today = new Date().toISOString().slice(0, 10);
+    const isExpired = !!(collectedCard && collectedCard.expiry_date && String(collectedCard.expiry_date).slice(0, 10) < today);
+    const biometricsOnFile = await hasBothHandsEnrolled(db, req.user.citizenId);
+
+    res.json({
+      age,
+      meetsMinimumAge: age >= MIN_NATIONAL_ID_AGE,
+      minimumAge: MIN_NATIONAL_ID_AGE,
+      hasCollectedCard: !!collectedCard,
+      collectedCard: collectedCard ? { cardNumber: collectedCard.card_number, approvalDate: collectedCard.approval_date, expiryDate: collectedCard.expiry_date, isExpired } : null,
+      hasInProgressApplication,
+      biometricsOnFile,
+      allowedReplacementReasons: ['Lost', 'Stolen', 'Damaged'],
+      lostWaitMonths: NATIONAL_ID_LOST_WAIT_MONTHS,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
 
 /** POST /api/home-affairs/national-id/apply (citizen, must already have a verified identity) */
 async function applyNationalId(req, res, next) {
@@ -1153,42 +1271,70 @@ async function applyNationalId(req, res, next) {
     if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required to apply for a National ID card.' });
     const { rows: citizenRows } = await db.query('SELECT * FROM citizens WHERE citizen_id = $1', [req.user.citizenId]);
     const citizen = citizenRows[0];
+
+    if (calculateAgeYears(citizen.date_of_birth) < MIN_NATIONAL_ID_AGE) {
+      return res.status(400).json({ error: `You must be at least ${MIN_NATIONAL_ID_AGE} years old to apply for a National ID card.` });
+    }
+
     const { rows: existing } = await db.query(
-      `SELECT 1 FROM national_id_cards WHERE citizen_id = $1 AND production_status NOT IN ('Rejected', 'Collected')`,
+      `SELECT production_status FROM national_id_cards WHERE citizen_id = $1 AND production_status NOT IN ('Rejected', 'Collected')`,
       [req.user.citizenId]
     );
     if (existing.length > 0) return res.status(409).json({ error: 'You already have a National ID card application in progress.' });
 
-    // photoReference: capture reference from the frontend. A real National ID enrolment scans
-    // both hands, not one generic "biometric" capture — see migration 036 — so this now requires
-    // a reference for each hand separately rather than a single biometricReference.
-    const { photoReference, leftHandBiometricReference, rightHandBiometricReference, preferredOfficeId } = req.body;
+    const { rows: alreadyCollected } = await db.query(
+      `SELECT 1 FROM national_id_cards WHERE citizen_id = $1 AND production_status = 'Collected'`,
+      [req.user.citizenId]
+    );
+    if (alreadyCollected.length > 0) {
+      return res.status(409).json({ error: 'You have already obtained a National ID card. Use the renewal or replacement service instead of a new application.' });
+    }
+
+    const { photoReference, preferredOfficeId, biometricOfficeId } = req.body;
     if (!preferredOfficeId) {
       return res.status(400).json({ error: 'preferredOfficeId is required — choose the branch where you will collect the card.' });
     }
-    if (!leftHandBiometricReference || !rightHandBiometricReference) {
-      return res.status(400).json({ error: 'A biometric scan of both the left and right hand is required to apply for a National ID card.' });
+    const alreadyEnrolled = await hasBothHandsEnrolled(db, req.user.citizenId);
+    if (!alreadyEnrolled) {
+      if (!biometricOfficeId) {
+        return res.status(400).json({ error: 'biometricOfficeId is required — choose the police station where you will have your biometrics captured.' });
+      }
+      if (!(await isPoliceOffice(db, biometricOfficeId))) {
+        return res.status(400).json({ error: 'biometricOfficeId must be a valid police station.' });
+      }
     }
+
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
       const { rows } = await client.query(
-        // biometric_status is set to 'Enrolled' here, at the same moment both hand references are
-        // actually captured — not later as a side effect of a status transition (see 034's comment
-        // and transitionNationalId below, which no longer touches this column at all).
-        `INSERT INTO national_id_cards (citizen_id, permanent_identity_number, application_date, production_status, photo_reference, biometric_reference_left, biometric_reference_right, biometric_status, preferred_office_id, collection_office_id)
-         VALUES ($1,$2, CURRENT_DATE, 'Application Submitted', $3, $4, $5, 'Enrolled', $6, $6) RETURNING national_id_card_id`,
-        [req.user.citizenId, citizen.permanent_identity_number, photoReference || null, leftHandBiometricReference, rightHandBiometricReference, preferredOfficeId]
+        `INSERT INTO national_id_cards (citizen_id, permanent_identity_number, application_date, production_status, photo_reference, biometric_status, preferred_office_id, collection_office_id, biometric_office_id)
+         VALUES ($1,$2, CURRENT_DATE, $3, $4, $5, $6, $6, $7) RETURNING national_id_card_id`,
+        [req.user.citizenId, citizen.permanent_identity_number, alreadyEnrolled ? 'Application Submitted' : 'Awaiting Biometric Capture',
+          photoReference || null, alreadyEnrolled ? 'Enrolled' : 'Not Enrolled', preferredOfficeId, alreadyEnrolled ? null : biometricOfficeId]
       );
       const nationalIdCardId = rows[0].national_id_card_id;
       const referenceNumber = generateReference('NIDA');
       await indexApplication(client, {
         citizenId: req.user.citizenId, departmentKey: 'home_affairs', serviceType: 'National ID Card',
-        referenceNumber, sourceTable: 'national_id_cards', sourceId: nationalIdCardId, status: 'Application Submitted',
+        referenceNumber, sourceTable: 'national_id_cards', sourceId: nationalIdCardId, status: alreadyEnrolled ? 'Application Submitted' : 'Awaiting Biometric Capture',
       });
+      let cardNumber = null;
+      if (alreadyEnrolled) {
+        // Already enrolled from an earlier service (e.g. a Driving Licence) — no police-station
+        // visit needed at all; go straight to automatic issuance.
+        const { rows: lockRows } = await client.query('SELECT * FROM national_id_cards WHERE national_id_card_id = $1 FOR UPDATE', [nationalIdCardId]);
+        cardNumber = await autoProduceNationalId(client, lockRows[0].national_id_card_id);
+      }
       await client.query('COMMIT');
-      await createNotification({ userId: req.user.userId, title: 'National ID application submitted', message: `Reference ${referenceNumber}. Your existing permanent identity number will be reused — no new number is issued.`, type: 'Application Submitted' });
-      res.status(201).json({ nationalIdCardId, referenceNumber, status: 'Application Submitted' });
+      await createNotification({
+        userId: req.user.userId, title: 'National ID application submitted',
+        message: alreadyEnrolled
+          ? `Reference ${referenceNumber}. Your biometrics are already on file, so your card has been approved and sent for production automatically. Your existing permanent identity number will be reused — no new number is issued.`
+          : `Reference ${referenceNumber}. Please visit your chosen police station to have your biometrics captured — your card will be approved automatically once that's done. Your existing permanent identity number will be reused — no new number is issued.`,
+        type: 'Application Submitted',
+      });
+      res.status(201).json({ nationalIdCardId, referenceNumber, status: alreadyEnrolled ? 'Card Production' : 'Awaiting Biometric Capture', cardNumber });
     } catch (err) {
       await client.query('ROLLBACK'); throw err;
     } finally {
@@ -1200,22 +1346,46 @@ async function applyNationalId(req, res, next) {
 }
 
 /** POST /api/home-affairs/national-id/renew-replace — new service: "National ID card renewal
- *  & replacement". Deliberately reuses this same table/approval pipeline (NID_TRANSITIONS
- *  below) rather than a parallel one, since a renewal or replacement is still, physically, a
- *  new card application that goes through the same review -> approve -> produce -> collect
- *  steps — see migration 037. Requires the citizen to already hold a previous card; a first
- *  application still goes through applyNationalId above. */
+ *  & replacement". Deliberately reuses this same table/approval pipeline rather than a parallel
+ *  one, since a renewal or replacement is still, physically, a new card row — see migration 037.
+ *  Requires the citizen to already hold a COLLECTED card; a first application still goes through
+ *  applyNationalId above. Both Renewal and Replacement are fully automatic here, same as a first
+ *  application with biometrics already on file — a citizen who holds a previous collected card
+ *  was, by definition, already enrolled when that card was produced, so there is never a second
+ *  police-station visit for this. */
 async function applyNationalIdRenewalReplacement(req, res, next) {
   try {
     if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required to apply for a National ID card.' });
-    const { applicationType, replacementReason, replacementDetails, preferredOfficeId, photoReference } = req.body;
+    const { applicationType, replacementReason, replacementDetails, replacementProofReference, reportedLostAt, preferredOfficeId, photoReference } = req.body;
     if (!['Renewal', 'Replacement'].includes(applicationType)) {
       return res.status(400).json({ error: "applicationType must be 'Renewal' or 'Replacement'." });
     }
-    if (applicationType === 'Replacement' && !replacementReason) {
-      return res.status(400).json({ error: 'replacementReason is required for a Replacement application.' });
-    }
     if (!preferredOfficeId) return res.status(400).json({ error: 'preferredOfficeId is required — choose the branch where you will collect the card.' });
+
+    if (applicationType === 'Replacement') {
+      if (!['Lost', 'Stolen', 'Damaged'].includes(replacementReason)) {
+        return res.status(400).json({ error: "replacementReason must be 'Lost', 'Stolen' or 'Damaged'." });
+      }
+      if (!replacementProofReference) {
+        return res.status(400).json({ error: 'A supporting document is required for a replacement application.' });
+      }
+      if (['Lost', 'Stolen'].includes(replacementReason)) {
+        if (!reportedLostAt) {
+          return res.status(400).json({ error: replacementReason === 'Stolen' ? 'The date your card was stolen is required.' : 'The date you lost the card is required.' });
+        }
+        const lostDate = new Date(reportedLostAt);
+        if (Number.isNaN(lostDate.getTime()) || reportedLostAt > new Date().toISOString().slice(0, 10)) {
+          return res.status(400).json({ error: 'The date reported cannot be in the future.' });
+        }
+        const eligibleFrom = addMonthsUTC(lostDate, NATIONAL_ID_LOST_WAIT_MONTHS);
+        if (new Date() < eligibleFrom) {
+          return res.status(409).json({
+            error: `A ${NATIONAL_ID_LOST_WAIT_MONTHS}-month wait applies before a ${replacementReason.toLowerCase()} card can be replaced. You can apply again from ${eligibleFrom.toISOString().slice(0, 10)}.`,
+            eligibleFrom: eligibleFrom.toISOString().slice(0, 10),
+          });
+        }
+      }
+    }
 
     const { rows: existingInProgress } = await db.query(
       `SELECT 1 FROM national_id_cards WHERE citizen_id = $1 AND production_status NOT IN ('Rejected', 'Collected')`,
@@ -1224,29 +1394,41 @@ async function applyNationalIdRenewalReplacement(req, res, next) {
     if (existingInProgress.length > 0) return res.status(409).json({ error: 'You already have a National ID card application in progress.' });
 
     const { rows: previousRows } = await db.query(
-      `SELECT * FROM national_id_cards WHERE citizen_id = $1 ORDER BY application_date DESC LIMIT 1`,
+      `SELECT * FROM national_id_cards WHERE citizen_id = $1 AND production_status = 'Collected' ORDER BY approval_date DESC LIMIT 1`,
       [req.user.citizenId]
     );
     if (previousRows.length === 0) {
-      return res.status(409).json({ error: 'No previous National ID card found. Use the standard National ID Application for a first-time card.' });
+      return res.status(409).json({ error: 'No collected National ID card found. Use the standard National ID Application for a first-time card.' });
     }
     const previous = previousRows[0];
+
+    if (applicationType === 'Renewal') {
+      const expiry = addMonthsUTC(previous.approval_date, NATIONAL_ID_VALIDITY_YEARS * 12);
+      if (new Date() < expiry) {
+        return res.status(409).json({
+          error: `Your current card is not yet expired (it expires on ${expiry.toISOString().slice(0, 10)}). Renewal is only available once your card has expired.`,
+          currentCardNumber: previous.card_number, expiryDate: expiry.toISOString().slice(0, 10),
+        });
+      }
+    }
+
     const { rows: citizenRows } = await db.query('SELECT permanent_identity_number FROM citizens WHERE citizen_id = $1', [req.user.citizenId]);
 
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
       const { rows } = await client.query(
-        // Biometrics/photo are carried forward from the previous card — the holder is the same
-        // person; a Replacement citizen can still supply a fresh photo if they wish to.
+        // Biometrics are reused automatically (citizen_biometrics, not re-captured) — the holder
+        // already has both hands on file, having gone through police-station capture (or a reuse
+        // skip) for their previous card. Photo is carried forward too, unless a fresh one is given.
         `INSERT INTO national_id_cards
             (citizen_id, permanent_identity_number, application_date, production_status, photo_reference,
-             biometric_reference_left, biometric_reference_right, biometric_status, preferred_office_id, collection_office_id,
-             application_type, replacement_reason, replacement_details, previous_card_number)
-         VALUES ($1,$2, CURRENT_DATE, 'Application Submitted', $3, $4, $5, 'Enrolled', $6, $6, $7, $8, $9, $10) RETURNING national_id_card_id`,
+             biometric_status, preferred_office_id, collection_office_id,
+             application_type, replacement_reason, replacement_details, replacement_proof_reference, reported_lost_at, previous_card_number)
+         VALUES ($1,$2, CURRENT_DATE, 'Application Submitted', $3, 'Enrolled', $4, $4, $5, $6, $7, $8, $9, $10) RETURNING national_id_card_id`,
         [req.user.citizenId, citizenRows[0].permanent_identity_number, photoReference || previous.photo_reference,
-          previous.biometric_reference_left, previous.biometric_reference_right, preferredOfficeId,
-          applicationType, replacementReason || null, replacementDetails || null, previous.card_number || null]
+          preferredOfficeId, applicationType, replacementReason || null, replacementDetails || null,
+          replacementProofReference || null, reportedLostAt || null, previous.card_number || null]
       );
       const nationalIdCardId = rows[0].national_id_card_id;
       const referenceNumber = generateReference('NIDA');
@@ -1255,9 +1437,11 @@ async function applyNationalIdRenewalReplacement(req, res, next) {
         serviceType: applicationType === 'Renewal' ? 'National ID Renewal' : 'National ID Replacement',
         referenceNumber, sourceTable: 'national_id_cards', sourceId: nationalIdCardId, status: 'Application Submitted',
       });
+      const { rows: lockRows } = await client.query('SELECT * FROM national_id_cards WHERE national_id_card_id = $1 FOR UPDATE', [nationalIdCardId]);
+      const cardNumber = await autoProduceNationalId(client, lockRows[0].national_id_card_id);
       await client.query('COMMIT');
-      await createNotification({ userId: req.user.userId, title: `National ID ${applicationType.toLowerCase()} submitted`, message: `Reference ${referenceNumber}.`, type: 'Application Submitted' });
-      res.status(201).json({ nationalIdCardId, referenceNumber, status: 'Application Submitted' });
+      await createNotification({ userId: req.user.userId, title: `National ID ${applicationType.toLowerCase()} submitted`, message: `Reference ${referenceNumber}. Your biometrics are already on file, so your ${applicationType.toLowerCase()} has been approved and sent for production automatically.`, type: 'Application Submitted' });
+      res.status(201).json({ nationalIdCardId, referenceNumber, status: 'Card Production', cardNumber });
     } catch (err) {
       await client.query('ROLLBACK'); throw err;
     } finally {
@@ -1386,6 +1570,97 @@ async function transitionNationalId(req, res, next) {
         });
       }
       res.json({ nationalIdCardId: record.national_id_card_id, status: transition.to, cardNumber });
+    } catch (err) {
+      await client.query('ROLLBACK'); throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** GET /api/home-affairs/national-id/pending-biometric-captures — a police officer's own
+ *  station's queue (system_administrator sees every station). This is the one new officer
+ *  touchpoint the client's design adds to National ID: everything else is fully automatic. */
+async function listPendingNationalIdBiometricCaptures(req, res, next) {
+  try {
+    if (!['police_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
+    const isAdmin = req.user.roleKey === 'system_administrator';
+    if (!isAdmin && !req.user.officeId) return res.json({ nationalIdCards: [] });
+    const { rows } = await db.query(
+      `SELECT n.national_id_card_id, n.application_date, n.biometric_office_id, c.first_name, c.last_name, c.date_of_birth, c.permanent_identity_number, o.name AS office_name
+       FROM national_id_cards n
+       JOIN citizens c ON c.citizen_id = n.citizen_id
+       LEFT JOIN offices o ON o.office_id = n.biometric_office_id
+       WHERE n.production_status = 'Awaiting Biometric Capture' AND ($1::boolean OR n.biometric_office_id = $2)
+       ORDER BY n.application_date`,
+      [isAdmin, req.user.officeId || null]
+    );
+    res.json({ nationalIdCards: rows });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** POST /api/home-affairs/national-id/:id/capture-biometrics — a police officer, at the station
+ *  the citizen chose, scans both hands in person (see components/HandScan.jsx on the frontend —
+ *  a real geometric template, not a photo) and confirms. This is the ONLY way a National ID
+ *  application's biometrics are captured for a citizen who wasn't already enrolled; it writes the
+ *  template to citizen_biometrics (migration 052) exactly like a citizen's own self-enrolment
+ *  does, so it is available to every other service from this point on, then auto-produces the
+ *  card — see autoProduceNationalId above. */
+async function captureNationalIdBiometrics(req, res, next) {
+  try {
+    if (!['police_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
+    const { leftHandTemplate, rightHandTemplate } = req.body;
+    if (!isValidTemplate(leftHandTemplate) || !isValidTemplate(rightHandTemplate)) {
+      return res.status(400).json({ error: 'A valid hand-geometry template is required for both hands.' });
+    }
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query('SELECT * FROM national_id_cards WHERE national_id_card_id = $1 FOR UPDATE', [req.params.id]);
+      if (rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'National ID application not found.' }); }
+      const record = rows[0];
+      if (record.production_status !== 'Awaiting Biometric Capture') {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: `This application is '${record.production_status}', not awaiting biometric capture.` });
+      }
+      if (req.user.roleKey !== 'system_administrator' && record.biometric_office_id !== req.user.officeId) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'This citizen chose a different police station for biometric capture.' });
+      }
+
+      await client.query(
+        `INSERT INTO citizen_biometrics (citizen_id, left_hand_template, left_hand_captured_at, right_hand_template, right_hand_captured_at, enrollment_source, updated_at)
+         VALUES ($1, $2, NOW(), $3, NOW(), 'Police Station Biometric Capture (National ID)', NOW())
+         ON CONFLICT (citizen_id) DO UPDATE
+           SET left_hand_template = EXCLUDED.left_hand_template, left_hand_captured_at = NOW(),
+               right_hand_template = EXCLUDED.right_hand_template, right_hand_captured_at = NOW(),
+               enrollment_source = EXCLUDED.enrollment_source, updated_at = NOW()`,
+        [record.citizen_id, JSON.stringify(leftHandTemplate), JSON.stringify(rightHandTemplate)]
+      );
+      await client.query(
+        `UPDATE national_id_cards SET biometric_captured_by_user_id = $1, biometric_captured_at = NOW(), updated_at = NOW() WHERE national_id_card_id = $2`,
+        [req.user.userId, record.national_id_card_id]
+      );
+      const cardNumber = await autoProduceNationalId(client, record.national_id_card_id);
+      await client.query('COMMIT');
+
+      await recordAudit({
+        userId: req.user.userId, departmentId: await getDepartmentId('police'), action: 'NATIONAL_ID_BIOMETRICS_CAPTURED',
+        targetType: 'national_id_card', targetId: record.national_id_card_id, metadata: { citizenId: record.citizen_id },
+      });
+      const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.citizen_id])).rows[0];
+      if (userRow) {
+        await createNotification({
+          userId: userRow.user_id, title: 'National ID biometrics captured',
+          message: 'Your biometrics have been captured at the police station. Your National ID card has been approved and sent for production.',
+          type: 'Approval',
+        });
+      }
+      res.json({ nationalIdCardId: record.national_id_card_id, status: 'Card Production', cardNumber });
     } catch (err) {
       await client.query('ROLLBACK'); throw err;
     } finally {
@@ -2063,6 +2338,7 @@ module.exports = {
   getBirthCertificate, markCertificateReadyForCollection, collectBirthCertificate,
   listPendingParentConfirmations, confirmParentage, disputeParentage, listParentageDisputes, resolveParentageDispute, correctParentageDispute,
   applyNationalId, applyNationalIdRenewalReplacement, listNationalId, getNationalId, transitionNationalId,
+  getNationalIdEligibility, listPendingNationalIdBiometricCaptures, captureNationalIdBiometrics,
   reportDeath, approveDeath, listDeathRegistrations, getDeathRegistration,
   createMarriageRegistration, listMarriageRegistrations, getMarriageRegistration,
   startReviewMarriage, requestInformationMarriage, resubmitMarriage, verifyMarriage, approveMarriage, rejectMarriage,

@@ -20,6 +20,7 @@ const SERVICES = [
   { key: 'informationRequest', to: '/police/information-request', icon: '❓', roles: CITIZEN_AND_OFFICER, labelKey: 'police.reports.information.title' },
   { key: 'information', to: '/police/information', icon: 'ℹ️', roles: CITIZEN_AND_OFFICER, labelKey: 'police.information.title' },
   { key: 'identityLookup', to: '/police/identity-verification', icon: '🔎', roles: ['police_officer', 'system_administrator'], labelKey: 'police.identityLookup' },
+  { key: 'nationalIdBiometrics', to: '/police/national-id-biometrics', icon: '🖐️', roles: ['police_officer', 'system_administrator'], labelKey: 'police.nationalIdBiometrics.title' },
   { key: 'cases', to: '/police/cases', icon: '🗂️', roles: ['police_officer', 'system_administrator'], labelKey: 'police.cases.navLabel' },
 ];
 

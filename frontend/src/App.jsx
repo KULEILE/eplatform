@@ -78,6 +78,7 @@ import Pensions from './pages/pensions/Pensions';
 import PensionEnquiry from './pages/pensions/PensionEnquiry';
 import Police from './pages/police/Police';
 import PoliceHub from './pages/police/PoliceHub';
+import NationalIdBiometricCapture from './pages/police/NationalIdBiometricCapture';
 import PoliceClearanceApply from './pages/police/PoliceClearanceApply';
 import PoliceClearanceList from './pages/police/PoliceClearanceList';
 import PoliceClearanceCertificate from './pages/police/PoliceClearanceCertificate';
@@ -183,6 +184,7 @@ export default function App() {
         <Route path="/pensions/enquiry" element={<ProtectedRoute><PensionEnquiry /></ProtectedRoute>} />
         <Route path="/police" element={<ProtectedRoute><PoliceHub /></ProtectedRoute>} />
         <Route path="/police/identity-verification" element={<ProtectedRoute roles={['police_officer', 'system_administrator']}><Police /></ProtectedRoute>} />
+        <Route path="/police/national-id-biometrics" element={<ProtectedRoute roles={['police_officer', 'system_administrator']}><NationalIdBiometricCapture /></ProtectedRoute>} />
         <Route path="/police/clearance" element={<ProtectedRoute><PoliceClearanceList /></ProtectedRoute>} />
         <Route path="/police/clearance/apply" element={<ProtectedRoute><PoliceClearanceApply /></ProtectedRoute>} />
         <Route path="/police/clearance/:id/certificate" element={<ProtectedRoute><PoliceClearanceCertificate /></ProtectedRoute>} />

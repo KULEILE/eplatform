@@ -395,7 +395,8 @@
     "Completed": "Tshebeletso ena e phethilwe.",
     "Flagged for Correction": "Ho fumanwe phoso mme e a lokiswa. Ha ho letho leo o lokelang ho le etsa hajwale.",
     "Requested": "Kopo ya hau ya beking e fihletse mme e emetse hore mohlanka a netefatse letsatsi le motho ea tla etsang kopanelo.",
-    "Confirmed": "Beking ya hau e netefaditswe. Ka kopo o tle ka letsatsi le netefaditsweng."
+    "Confirmed": "Beking ya hau e netefaditswe. Ka kopo o tle ka letsatsi le netefaditsweng.",
+    "Awaiting Biometric Capture": "Ka kopo etela seteishene sa sepolesa seo o se khethileng ho nkuwa sa sebopeho sa letsoho la hau. Karete ya hau e tla dumellwa ka boitshwarelo hang ha seo se phethwa."
   },
   "homeAffairs": {
     "services": "Ditshebeletso tsa Home Affairs",
@@ -538,8 +539,17 @@
       "reuseNotice": "Lebitso la hao, letsatsi la tswalo, bong, sebaka sa tswalo le nomoro ya boitsebiso e sa fetoheng di sebediswa hape ho tswa rekotong ya hao e netefaditsweng ya Home Affairs.",
       "noNewNumberNotice": "Nomoro ya hao e leng teng ya boitsebiso e tla sebediswa. Nomoro e ntjha ha e ke e fanwe.",
       "photoCapture": "Ho nka setshwantsho (mohlala)",
-      "biometricCapture": "Ho nka menwana/biometric (mohlala)",
-      "submit": "Romela kopo ya ID ya Naha"
+      "biometricCapture": "Ho nka sebopeho sa letsoho",
+      "biometricCaptureHelp": "Kgetha seteishene sa sepolesa seo o tla etelang hore matsoho a hao a mabedi a hlahlobe. Sena se nkwa hang feela — se tla sebediswa hape ka boitshwarelo bakeng sa tshebeletso e nngwe le e nngwe e se hlokang nakong e tlang.",
+      "biometricsOnFile": "O na le sebopeho sa letsoho se seng teng se tsoang tshebeletsong e fetileng — ha ho hlokahale ho etela seteishene sa sepolesa. Karete ya hao e tla dumellwa ka boitshwarelo ha o romela.",
+      "policeStationRequired": "Kgetha seteishene sa sepolesa seo o tla nkelwang sebopeho sa letsoho teng.",
+      "submit": "Romela kopo ya ID ya Naha",
+      "tooYoung": "O tlameha ho ba dilemo tse {{minimumAge}} kapa ho feta ho kopa karete ya ID ya Naha (o na le dilemo {{age}}).",
+      "alreadyInProgress": "O na le kopo ya karete ya ID ya Naha e ntseng e tsamaiswa. Sheba boemo ba yona leqepheng la ID ya Naha.",
+      "alreadyHaveCard": "O se o fumane karete ya ID ya Naha. Sebedisa tshebeletso ya nchafatso kapa phetiso bakeng sa sena.",
+      "submittedTitle": "Kopo e rometswe",
+      "submittedAwaitingBiometrics": "Ka kopo etela seteishene sa sepolesa seo o se khethileng ho nkuwa sa sebopeho sa letsoho la hau — karete ya hau e tla dumellwa mme e romelletswe tlhahisong ka boitshwarelo hang ha seo se phethwa.",
+      "submittedAutoApproved": "Sebopeho sa letsoho sa hau se ne se le teng, kahoo karete ya hau e dumellwe ka boitshwarelo mme e romelletswe tlhahisong."
     },
     "correctionForm": {
       "title": "Tlaleha phoso rekotong ya hao ya baahi",
@@ -719,17 +729,27 @@
     },
     "nationalIdRenewReplace": "Phetiso le Nchafatso ya ID ya Naha",
     "nationalIdRenewReplaceForm": {
-      "intro": "Kopa ho nchafatsa karete ya hau ya ID e felang nako, kapa ho fumana e nngwe bakeng sa e lahlehileng, e utswitsweng kapa e senyehileng.",
+      "intro": "Kopa ho nchafatsa karete ya hau ya ID e felileng nako, kapa ho fumana e nngwe bakeng sa e lahlehileng, e utswitsweng kapa e senyehileng.",
       "field": {
         "applicationType": "Mofuta oa Kopo",
         "replacementReason": "Lebaka la Phetiso",
         "replacementDetails": "Dintlha tse eketsehileng",
+        "replacementProof": "Tokomane ya tshehetso",
+        "replacementProofHelp": "Kenya bopaki bo tshehetsang lebaka la hau — mohlala, tlaleho ya sepolesa bakeng sa karete e lahlehileng kapa e utswitsweng, kapa setshwantsho sa e senyehileng.",
+        "reportedLostAt": "Letsatsi leo o {{reason}} karete",
         "photo": "Setshwantsho",
         "photoHelp": "Ha e hlokahale — setshwantsho sa hau sa pele se tla sebediswa hape haeba o se tlole."
       },
       "renewal": "Nchafatso",
       "replacement": "Phetiso",
-      "previousCard": "Nomoro ya Karete ya Pele"
+      "previousCard": "Nomoro ya Karete ya Pele",
+      "currentCard": "Karete ya hau e teng",
+      "expired": "e felile nako",
+      "notExpired": "ha e eso fele nako",
+      "noCardFound": "Ha ho karete ya ID ya Naha e nkuweng e fumanweng rekotong ya hau. Sebedisa Kopo e Tloaelehileng ya ID ya Naha bakeng sa karete ya lekgetho la pele.",
+      "notYetExpiredNotice": "Karete ya hau e teng ha e eso fele nako — e tla fela ka {{expiryDate}}. Nchafatso e fumaneha feela ha e se e felile nako.",
+      "waitNotice": "Ho ema ba dikgwedi tse {{months}} ho sebetsa pele karete e lahlehileng/e utswitsweng e ka fetoswa. O tla kgona ho kopa ho tloha ka {{date}}.",
+      "waitPassedNotice": "Nako ya ho ema ya dikgwedi tse {{months}} e fetile — o ka romela phetiso ena."
     },
     "nationalIdApplicationType": {
       "New": "E Ntjha",
@@ -1278,6 +1298,15 @@
     "manualLookup": "Ka letsoho",
     "caseHistoryTitle": "Nyewe/tshwaro/kahlolo e ngodisitsweng",
     "noCaseHistory": "Ha ho nyewe, tshwaro kapa kahlolo e ngodisitsweng bakeng sa motho enwa.",
+    "nationalIdBiometrics": {
+      "title": "Ho Nkwa ha Sebopeho sa Letsoho bakeng sa ID ya Naha",
+      "intro": "Baahi ba khethileng seteisheneng sa hao bakeng sa ho nkwa sa sebopeho sa matsoho a bona bakeng sa ID ya Naha. Ho hlahloba matsoho a mabedi ho ba ngolisa bakeng sa tshebeletso e nngwe le e nngwe ya nako e tlang mme ho netefatsa karete ya bona ka boitshwarelo.",
+      "emptyTitle": "Ha ho letho le emeng",
+      "emptyMessage": "Ha ho baahi ba emeng hajwale bakeng sa ho nkwa sa sebopeho sa letsoho seteisheneng sa hao.",
+      "startCapture": "Nka sebopeho sa letsoho",
+      "confirmCapture": "Netefatsa mme o romele",
+      "captureSuccess": "Sebopeho sa letsoho se nkiloe. Karete e netefatsitswe mme e romelletswe tlhahisong."
+    },
     "cases": {
       "title": "Taolo ya Dinyewe",
       "navLabel": "Taolo ya Dinyewe",

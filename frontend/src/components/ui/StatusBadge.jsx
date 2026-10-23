@@ -15,6 +15,7 @@ const STATUS_KIND = {
   'Information Required': 'warning', 'Additional Information Required': 'warning',
   'Verification in Progress': 'info', 'Identity Verified': 'positive', 'Verified': 'positive',
   'Documents Checked': 'info', 'Processing': 'info', 'Approved': 'positive',
+  'Awaiting Biometric Capture': 'warning',
   'Rejected': 'negative', 'Certificate Generated': 'positive', 'Card Production': 'info',
   'Passport Produced': 'info', 'Ready for Collection': 'positive', 'Collected': 'positive',
   'Completed': 'positive', 'Flagged for Correction': 'warning', 'Application Submitted': 'info',

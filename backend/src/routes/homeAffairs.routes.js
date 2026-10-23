@@ -38,9 +38,14 @@ router.post('/birth-certificate/:id/ready-for-collection', hac.markCertificateRe
 router.post('/birth-certificate/:id/collect', hac.collectBirthCertificate);
 
 // National ID card
+// Specific paths before the generic '/:id' / '/:id/:action' routes below, or Express would
+// swallow them as an id/action.
+router.get('/national-id/eligibility', hac.getNationalIdEligibility);
+router.get('/national-id/pending-biometric-captures', hac.listPendingNationalIdBiometricCaptures);
 router.post('/national-id/apply', hac.applyNationalId);
 router.get('/national-id', hac.listNationalId);
 router.get('/national-id/:id', hac.getNationalId);
+router.post('/national-id/:id/capture-biometrics', hac.captureNationalIdBiometrics);
 router.post('/national-id/:id/:action', hac.transitionNationalId);
 
 // Corrections (FR12) moved to /api/corrections — see corrections.routes.js
