@@ -5,6 +5,7 @@ import { api } from '../../api/client';
 import FormField from '../../components/ui/FormField';
 import PhotoCapture from '../../components/PhotoCapture';
 import DistrictOfficeSelect from '../../components/DistrictOfficeSelect';
+import BackToDepartment from '../../components/BackToDepartment';
 
 const emptyForm = { applicationType: 'Renewal', replacementReason: '', replacementDetails: '', preferredOfficeId: '', photoReference: '' };
 
@@ -35,6 +36,7 @@ export default function NationalIdRenewReplace() {
 
   return (
     <div>
+      <BackToDepartment />
       <h1 className="mb-2 text-2xl font-bold text-slate-900">{t('homeAffairs.nationalIdRenewReplace')}</h1>
       <p className="mb-6 text-sm text-slate-600">{t('homeAffairs.nationalIdRenewReplaceForm.intro')}</p>
 

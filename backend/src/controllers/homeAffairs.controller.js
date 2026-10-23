@@ -18,32 +18,129 @@ const { recordAudit } = require('../utils/audit');
 //                                                  \-> Rejected (from any non-terminal state)
 // ============================================================================================
 
+// A parent slot can be fully "Present" (the default — unchanged from before: name, citizenship,
+// and ID-or-passport all required and verified) or carry one of these declared statuses instead,
+// each with its own, deliberately looser requirements — see resolveParentDetails below:
+//   Unknown   — nothing at all is required or stored.
+//   Absent    — a plain, unverified name only; no ID, no passport, nothing cross-checked.
+//   Inactive  — a real citizen with no reachable portal account: name + identity number
+//               required, and it must match a real, living citizen (same verification as
+//               "Present"), but this parent is never asked to confirm/dispute through the portal.
+//   Deceased  — name required; identity number optional. If given, it must match a real citizen
+//               AND that citizen must actually be recorded as deceased. This also fixes a real
+//               bug: a parent's death used to auto-reject the WHOLE application outright, which
+//               is wrong — a parent dying is normal and must never block a child's birth
+//               certificate.
+const PARENT_DECLARED_STATUSES = ['Unknown', 'Absent', 'Inactive', 'Deceased'];
+
+function validateDeclaredStatus(label, declaredStatus) {
+  if (declaredStatus === undefined || declaredStatus === null || declaredStatus === '') return null;
+  if (!PARENT_DECLARED_STATUSES.includes(declaredStatus)) {
+    throw Object.assign(new Error(`${label}DeclaredStatus must be one of ${PARENT_DECLARED_STATUSES.join(', ')}.`), { status: 400 });
+  }
+  return declaredStatus;
+}
+
+async function resolveParentDetails(client, { label, name, isCitizen, identityNumber, passportNumber, passportImageReference, declaredStatus }) {
+  const missing = [];
+  const rejections = [];
+  const stored = { name: null, isCitizen: null, identityNumber: null, citizenId: null, passportNumber: null, passportImageReference: null };
+
+  if (declaredStatus === 'Unknown') {
+    // Nothing is known about this parent at all — nothing required, nothing stored.
+  } else if (declaredStatus === 'Absent') {
+    stored.name = name || null;
+  } else if (declaredStatus === 'Inactive' || declaredStatus === 'Deceased') {
+    if (!name) missing.push(`${label}Name`);
+    if (declaredStatus === 'Inactive' && !identityNumber) missing.push(`${label}IdentityNumber`);
+    stored.name = name || null;
+    if (name && identityNumber) {
+      const { rows } = await client.query('SELECT citizen_id, is_deceased FROM citizens WHERE permanent_identity_number = $1', [identityNumber]);
+      if (rows.length === 0) {
+        rejections.push(`The ${label}'s permanent identity number does not match any record at Home Affairs.`);
+      } else if (declaredStatus === 'Deceased' && !rows[0].is_deceased) {
+        rejections.push(`The ${label}'s identity record is not recorded as deceased at Home Affairs — check the number, or choose a different status.`);
+      } else if (declaredStatus === 'Inactive' && rows[0].is_deceased) {
+        rejections.push(`The ${label}'s identity record is recorded as deceased — choose "Deceased" instead of "Inactive" for this parent.`);
+      } else {
+        stored.citizenId = rows[0].citizen_id;
+        stored.isCitizen = true;
+        stored.identityNumber = identityNumber;
+      }
+    }
+    // Deceased with no identity number given at all: the declaration is taken at face value —
+    // nothing to check, nothing rejected.
+  } else {
+    // Default / "Present" — unchanged from before this batch.
+    if (!name) missing.push(`${label}Name`);
+    if (typeof isCitizen !== 'boolean') missing.push(`${label}IsCitizen`);
+    if (isCitizen && !identityNumber) missing.push(`${label}IdentityNumber`);
+    if (isCitizen === false && (!passportNumber || !passportImageReference)) missing.push(`${label}PassportNumber/${label}PassportImageReference`);
+    stored.name = name || null;
+    stored.isCitizen = typeof isCitizen === 'boolean' ? isCitizen : null;
+    if (isCitizen && identityNumber) {
+      const { rows } = await client.query('SELECT citizen_id, is_deceased FROM citizens WHERE permanent_identity_number = $1', [identityNumber]);
+      if (rows.length === 0) {
+        rejections.push(`The ${label}'s permanent identity number does not match any record at Home Affairs.`);
+      } else if (rows[0].is_deceased) {
+        rejections.push(`The ${label}'s identity record is recorded as deceased — if that's correct, mark this parent as "Deceased" instead.`);
+      } else {
+        stored.citizenId = rows[0].citizen_id;
+        stored.identityNumber = identityNumber;
+      }
+    } else if (isCitizen === false) {
+      stored.passportNumber = passportNumber || null;
+      stored.passportImageReference = passportImageReference || null;
+    }
+  }
+  return { missing, rejections, stored };
+}
+
 /**
  * Shared by createBirthRegistration (a logged-in parent/guardian registering their child) and
  * applyForBirthCertificatePublic (an adult with no account at all applying for their OWN birth
  * certificate, as the very first step of getting one — see Register.jsx). Both collect the same
- * information and are checked the same way: each parent is either a Lesotho citizen (their
- * permanent identity number is looked up and must match our records) or a non-citizen (a
- * passport number + photo is recorded instead, since there is no register of foreign passports
- * to check it against). Nothing here can check whether an uploaded chief's letter genuinely
- * carries the chief's stamp — that is a real limitation of an automatic, officer-free process,
- * not something invented away; the caller is responsible for showing the citizen a clear
- * instruction about it before they upload (see the frontend form).
+ * information and are checked the same way: each parent is either "Present" (a Lesotho citizen
+ * whose permanent identity number is looked up and must match our records, or a non-citizen with
+ * a passport number + photo recorded instead) or carries one of the declared statuses above.
+ * Nothing here can check whether an uploaded chief's letter genuinely carries the chief's stamp —
+ * that is a real limitation of an automatic, officer-free process, not something invented away;
+ * the caller is responsible for showing the citizen a clear instruction about it before they
+ * upload (see the frontend form).
+ *
+ * Batch 4 adds the one core anti-fraud control this process was missing: when a logged-in parent
+ * is registering a child (submittingParentCitizenId set, isSelfApplication false), their OWN
+ * identity number must match one of the two named parents — otherwise anyone with an account
+ * could name two real citizens as a child's parents with no connection to either of them. This
+ * does not apply to a self-application, which has no "claiming to be someone's parent" fraud
+ * vector in the same sense.
  *
  * Returns { approved, birthRecordId, referenceNumber, rejectionReason } when rejected, or
  * { approved: true, birthRecordId, referenceNumber, citizenId, permanentIdentityNumber,
- *   certificateNumber, birthCertificateId } when approved. Runs inside the caller's own
- * transaction (does not BEGIN/COMMIT itself) so the caller can add its own notification/audit
- * entries atomically around it.
+ *   certificateNumber, birthCertificateId, otherParentCitizenId, otherParentConfirmationStatus }
+ * when approved. Runs inside the caller's own transaction (does not BEGIN/COMMIT itself) so the
+ * caller can add its own notification/audit entries atomically around it.
  */
 async function processBirthCertificateApplication(client, fields) {
   const {
     childFirstName, childMiddleName, childLastName, dateOfBirth, placeOfBirth, sex, preferredOfficeId,
-    fatherName, fatherNationality, fatherIsCitizen, fatherIdentityNumber, fatherPassportNumber, fatherPassportImageReference,
-    motherName, motherMaidenSurname, motherNationality, motherResidence, motherIsCitizen, motherIdentityNumber, motherPassportNumber, motherPassportImageReference,
+    fatherName, fatherNationality, fatherIsCitizen, fatherIdentityNumber, fatherPassportNumber, fatherPassportImageReference, fatherDeclaredStatus,
+    motherName, motherMaidenSurname, motherNationality, motherResidence, motherIsCitizen, motherIdentityNumber, motherPassportNumber, motherPassportImageReference, motherDeclaredStatus,
     chiefLetterImageReference, proofOfBirthImageReference, marriageCertificateImageReference, acknowledgementOfPaternityImageReference,
     submittingParentCitizenId, isSelfApplication,
   } = fields;
+
+  const fatherDeclared = validateDeclaredStatus('father', fatherDeclaredStatus);
+  const motherDeclared = validateDeclaredStatus('mother', motherDeclaredStatus);
+
+  const fatherResolved = await resolveParentDetails(client, {
+    label: 'father', name: fatherName, isCitizen: fatherIsCitizen, identityNumber: fatherIdentityNumber,
+    passportNumber: fatherPassportNumber, passportImageReference: fatherPassportImageReference, declaredStatus: fatherDeclared,
+  });
+  const motherResolved = await resolveParentDetails(client, {
+    label: 'mother', name: motherName, isCitizen: motherIsCitizen, identityNumber: motherIdentityNumber,
+    passportNumber: motherPassportNumber, passportImageReference: motherPassportImageReference, declaredStatus: motherDeclared,
+  });
 
   const missing = [];
   if (!childFirstName) missing.push('childFirstName');
@@ -58,63 +155,76 @@ async function processBirthCertificateApplication(client, fields) {
   // and that citizen picks a branch the normal way once they've created and logged into their
   // account.
   if (!isSelfApplication && !preferredOfficeId) missing.push('preferredOfficeId');
-  if (!fatherName) missing.push('fatherName');
-  if (!motherName) missing.push('motherName');
   if (!chiefLetterImageReference) missing.push('chiefLetterImageReference');
   if (!proofOfBirthImageReference) missing.push('proofOfBirthImageReference');
-  if (typeof fatherIsCitizen !== 'boolean') missing.push('fatherIsCitizen');
-  if (typeof motherIsCitizen !== 'boolean') missing.push('motherIsCitizen');
-  if (fatherIsCitizen && !fatherIdentityNumber) missing.push('fatherIdentityNumber');
-  if (fatherIsCitizen === false && (!fatherPassportNumber || !fatherPassportImageReference)) missing.push('fatherPassportNumber/fatherPassportImageReference');
-  if (motherIsCitizen && !motherIdentityNumber) missing.push('motherIdentityNumber');
-  if (motherIsCitizen === false && (!motherPassportNumber || !motherPassportImageReference)) missing.push('motherPassportNumber/motherPassportImageReference');
+  missing.push(...fatherResolved.missing, ...motherResolved.missing);
   if (missing.length > 0) {
     throw Object.assign(new Error(`The following are required: ${missing.join(', ')}.`), { status: 400 });
   }
 
-  let fatherCitizenId = null;
-  let motherCitizenId = null;
-  const rejectionReasons = [];
+  const fatherCitizenId = fatherResolved.stored.citizenId;
+  const motherCitizenId = motherResolved.stored.citizenId;
+  const rejectionReasons = [...fatherResolved.rejections, ...motherResolved.rejections];
 
-  if (fatherIsCitizen) {
-    const { rows } = await client.query('SELECT citizen_id, is_deceased FROM citizens WHERE permanent_identity_number = $1', [fatherIdentityNumber]);
-    if (rows.length === 0) rejectionReasons.push("The father's permanent identity number does not match any record at Home Affairs.");
-    else if (rows[0].is_deceased) rejectionReasons.push("The father's identity record is recorded as deceased.");
-    else fatherCitizenId = rows[0].citizen_id;
-  }
-  if (motherIsCitizen) {
-    const { rows } = await client.query('SELECT citizen_id, is_deceased FROM citizens WHERE permanent_identity_number = $1', [motherIdentityNumber]);
-    if (rows.length === 0) rejectionReasons.push("The mother's permanent identity number does not match any record at Home Affairs.");
-    else if (rows[0].is_deceased) rejectionReasons.push("The mother's identity record is recorded as deceased.");
-    else motherCitizenId = rows[0].citizen_id;
-  }
   // Not an official Home Affairs rule — a safeguard of this system's own, so an application
-  // cannot be auto-approved from two unverifiable claims with nothing behind them.
+  // cannot be auto-approved from two unverifiable/unidentifiable claims with nothing behind them.
   if (!fatherCitizenId && !motherCitizenId) {
     rejectionReasons.push('At least one parent must be a Lesotho citizen whose permanent identity number matches our records.');
+  }
+
+  // The core anti-fraud control: a logged-in parent registering a child must themselves be one
+  // of the two named parents.
+  let submitterIsFather = false;
+  let submitterIsMother = false;
+  if (!isSelfApplication && submittingParentCitizenId) {
+    submitterIsFather = fatherCitizenId === submittingParentCitizenId;
+    submitterIsMother = motherCitizenId === submittingParentCitizenId;
+    if (!submitterIsFather && !submitterIsMother) {
+      rejectionReasons.push("You must be one of this child's two named parents to register this birth — your own identity number did not match either parent you named.");
+    }
+    if (submitterIsFather && fatherDeclared) {
+      rejectionReasons.push("The father can't be marked Unknown/Absent/Inactive/Deceased while you are registering this birth as the father yourself.");
+    }
+    if (submitterIsMother && motherDeclared) {
+      rejectionReasons.push("The mother can't be marked Unknown/Absent/Inactive/Deceased while you are registering this birth as the mother yourself.");
+    }
   }
 
   const referenceNumber = generateReference('BR');
   const approved = rejectionReasons.length === 0;
 
+  // The OTHER named parent (not the submitter) — who gets a non-blocking, after-the-fact chance
+  // to confirm or dispute this registration if they are a real citizen with no declared status
+  // (i.e. reachable through their own account). See migration 061 and confirmParentage/
+  // disputeParentage below. Only computed for an approved, parent-submitted registration.
+  let otherParentCitizenId = null;
+  let otherParentConfirmationStatus = 'Not Applicable';
+  if (approved && !isSelfApplication && submittingParentCitizenId) {
+    otherParentCitizenId = submitterIsFather ? motherCitizenId : fatherCitizenId;
+    const otherDeclared = submitterIsFather ? motherDeclared : fatherDeclared;
+    if (otherParentCitizenId && !otherDeclared) otherParentConfirmationStatus = 'Pending';
+  }
+
   const { rows: inserted } = await client.query(
     `INSERT INTO birth_records (
         parent_citizen_id, is_self_application, registration_reference,
         child_first_name, child_middle_name, child_last_name, date_of_birth, place_of_birth, sex,
-        father_name, father_nationality, father_is_citizen, father_identity_number, father_citizen_id, father_passport_number, father_passport_image_reference,
-        mother_name, mother_maiden_surname, mother_nationality, mother_residence, mother_is_citizen, mother_identity_number, mother_citizen_id, mother_passport_number, mother_passport_image_reference,
+        father_name, father_nationality, father_is_citizen, father_identity_number, father_citizen_id, father_passport_number, father_passport_image_reference, father_declared_status,
+        mother_name, mother_maiden_surname, mother_nationality, mother_residence, mother_is_citizen, mother_identity_number, mother_citizen_id, mother_passport_number, mother_passport_image_reference, mother_declared_status,
         chief_letter_image_reference, proof_of_birth_image_reference, marriage_certificate_image_reference, acknowledgement_of_paternity_image_reference,
-        preferred_office_id, registration_status, rejection_reason, submitted_at, approved_at
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,NOW(),$33)
+        preferred_office_id, registration_status, rejection_reason, submitted_at, approved_at,
+        other_parent_citizen_id, other_parent_confirmation_status
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,NOW(),$35,$36,$37)
      RETURNING *`,
     [submittingParentCitizenId || null, !!isSelfApplication, referenceNumber,
      childFirstName, childMiddleName || null, childLastName, dateOfBirth, placeOfBirth, sex,
-     fatherName, fatherNationality || 'Mosotho', fatherIsCitizen, fatherIsCitizen ? fatherIdentityNumber : null, fatherCitizenId,
-     fatherIsCitizen ? null : fatherPassportNumber, fatherIsCitizen ? null : fatherPassportImageReference,
-     motherName, motherMaidenSurname || null, motherNationality || 'Mosotho', motherResidence || null, motherIsCitizen,
-     motherIsCitizen ? motherIdentityNumber : null, motherCitizenId, motherIsCitizen ? null : motherPassportNumber, motherIsCitizen ? null : motherPassportImageReference,
+     fatherResolved.stored.name, fatherNationality || 'Mosotho', fatherResolved.stored.isCitizen, fatherResolved.stored.identityNumber, fatherCitizenId,
+     fatherResolved.stored.passportNumber, fatherResolved.stored.passportImageReference, fatherDeclared,
+     motherResolved.stored.name, motherMaidenSurname || null, motherNationality || 'Mosotho', motherResidence || null, motherResolved.stored.isCitizen,
+     motherResolved.stored.identityNumber, motherCitizenId, motherResolved.stored.passportNumber, motherResolved.stored.passportImageReference, motherDeclared,
      chiefLetterImageReference, proofOfBirthImageReference, marriageCertificateImageReference || null, acknowledgementOfPaternityImageReference || null,
-     preferredOfficeId || null, approved ? 'Approved' : 'Rejected', approved ? null : rejectionReasons.join(' '), approved ? new Date() : null]
+     preferredOfficeId || null, approved ? 'Approved' : 'Rejected', approved ? null : rejectionReasons.join(' '), approved ? new Date() : null,
+     otherParentCitizenId, otherParentConfirmationStatus]
   );
   const record = inserted[0];
 
@@ -171,6 +281,7 @@ async function processBirthCertificateApplication(client, fields) {
     approved: true, birthRecordId: record.birth_record_id, referenceNumber,
     citizenId: citizenId.citizen_id, permanentIdentityNumber: citizenId.permanent_identity_number,
     certificateNumber, birthCertificateId: certRows[0].birth_certificate_id,
+    otherParentCitizenId: record.other_parent_citizen_id, otherParentConfirmationStatus: record.other_parent_confirmation_status,
   };
 }
 
@@ -196,6 +307,20 @@ async function createBirthRegistration(req, res, next) {
           userId: req.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'BIRTH_REGISTRATION_APPROVED',
           targetType: 'birth_record', targetId: result.birthRecordId, metadata: { citizenId: result.citizenId, certificateNumber: result.certificateNumber },
         });
+        // If the other named parent is a real citizen reachable through their own account (no
+        // declared status, not the submitter), let them know they can review and confirm/dispute
+        // this registration — see confirmParentage/disputeParentage below. This never blocks or
+        // delays the certificate, which has already been issued above either way.
+        if (result.otherParentConfirmationStatus === 'Pending' && result.otherParentCitizenId) {
+          const { rows: otherUserRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [result.otherParentCitizenId]);
+          if (otherUserRows[0]) {
+            await createNotification({
+              userId: otherUserRows[0].user_id, title: 'You were named as a parent on a birth registration',
+              message: `Birth registration ${result.referenceNumber} names you as a parent. Please review and confirm or dispute it in your account.`,
+              type: 'Verification',
+            });
+          }
+        }
         return res.status(201).json({ birthRecordId: result.birthRecordId, referenceNumber: result.referenceNumber, status: 'Approved', citizenId: result.citizenId, permanentIdentityNumber: result.permanentIdentityNumber, certificateNumber: result.certificateNumber });
       }
       await createNotification({
@@ -317,6 +442,147 @@ async function getBirthRegistration(req, res, next) {
   } catch (err) {
     next(err);
   }
+}
+
+// ============================================================================================
+// PARENTAGE CONFIRMATION / DISPUTE — the non-blocking "sign to verify" second truth layer for a
+// birth registration (see migration 061 and processBirthCertificateApplication above). The
+// certificate is always issued instantly regardless; this only settles afterwards whether the
+// other named parent agrees they were correctly named. A dispute is the ONE place anywhere in
+// the birth-certificate domain (registration, self-application, reissue are all fully automatic)
+// where a Home Affairs officer is ever involved.
+// ============================================================================================
+
+/** GET /api/home-affairs/birth-registration/pending-confirmations */
+async function listPendingParentConfirmations(req, res, next) {
+  try {
+    if (!req.user.citizenId) return res.json({ pendingConfirmations: [] });
+    const { rows } = await db.query(
+      `SELECT br.birth_record_id, br.registration_reference, br.child_first_name, br.child_last_name,
+              br.other_parent_confirmation_status, p.first_name AS submitted_by_first_name, p.last_name AS submitted_by_last_name
+       FROM birth_records br
+       LEFT JOIN citizens p ON p.citizen_id = br.parent_citizen_id
+       WHERE br.other_parent_citizen_id = $1 AND br.other_parent_confirmation_status = 'Pending'
+       ORDER BY br.created_at DESC`,
+      [req.user.citizenId]
+    );
+    res.json({ pendingConfirmations: rows });
+  } catch (err) { next(err); }
+}
+
+/** POST /api/home-affairs/birth-registration/:id/confirm-parentage  body: { signatureReference } */
+async function confirmParentage(req, res, next) {
+  try {
+    const { signatureReference } = req.body;
+    if (!signatureReference) return res.status(400).json({ error: 'A signature is required to confirm.' });
+    const { rows } = await db.query('SELECT * FROM birth_records WHERE birth_record_id = $1', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Birth record not found.' });
+    const record = rows[0];
+    if (!req.user.citizenId || record.other_parent_citizen_id !== req.user.citizenId) return res.status(403).json({ error: 'You were not named as the other parent on this registration.' });
+    if (record.other_parent_confirmation_status !== 'Pending') return res.status(409).json({ error: `This confirmation is no longer pending (status: ${record.other_parent_confirmation_status}).` });
+    await db.query(
+      `UPDATE birth_records SET other_parent_confirmation_status = 'Confirmed', other_parent_confirmed_at = NOW(),
+              other_parent_signature_reference = $1, updated_at = NOW() WHERE birth_record_id = $2`,
+      [signatureReference, record.birth_record_id]
+    );
+    const { rows: submitterUserRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.parent_citizen_id]);
+    if (submitterUserRows[0]) {
+      await createNotification({
+        userId: submitterUserRows[0].user_id, title: 'Parentage confirmed',
+        message: `The other parent named on birth registration ${record.registration_reference} has confirmed it.`,
+        type: 'Status Change',
+      });
+    }
+    res.json({ birthRecordId: record.birth_record_id, status: 'Confirmed' });
+  } catch (err) { next(err); }
+}
+
+/** POST /api/home-affairs/birth-registration/:id/dispute-parentage  body: { reason } */
+async function disputeParentage(req, res, next) {
+  try {
+    const { reason } = req.body;
+    if (!reason) return res.status(400).json({ error: 'A reason is required to dispute this.' });
+    const { rows } = await db.query('SELECT * FROM birth_records WHERE birth_record_id = $1', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Birth record not found.' });
+    const record = rows[0];
+    if (!req.user.citizenId || record.other_parent_citizen_id !== req.user.citizenId) return res.status(403).json({ error: 'You were not named as the other parent on this registration.' });
+    if (record.other_parent_confirmation_status !== 'Pending') return res.status(409).json({ error: `This confirmation is no longer pending (status: ${record.other_parent_confirmation_status}).` });
+    await db.query(
+      `UPDATE birth_records SET other_parent_confirmation_status = 'Disputed', other_parent_dispute_reason = $1, updated_at = NOW() WHERE birth_record_id = $2`,
+      [reason, record.birth_record_id]
+    );
+    const { rows: submitterUserRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.parent_citizen_id]);
+    if (submitterUserRows[0]) {
+      await createNotification({
+        userId: submitterUserRows[0].user_id, title: 'Parentage disputed',
+        message: `The other parent named on birth registration ${record.registration_reference} has disputed it. A Home Affairs officer will review this.`,
+        type: 'Status Change',
+      });
+    }
+    await recordAudit({
+      userId: req.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'PARENTAGE_DISPUTED',
+      targetType: 'birth_record', targetId: record.birth_record_id, reason,
+    });
+    res.json({ birthRecordId: record.birth_record_id, status: 'Disputed' });
+  } catch (err) { next(err); }
+}
+
+/** GET /api/home-affairs/parentage-disputes — officer-only queue. */
+async function listParentageDisputes(req, res, next) {
+  try {
+    if (!['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey)) {
+      return res.status(403).json({ error: 'Officer only.' });
+    }
+    const { rows } = await db.query(
+      `SELECT br.*, c.first_name AS child_first_name_full, c.last_name AS child_last_name_full,
+              p.first_name AS submitted_by_first_name, p.last_name AS submitted_by_last_name,
+              o.first_name AS other_parent_first_name, o.last_name AS other_parent_last_name
+       FROM birth_records br
+       LEFT JOIN citizens c ON c.citizen_id = br.citizen_id
+       LEFT JOIN citizens p ON p.citizen_id = br.parent_citizen_id
+       LEFT JOIN citizens o ON o.citizen_id = br.other_parent_citizen_id
+       WHERE br.other_parent_confirmation_status = 'Disputed'
+       ORDER BY br.updated_at DESC`
+    );
+    res.json({ disputes: rows });
+  } catch (err) { next(err); }
+}
+
+/** POST /api/home-affairs/parentage-disputes/:id/resolve  body: { resolution: 'Upheld'|'Dismissed', notes } */
+async function resolveParentageDispute(req, res, next) {
+  try {
+    if (!['home_affairs_officer', 'system_administrator'].includes(req.user.roleKey)) {
+      return res.status(403).json({ error: 'Officer only.' });
+    }
+    const { resolution, notes } = req.body;
+    if (!['Upheld', 'Dismissed'].includes(resolution)) return res.status(400).json({ error: "resolution must be 'Upheld' or 'Dismissed'." });
+    const { rows } = await db.query('SELECT * FROM birth_records WHERE birth_record_id = $1', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Dispute not found.' });
+    const record = rows[0];
+    if (record.other_parent_confirmation_status !== 'Disputed') return res.status(409).json({ error: 'This record is not currently disputed.' });
+    const newStatus = resolution === 'Upheld' ? 'Dispute Upheld' : 'Dispute Dismissed';
+    await db.query(
+      `UPDATE birth_records SET other_parent_confirmation_status = $1, other_parent_dispute_resolved_by_user_id = $2,
+              other_parent_dispute_resolved_at = NOW(), updated_at = NOW() WHERE birth_record_id = $3`,
+      [newStatus, req.user.userId, record.birth_record_id]
+    );
+    await recordAudit({
+      userId: req.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'PARENTAGE_DISPUTE_RESOLVED',
+      targetType: 'birth_record', targetId: record.birth_record_id, reason: notes || null, metadata: { resolution },
+    });
+    const notifyIds = [record.parent_citizen_id, record.other_parent_citizen_id].filter(Boolean);
+    for (const citizenId of notifyIds) {
+      const { rows: userRows } = await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [citizenId]);
+      if (userRows[0]) {
+        await createNotification({
+          userId: userRows[0].user_id, title: 'Parentage dispute resolved',
+          message: `The dispute over birth registration ${record.registration_reference} was ${resolution.toLowerCase()}.${notes ? ` Officer's notes: ${notes}` : ''}`,
+          type: 'Status Change',
+        });
+      }
+    }
+    res.json({ birthRecordId: record.birth_record_id, status: newStatus });
+  } catch (err) { next(err); }
 }
 
 // allowOwner: when true, the citizen who owns the record may also call this transition (in
@@ -1530,6 +1796,7 @@ module.exports = {
   startReviewBirthRegistration, requestInformationBirthRegistration, resubmitBirthRegistration,
   verifyBirthRegistration, confirmVerificationBirthRegistration, approveBirthRegistration, rejectBirthRegistration,
   getBirthCertificate, markCertificateReadyForCollection, collectBirthCertificate,
+  listPendingParentConfirmations, confirmParentage, disputeParentage, listParentageDisputes, resolveParentageDispute,
   applyNationalId, applyNationalIdRenewalReplacement, listNationalId, getNationalId, transitionNationalId,
   reportDeath, approveDeath, listDeathRegistrations, getDeathRegistration,
   createMarriageRegistration, listMarriageRegistrations, getMarriageRegistration,

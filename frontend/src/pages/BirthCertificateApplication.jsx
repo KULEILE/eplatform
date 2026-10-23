@@ -6,7 +6,7 @@ import FormField from '../components/ui/FormField';
 import ParentIdentityFields from '../components/ParentIdentityFields';
 import DocumentCapture from '../components/DocumentCapture';
 
-const BLANK_PARENT = { name: '', nationality: 'Mosotho', isCitizen: true, identityNumber: '', passportNumber: '', passportImageReference: '' };
+const BLANK_PARENT = { name: '', nationality: 'Mosotho', isCitizen: true, identityNumber: '', passportNumber: '', passportImageReference: '', declaredStatus: '' };
 
 /**
  * PUBLIC, no login required — the entry point for an adult with no Lesotho identity number at
@@ -47,8 +47,10 @@ export default function BirthCertificateApplication() {
         ...form,
         fatherName: father.name, fatherNationality: father.nationality, fatherIsCitizen: father.isCitizen,
         fatherIdentityNumber: father.identityNumber, fatherPassportNumber: father.passportNumber, fatherPassportImageReference: father.passportImageReference,
+        fatherDeclaredStatus: father.declaredStatus || undefined,
         motherName: mother.name, motherNationality: mother.nationality, motherIsCitizen: mother.isCitizen,
         motherIdentityNumber: mother.identityNumber, motherPassportNumber: mother.passportNumber, motherPassportImageReference: mother.passportImageReference,
+        motherDeclaredStatus: mother.declaredStatus || undefined,
         chiefLetterImageReference, proofOfBirthImageReference,
         marriageCertificateImageReference: marriageCertificateImageReference || undefined,
         acknowledgementOfPaternityImageReference: acknowledgementOfPaternityImageReference || undefined,
@@ -109,7 +111,7 @@ export default function BirthCertificateApplication() {
           <p>⚠ {error}</p>
           {alreadyVerified && (
             <p className="mt-2">
-              <Link to="/home-affairs/birth-certificate-reissue" className="font-semibold underline">
+              <Link to="/home-affairs/birth-certificates" className="font-semibold underline">
                 {t('homeAffairs.birthCertificateApplicationForm.goToReissue')}
               </Link>
             </p>

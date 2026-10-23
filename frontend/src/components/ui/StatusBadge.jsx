@@ -19,13 +19,13 @@ const STATUS_KIND = {
   'Passport Produced': 'info', 'Ready for Collection': 'positive', 'Collected': 'positive',
   'Completed': 'positive', 'Flagged for Correction': 'warning', 'Application Submitted': 'info',
   'Stopped (Deceased)': 'negative',
-  'Paid': 'positive',
   'Active': 'positive', 'Suspended': 'warning', 'Deactivated': 'negative',
   'Match Found': 'positive', 'No Match': 'neutral', 'Possible Mismatch': 'warning',
   'Verified Identity': 'positive', 'Provisional': 'warning',
   'Scheduled': 'info', 'Missed': 'negative', 'Cancelled': 'neutral',
   'Background Check In Progress': 'info',
   'Requested': 'info', 'Confirmed': 'positive', 'Registered': 'positive', 'Revoked': 'negative',
+  'Pending': 'warning', 'Disputed': 'negative', 'Dispute Upheld': 'negative', 'Dispute Dismissed': 'positive', 'Not Applicable': 'neutral',
 };
 
 export default function StatusBadge({ status, kind }) {

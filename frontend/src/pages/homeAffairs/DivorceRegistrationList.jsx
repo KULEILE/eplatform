@@ -6,6 +6,7 @@ import { api } from '../../api/client';
 import Loading from '../../components/ui/Loading';
 import DataTable from '../../components/ui/DataTable';
 import StatusBadge from '../../components/ui/StatusBadge';
+import BackToDepartment from '../../components/BackToDepartment';
 
 export default function DivorceRegistrationList() {
   const { user } = useAuth();
@@ -24,6 +25,7 @@ export default function DivorceRegistrationList() {
 
   return (
     <div>
+      <BackToDepartment />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-slate-900">{t('homeAffairs.divorceRegistration')}</h1>
         {!isOfficer && <Link to="/home-affairs/divorce-registration/apply" className="btn-primary">{t('homeAffairs.divorceForm.submit')}</Link>}

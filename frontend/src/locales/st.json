@@ -62,7 +62,8 @@
     "footerRights": "© {{year}} Ditshebeletso tse Kopantsweng tsa Mmuso. Ditokelo tsohle di sirelehile.",
     "copy": "Kopitsa",
     "copied": "E kopitsweng",
-    "citizen": "Moahi"
+    "citizen": "Moahi",
+    "backTo": "Khutlela ho {{department}}"
   },
   "nav": {
     "home": "Lapeng",
@@ -301,7 +302,8 @@
     "myWorkspaceDesc": "Mola wa hao wa ho sebetsana le dikopo tsa {{department}}",
     "openApplicationsDesc": "Dikopo tse butsweng tse emetseng ketso",
     "goToWorkspace": "Ea sebakeng sa mosebetsi sa {{department}}",
-    "manageOfficesCardDesc": "Bula mafapha a macha 'a mosebetsi 'a lefapha lefe kapa lefe 'a li abele setereke"
+    "manageOfficesCardDesc": "Bula mafapha a macha 'a mosebetsi 'a lefapha lefe kapa lefe 'a li abele setereke",
+    "pendingParentConfirmationNotice": "O kentswe lebitso jwalo ka motswadi dikopong {{count}} tsa ngodiso ya tswalo tse emetseng netefatso ya hao."
   },
   "departments": {
     "chooseTitle": "O ka rata ho fihlela lefapha lefe la mmuso?",
@@ -365,7 +367,11 @@
     "Acquitted": "O Lokolotswe Molato",
     "Case Dismissed": "Nyewe e Lahlilwe",
     "Caution/Diversion": "Temoso/Tsela e Nngwe",
-    "Paid": "E lefilwe"
+    "Paid": "E lefilwe",
+    "Disputed": "E hanyeditswe",
+    "Dispute Upheld": "Kgohlano e tshehetswe",
+    "Dispute Dismissed": "Kgohlano e hanywe",
+    "Not Applicable": "Ha e sebetse"
   },
   "statusHelp": {
     "Draft": "Ha o e so e romele.",
@@ -393,7 +399,7 @@
   },
   "homeAffairs": {
     "services": "Ditshebeletso tsa Home Affairs",
-    "birthRegistration": "Setifikeiti sa Tswalo",
+    "birthRegistration": "Ngodisa Tswalo",
     "birthCertificate": "Setifikeiti sa Tswalo",
     "nationalIdApplication": "Kopo ya ID ya Naha",
     "nationalIdCard": "Karete ya ID ya Naha",
@@ -441,7 +447,16 @@
       "approvedResult": "Kopo e amohetswe. Setifikeiti {{certificateNumber}} se entswe.",
       "rejectedResult": "Kopo ha e a amoheloa: {{reason}}",
       "applyAgain": "Romela kopo e ntjha",
-      "submit": "Romela kopo ya setifikeiti sa tswalo"
+      "submit": "Romela kopo ya setifikeiti sa tswalo",
+      "parentStatus": "Boemo ba motswadi",
+      "parentStatusPresent": "O teng (lebitso le ID li hlokahala)",
+      "parentStatusUnknown": "Ha a tsejwe",
+      "parentStatusAbsent": "Ha a yo",
+      "parentStatusInactive": "Ha a sebetse tsamaisong (e mong wa baahi)",
+      "parentStatusDeceased": "O hlokahetse",
+      "parentStatusUnknownHelp": "Ha ho letho le hlokahalang haeba motswadi enwa a hlile a sa tsejwe.",
+      "parentStatusAbsentHelp": "Ha ho hlokahale — fana ka lebitso feela haeba le tsejwa. Ha ho letho le leng le hlokahalang.",
+      "parentStatusDeceasedHelp": "Ha e hlokahale. Haeba e fanwe, e tla hlahlojwa khahlanong le direkoto tsa bafu."
     },
     "birthCertificateApplicationForm": {
       "title": "Kopa setifikeiti sa hao sa tswalo",
@@ -606,7 +621,8 @@
         "proof": "Bopaki ba lebaka",
         "proofHelp": "Kenya bopaki bo tshehetsang lebaka la hau — mohlala tlaleho ya sepolesa bakeng sa setifikeiti se lahlehileng, kapa setshwantsho sa se senyehileng."
       },
-      "certificateReady": "Sheba setifikeiti"
+      "certificateReady": "Sheba setifikeiti",
+      "requestAction": "Kopa ho hlahiswa hape"
     },
     "reissueReason": {
       "Lost": "E Lahlehile",
@@ -778,7 +794,34 @@
       "certificateLabel": "Nomoro ya setifikeiti",
       "newIdNumberLabel": "Nomoro e ntjha ya boitsebiso e sa fetoheng",
       "empty": "Ha ho dikopo tsa boahi ka naturalization tse emetseng tlhahlobo."
-    }
+    },
+    "birthCertificates": "Setifikeiti sa Tswalo",
+    "birthCertificatesIntro": "Sheba setifikeiti sa hao sa tswalo le tsa bana ba hao, mme o kope ho se hlahiswa hape haeba se lahlehile, se senyehile, kapa se e-s’o nkuwe.",
+    "birthCertificatesEmpty": "Ha o na setifikeiti sa tswalo rekotong, mme ha ho bana ba ngodisitsweng tlasa akhaonto ya hao.",
+    "birthCertificatesOwn": "Setifikeiti sa ka sa tswalo",
+    "parentConfirmations": {
+      "title": "Netefatso ya bomotswadi",
+      "intro": "O kentswe lebitso jwalo ka motswadi kopong ya ngodiso ya tswalo. Sheba tlase mona mme o netefatse kapa o hanyetse — sena ha se ame setifikeiti se seng se ntshitsweng.",
+      "empty": "Ha ho na dinetefatso tse emetseng tsa bomotswadi.",
+      "registeredBy": "E ngodisitswe ke {{name}}",
+      "confirmAction": "Netefatsa",
+      "disputeAction": "Hanyetsa",
+      "confirmHelp": "Saena ka tlase ho netefatsa hore ke wena motswadi wa bobedi wa ngwana enwa, jwalo ka ha a kentswe lebitso kopong ena.",
+      "disputeReasonLabel": "Hobaneng o hanyetsa sena?",
+      "disputeReasonRequired": "Lebaka le hlokahala ho hanyetsa sena.",
+      "signatureRequired": "Tshaeno e hlokahala ho netefatsa."
+    },
+    "parentageDisputesForm": {
+      "title": "Dikgohlano tsa bomotswadi",
+      "intro": "Motswadi e mong ya kentsweng lebitso o hanyeditse kopo ya ngodiso ya tswalo. Sena ke sebaka se le seng feela moo mohlanka a kenang leleme tsamaisong ya setifikeiti sa tswalo.",
+      "empty": "Ha ho na dikgohlano tse sa rarolloang tsa bomotswadi.",
+      "registeredBy": "E ngodisitswe ke",
+      "namedOtherParent": "Motswadi e mong ya boletsweng",
+      "notesLabel": "Dintlha tsa mohlanka",
+      "dismissAction": "Hana kgohlano (ngodiso e dula e le ntle)",
+      "upholdAction": "Tshehetsa kgohlano"
+    },
+    "parentageDisputes": "Dikgohlano tsa Bomotswadi"
   },
   "passport": {
     "title": "Ditshebeletso tsa Pasepoto",
@@ -1274,102 +1317,102 @@
       "openedBy": "E buletswe ke",
       "openedOn": "E buletswe ka"
     },
-  "reports": {
-    "apply": "Romela tlaleho",
-    "serviceType": "Mofuta wa tlaleho",
-    "hubTitle": "Tlaleha ho sepolesa",
-    "Lost Property Reporting": "Tlaleho ya Thepa e Lahlehileng",
-    "Stolen Property Reporting": "Tlaleho ya Thepa e Utswitsweng",
-    "General Crime Reporting": "Tlaleho ya Botlokotsebe ka Kakaretso",
-    "Cybercrime Reporting": "Tlaleho ya Botlokotsebe ba Inthanete",
-    "Missing Person Reporting": "Tlaleho ya Motho ya Lahlehileng",
-    "Domestic Violence Reporting": "Tlaleho ya Pefo ya Lelapa",
-    "Traffic Accident Reporting": "Tlaleho ya Kotsi ya Sephethephethe",
-    "Police Complaint Submission": "Pletso Khahlano le Sepolesa",
-    "Police Information Request": "Kopo ya Tlhahisoleseling ho Sepolesa",
-    "field": {
-      "description": "Lintlha",
-      "incidentDate": "Letsatsi",
-      "location": "Sebaka",
-      "evidence": "Setshwantsho sa bopaki (ha e le teng)",
-      "itemDescription": "Tlhaloso ya ntho",
-      "missingPersonName": "Lebitso la motho ya lahlehileng",
-      "missingPersonAge": "Dilemo tse akanyetsweng (haeba di tsejwa)",
-      "platformOrService": "Sepheo/akhaonto/tshebeletso e amehang",
-      "vehiclesInvolved": "Nomoro ya ngodiso ya koloi (haeba e tsejwa)",
-      "officerNameOrBadge": "Lebitso la lepolesa/nomoro ya badge (haeba e tsejwa)",
-      "needsImmediateAssistance": "Na o hloka thuso hang-hang?",
-      "yes": "E",
-      "no": "Tjhe"
+    "reports": {
+      "apply": "Romela tlaleho",
+      "serviceType": "Mofuta wa tlaleho",
+      "hubTitle": "Tlaleha ho sepolesa",
+      "Lost Property Reporting": "Tlaleho ya Thepa e Lahlehileng",
+      "Stolen Property Reporting": "Tlaleho ya Thepa e Utswitsweng",
+      "General Crime Reporting": "Tlaleho ya Botlokotsebe ka Kakaretso",
+      "Cybercrime Reporting": "Tlaleho ya Botlokotsebe ba Inthanete",
+      "Missing Person Reporting": "Tlaleho ya Motho ya Lahlehileng",
+      "Domestic Violence Reporting": "Tlaleho ya Pefo ya Lelapa",
+      "Traffic Accident Reporting": "Tlaleho ya Kotsi ya Sephethephethe",
+      "Police Complaint Submission": "Pletso Khahlano le Sepolesa",
+      "Police Information Request": "Kopo ya Tlhahisoleseling ho Sepolesa",
+      "field": {
+        "description": "Lintlha",
+        "incidentDate": "Letsatsi",
+        "location": "Sebaka",
+        "evidence": "Setshwantsho sa bopaki (ha e le teng)",
+        "itemDescription": "Tlhaloso ya ntho",
+        "missingPersonName": "Lebitso la motho ya lahlehileng",
+        "missingPersonAge": "Dilemo tse akanyetsweng (haeba di tsejwa)",
+        "platformOrService": "Sepheo/akhaonto/tshebeletso e amehang",
+        "vehiclesInvolved": "Nomoro ya ngodiso ya koloi (haeba e tsejwa)",
+        "officerNameOrBadge": "Lebitso la lepolesa/nomoro ya badge (haeba e tsejwa)",
+        "needsImmediateAssistance": "Na o hloka thuso hang-hang?",
+        "yes": "E",
+        "no": "Tjhe"
+      },
+      "lostProperty": {
+        "title": "Tlaleho ya Thepa e Lahlehileng",
+        "intro": "Tlaleha ID, mohala, tokomane kapa thepa e nngwe e lahlehileng."
+      },
+      "stolenProperty": {
+        "title": "Tlaleho ya Thepa e Utswitsweng",
+        "intro": "Romela tlaleho ya pele le lintlha tsa seo se utswitsweng."
+      },
+      "generalCrime": {
+        "title": "Tlaleho ya Botlokotsebe ka Kakaretso",
+        "intro": "Romela tlaleho e seng ya tshohanyetso hammoho le bopaki leha bo le teng. Bakeng sa tshohanyetso e ntseng e etsahala, ikopanye le seteishene sa sepolesa se haufi ho ena le ho sebedisa fomo ena."
+      },
+      "cybercrime": {
+        "title": "Tlaleho ya Botlokotsebe ba Inthanete",
+        "intro": "Tlaleha bothetsi ba inthaneteng, ho hlaselwa ha akhaonto, kapa bothetsi bo bong ba dijithale."
+      },
+      "missingPerson": {
+        "title": "Tlaleho ya Motho ya Lahlehileng",
+        "intro": "Romela lintlha, le setshwantsho sa morao-rao haeba se le teng, sa motho ya lahlehileng."
+      },
+      "domesticViolence": {
+        "title": "Tlaleho ya Pefo ya Lelapa",
+        "intro": "Kopa thuso mme o romele tlaleho ya pele e sireletsehileng.",
+        "safetyNotice": "Haeba o le kotsing hona jwale, ka kopo ikopanye kapa o ye seteisheneng sa sepolesa se haufi hang-hang ho e-na le ho emela tlaleho ena ho hlahlojwa inthaneteng."
+      },
+      "trafficAccident": {
+        "title": "Tlaleho ya Kotsi ya Sephethephethe",
+        "intro": "Romela lintlha, le ditshwantsho haeba di le teng, tsa kotsi."
+      },
+      "complaint": {
+        "title": "Pletso Khahlano le Sepolesa",
+        "intro": "Romela pletso mabapi le boitshwaro ba lepolesa."
+      },
+      "information": {
+        "title": "Kopo ya Tlhahisoleseling ho Sepolesa",
+        "intro": "Botsa ka mekgwa, ditlhoko, dibaka tsa diofisi kapa dihora tsa tshebeletso. Lepolesa le tla arabela kopo ya hao."
+      }
     },
-    "lostProperty": {
-      "title": "Tlaleho ya Thepa e Lahlehileng",
-      "intro": "Tlaleha ID, mohala, tokomane kapa thepa e nngwe e lahlehileng."
-    },
-    "stolenProperty": {
-      "title": "Tlaleho ya Thepa e Utswitsweng",
-      "intro": "Romela tlaleho ya pele le lintlha tsa seo se utswitsweng."
-    },
-    "generalCrime": {
-      "title": "Tlaleho ya Botlokotsebe ka Kakaretso",
-      "intro": "Romela tlaleho e seng ya tshohanyetso hammoho le bopaki leha bo le teng. Bakeng sa tshohanyetso e ntseng e etsahala, ikopanye le seteishene sa sepolesa se haufi ho ena le ho sebedisa fomo ena."
-    },
-    "cybercrime": {
-      "title": "Tlaleho ya Botlokotsebe ba Inthanete",
-      "intro": "Tlaleha bothetsi ba inthaneteng, ho hlaselwa ha akhaonto, kapa bothetsi bo bong ba dijithale."
-    },
-    "missingPerson": {
-      "title": "Tlaleho ya Motho ya Lahlehileng",
-      "intro": "Romela lintlha, le setshwantsho sa morao-rao haeba se le teng, sa motho ya lahlehileng."
-    },
-    "domesticViolence": {
-      "title": "Tlaleho ya Pefo ya Lelapa",
-      "intro": "Kopa thuso mme o romele tlaleho ya pele e sireletsehileng.",
-      "safetyNotice": "Haeba o le kotsing hona jwale, ka kopo ikopanye kapa o ye seteisheneng sa sepolesa se haufi hang-hang ho e-na le ho emela tlaleho ena ho hlahlojwa inthaneteng."
-    },
-    "trafficAccident": {
-      "title": "Tlaleho ya Kotsi ya Sephethephethe",
-      "intro": "Romela lintlha, le ditshwantsho haeba di le teng, tsa kotsi."
-    },
-    "complaint": {
-      "title": "Pletso Khahlano le Sepolesa",
-      "intro": "Romela pletso mabapi le boitshwaro ba lepolesa."
+    "track": {
+      "title": "Latela Nyewe",
+      "intro": "Kenya nomoro ya tshupiso ya nyewe ho hlahloba boemo ba yona. Sena se sebetsa feela bakeng sa nyewe eo o leng setho se boletsweng ho yona direkoteng.",
+      "caseReferenceLabel": "Nomoro ya tshupiso ya nyewe",
+      "search": "Hlahloba boemo",
+      "notFound": "Ha ho nyewe e fumanweng ka nomoro eo ya tshupiso direkoteng tsa hao.",
+      "result": {
+        "reference": "Tshupiso ya nyewe",
+        "caseType": "Mofuta wa nyewe",
+        "status": "Boemo",
+        "openedOn": "E buletswe ka",
+        "closedOn": "E koetswe ka"
+      }
     },
     "information": {
-      "title": "Kopo ya Tlhahisoleseling ho Sepolesa",
-      "intro": "Botsa ka mekgwa, ditlhoko, dibaka tsa diofisi kapa dihora tsa tshebeletso. Lepolesa le tla arabela kopo ya hao."
+      "title": "Tlhahisoleseding ya Sepolesa",
+      "intro": "Mekgwa ka kakaretso, ditlhoko le tlhahisoleseding ya diofisi bakeng sa ditshebeletso tsa sepolesa.",
+      "proceduresTitle": "Mekgwa e tlwaelehileng",
+      "procedure1Title": "Ho tlaleha ketsahalo",
+      "procedure1Body": "Sebedisa tshebeletso e amehang ya tlaleho ho tswa lenaneng la Sepolesa (thepa e lahlehileng/e utswitsweng, botlokotsebe ka kakaretso kapa ba inthanete, batho ba lahlehileng, pefo ya lelapa, dikotsi tsa sephethephethe, kapa pletso). O tla fumana nomoro ya tshupiso mme o ka latela tswelopele ho tswa ho Dikopo tsa Ka.",
+      "procedure2Title": "Ho kopa Setifikeiti sa Phepelo ya Sepolesa",
+      "procedure2Body": "Kopa inthaneteng, hlalosa morero wa hao (mosebetsi, maeto/visa, thuto, bojaki, kapa tse ding), mme o kgethe lekala la ho e nka. O tla tsebiswa ha e se e lokile ho nkuwa.",
+      "procedure3Title": "Ho beha nako ya kopano",
+      "procedure3Body": "Ditshebeletso tse ding di hloka ketelo ka bowena. Beha nako ya kopano ya Sepolesa ho tswa leqepheng la Dikopano mme o kgethe lekala le nako e nepahetseng.",
+      "officesTitle": "Dibaka tsa diofisi",
+      "officesIntro": "Mekala e leng teng direkoteng hajwale. Bakeng sa dihora tse nepahetseng tsa ho bula, ikopanye le lekala ka ho toba kapa o botse o sebedisa fomo ya kopo ya tlhahisoleseding ka tlase.",
+      "noOffices": "Ha ho tlhahisoleseding ya diofisi e fumanehang hajwale.",
+      "askTitle": "O na le potso e eng?",
+      "askIntro": "Romela kopo ya tlhahisoleseding mme lepolesa le tla arabela."
     }
-  },
-  "track": {
-    "title": "Latela Nyewe",
-    "intro": "Kenya nomoro ya tshupiso ya nyewe ho hlahloba boemo ba yona. Sena se sebetsa feela bakeng sa nyewe eo o leng setho se boletsweng ho yona direkoteng.",
-    "caseReferenceLabel": "Nomoro ya tshupiso ya nyewe",
-    "search": "Hlahloba boemo",
-    "notFound": "Ha ho nyewe e fumanweng ka nomoro eo ya tshupiso direkoteng tsa hao.",
-    "result": {
-      "reference": "Tshupiso ya nyewe",
-      "caseType": "Mofuta wa nyewe",
-      "status": "Boemo",
-      "openedOn": "E buletswe ka",
-      "closedOn": "E koetswe ka"
-    }
-  },
-  "information": {
-    "title": "Tlhahisoleseding ya Sepolesa",
-    "intro": "Mekgwa ka kakaretso, ditlhoko le tlhahisoleseding ya diofisi bakeng sa ditshebeletso tsa sepolesa.",
-    "proceduresTitle": "Mekgwa e tlwaelehileng",
-    "procedure1Title": "Ho tlaleha ketsahalo",
-    "procedure1Body": "Sebedisa tshebeletso e amehang ya tlaleho ho tswa lenaneng la Sepolesa (thepa e lahlehileng/e utswitsweng, botlokotsebe ka kakaretso kapa ba inthanete, batho ba lahlehileng, pefo ya lelapa, dikotsi tsa sephethephethe, kapa pletso). O tla fumana nomoro ya tshupiso mme o ka latela tswelopele ho tswa ho Dikopo tsa Ka.",
-    "procedure2Title": "Ho kopa Setifikeiti sa Phepelo ya Sepolesa",
-    "procedure2Body": "Kopa inthaneteng, hlalosa morero wa hao (mosebetsi, maeto/visa, thuto, bojaki, kapa tse ding), mme o kgethe lekala la ho e nka. O tla tsebiswa ha e se e lokile ho nkuwa.",
-    "procedure3Title": "Ho beha nako ya kopano",
-    "procedure3Body": "Ditshebeletso tse ding di hloka ketelo ka bowena. Beha nako ya kopano ya Sepolesa ho tswa leqepheng la Dikopano mme o kgethe lekala le nako e nepahetseng.",
-    "officesTitle": "Dibaka tsa diofisi",
-    "officesIntro": "Mekala e leng teng direkoteng hajwale. Bakeng sa dihora tse nepahetseng tsa ho bula, ikopanye le lekala ka ho toba kapa o botse o sebedisa fomo ya kopo ya tlhahisoleseding ka tlase.",
-    "noOffices": "Ha ho tlhahisoleseding ya diofisi e fumanehang hajwale.",
-    "askTitle": "O na le potso e eng?",
-    "askIntro": "Romela kopo ya tlhahisoleseding mme lepolesa le tla arabela."
-  }
   },
   "applications": {
     "title": "Dikopo Tsaka",

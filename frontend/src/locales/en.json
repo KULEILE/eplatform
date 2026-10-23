@@ -62,7 +62,8 @@
     "footerRights": "© {{year}} Integrated Government Services. All rights reserved.",
     "copy": "Copy",
     "copied": "Copied",
-    "citizen": "Citizen"
+    "citizen": "Citizen",
+    "backTo": "Back to {{department}}"
   },
   "nav": {
     "home": "Home",
@@ -301,7 +302,8 @@
     "myWorkspaceDesc": "Your {{department}} processing queue",
     "openApplicationsDesc": "Open applications awaiting action",
     "goToWorkspace": "Go to {{department}} workspace",
-    "manageOfficesCardDesc": "Open new branch offices and assign them to a district"
+    "manageOfficesCardDesc": "Open new branch offices and assign them to a district",
+    "pendingParentConfirmationNotice": "You've been named as a parent on {{count}} birth registration(s) awaiting your confirmation."
   },
   "departments": {
     "chooseTitle": "Which government department would you like to access?",
@@ -365,7 +367,11 @@
     "Acquitted": "Acquitted",
     "Case Dismissed": "Case Dismissed",
     "Caution/Diversion": "Caution/Diversion",
-    "Paid": "Paid"
+    "Paid": "Paid",
+    "Disputed": "Disputed",
+    "Dispute Upheld": "Dispute Upheld",
+    "Dispute Dismissed": "Dispute Dismissed",
+    "Not Applicable": "Not Applicable"
   },
   "statusHelp": {
     "Draft": "You haven't submitted this yet.",
@@ -393,7 +399,7 @@
   },
   "homeAffairs": {
     "services": "Home Affairs services",
-    "birthRegistration": "Birth Certificate",
+    "birthRegistration": "Register a Birth",
     "birthCertificate": "Birth Certificate",
     "nationalIdApplication": "National ID Application",
     "nationalIdCard": "National ID Card",
@@ -441,7 +447,16 @@
       "approvedResult": "Application approved. Certificate {{certificateNumber}} has been generated.",
       "rejectedResult": "Application could not be approved: {{reason}}",
       "applyAgain": "Submit a new application",
-      "submit": "Submit birth certificate application"
+      "submit": "Submit birth certificate application",
+      "parentStatus": "Parent's status",
+      "parentStatusPresent": "Present (name & ID required)",
+      "parentStatusUnknown": "Unknown",
+      "parentStatusAbsent": "Absent",
+      "parentStatusInactive": "Inactive on the system",
+      "parentStatusDeceased": "Deceased",
+      "parentStatusUnknownHelp": "Nothing further is required if this parent is genuinely unknown.",
+      "parentStatusAbsentHelp": "Optional — only if the name is known. Nothing else is required.",
+      "parentStatusDeceasedHelp": "Optional. If given, it will be checked against our deceased records."
     },
     "birthCertificateApplicationForm": {
       "title": "Apply for your birth certificate",
@@ -606,7 +621,8 @@
         "proof": "Proof of reason",
         "proofHelp": "Upload evidence supporting your reason — e.g. a police report for a lost certificate, or a photo of the damaged one."
       },
-      "certificateReady": "View certificate"
+      "certificateReady": "View certificate",
+      "requestAction": "Request reissue"
     },
     "reissueReason": {
       "Lost": "Lost",
@@ -778,7 +794,34 @@
       "certificateLabel": "Certificate number",
       "newIdNumberLabel": "New permanent identity number",
       "empty": "No naturalization applications waiting for review."
-    }
+    },
+    "birthCertificates": "Birth Certificate",
+    "birthCertificatesIntro": "View your own birth certificate and any of your children's, and request a reissue if one is lost, damaged, or never collected.",
+    "birthCertificatesEmpty": "You don't have a birth certificate on file yet, and no children are registered under your account.",
+    "birthCertificatesOwn": "My birth certificate",
+    "parentConfirmations": {
+      "title": "Parentage confirmations",
+      "intro": "You've been named as a parent on a birth registration. Review it below and confirm or dispute it — this never affects a certificate that has already been issued.",
+      "empty": "You have no pending parentage confirmations.",
+      "registeredBy": "Registered by {{name}}",
+      "confirmAction": "Confirm",
+      "disputeAction": "Dispute",
+      "confirmHelp": "Sign below to confirm you are this child's other parent, as named on this registration.",
+      "disputeReasonLabel": "Why are you disputing this?",
+      "disputeReasonRequired": "A reason is required to dispute this.",
+      "signatureRequired": "A signature is required to confirm."
+    },
+    "parentageDisputesForm": {
+      "title": "Parentage disputes",
+      "intro": "The other named parent has disputed a birth registration. This is the only point in the birth-certificate process where an officer is involved.",
+      "empty": "There are no open parentage disputes.",
+      "registeredBy": "Registered by",
+      "namedOtherParent": "Named other parent",
+      "notesLabel": "Officer notes",
+      "dismissAction": "Dismiss dispute (registration stands)",
+      "upholdAction": "Uphold dispute"
+    },
+    "parentageDisputes": "Parentage Disputes"
   },
   "passport": {
     "title": "Passport Services",
@@ -1274,102 +1317,102 @@
       "openedBy": "Opened by",
       "openedOn": "Opened on"
     },
-  "reports": {
-    "apply": "Submit report",
-    "serviceType": "Report type",
-    "hubTitle": "Report to police",
-    "Lost Property Reporting": "Lost Property Reporting",
-    "Stolen Property Reporting": "Stolen Property Reporting",
-    "General Crime Reporting": "General Crime Reporting",
-    "Cybercrime Reporting": "Cybercrime Reporting",
-    "Missing Person Reporting": "Missing Person Reporting",
-    "Domestic Violence Reporting": "Domestic Violence Reporting",
-    "Traffic Accident Reporting": "Traffic Accident Reporting",
-    "Police Complaint Submission": "Police Complaint Submission",
-    "Police Information Request": "Police Information Request",
-    "field": {
-      "description": "Details",
-      "incidentDate": "Date",
-      "location": "Location",
-      "evidence": "Supporting photo (optional)",
-      "itemDescription": "Item description",
-      "missingPersonName": "Missing person's name",
-      "missingPersonAge": "Approximate age (if known)",
-      "platformOrService": "Platform/account/service involved",
-      "vehiclesInvolved": "Vehicle registration number(s) involved (if known)",
-      "officerNameOrBadge": "Officer name/badge number (if known)",
-      "needsImmediateAssistance": "Do you need immediate assistance?",
-      "yes": "Yes",
-      "no": "No"
+    "reports": {
+      "apply": "Submit report",
+      "serviceType": "Report type",
+      "hubTitle": "Report to police",
+      "Lost Property Reporting": "Lost Property Reporting",
+      "Stolen Property Reporting": "Stolen Property Reporting",
+      "General Crime Reporting": "General Crime Reporting",
+      "Cybercrime Reporting": "Cybercrime Reporting",
+      "Missing Person Reporting": "Missing Person Reporting",
+      "Domestic Violence Reporting": "Domestic Violence Reporting",
+      "Traffic Accident Reporting": "Traffic Accident Reporting",
+      "Police Complaint Submission": "Police Complaint Submission",
+      "Police Information Request": "Police Information Request",
+      "field": {
+        "description": "Details",
+        "incidentDate": "Date",
+        "location": "Location",
+        "evidence": "Supporting photo (optional)",
+        "itemDescription": "Item description",
+        "missingPersonName": "Missing person's name",
+        "missingPersonAge": "Approximate age (if known)",
+        "platformOrService": "Platform/account/service involved",
+        "vehiclesInvolved": "Vehicle registration number(s) involved (if known)",
+        "officerNameOrBadge": "Officer name/badge number (if known)",
+        "needsImmediateAssistance": "Do you need immediate assistance?",
+        "yes": "Yes",
+        "no": "No"
+      },
+      "lostProperty": {
+        "title": "Lost Property Reporting",
+        "intro": "Report an ID, phone, document or other belonging you have lost."
+      },
+      "stolenProperty": {
+        "title": "Stolen Property Reporting",
+        "intro": "Submit an initial report and the details of what was stolen."
+      },
+      "generalCrime": {
+        "title": "General Crime Reporting",
+        "intro": "Submit a non-emergency report with any supporting evidence. For an emergency in progress, contact your nearest police station directly rather than using this form."
+      },
+      "cybercrime": {
+        "title": "Cybercrime Reporting",
+        "intro": "Report an online scam, account hacking, or other digital fraud."
+      },
+      "missingPerson": {
+        "title": "Missing Person Reporting",
+        "intro": "Submit details and, if available, a recent photograph of the missing person."
+      },
+      "domesticViolence": {
+        "title": "Domestic Violence Reporting",
+        "intro": "Request assistance and submit a confidential initial report.",
+        "safetyNotice": "If you are in immediate danger, please contact or go to your nearest police station right away rather than waiting for this report to be reviewed online."
+      },
+      "trafficAccident": {
+        "title": "Traffic Accident Reporting",
+        "intro": "Submit details and, if available, photographs of the accident."
+      },
+      "complaint": {
+        "title": "Police Complaint Submission",
+        "intro": "Submit a complaint about the conduct of a police officer."
+      },
+      "information": {
+        "title": "Police Information Request",
+        "intro": "Ask about procedures, requirements, office locations or service hours. An officer will respond to your request."
+      }
     },
-    "lostProperty": {
-      "title": "Lost Property Reporting",
-      "intro": "Report an ID, phone, document or other belonging you have lost."
-    },
-    "stolenProperty": {
-      "title": "Stolen Property Reporting",
-      "intro": "Submit an initial report and the details of what was stolen."
-    },
-    "generalCrime": {
-      "title": "General Crime Reporting",
-      "intro": "Submit a non-emergency report with any supporting evidence. For an emergency in progress, contact your nearest police station directly rather than using this form."
-    },
-    "cybercrime": {
-      "title": "Cybercrime Reporting",
-      "intro": "Report an online scam, account hacking, or other digital fraud."
-    },
-    "missingPerson": {
-      "title": "Missing Person Reporting",
-      "intro": "Submit details and, if available, a recent photograph of the missing person."
-    },
-    "domesticViolence": {
-      "title": "Domestic Violence Reporting",
-      "intro": "Request assistance and submit a confidential initial report.",
-      "safetyNotice": "If you are in immediate danger, please contact or go to your nearest police station right away rather than waiting for this report to be reviewed online."
-    },
-    "trafficAccident": {
-      "title": "Traffic Accident Reporting",
-      "intro": "Submit details and, if available, photographs of the accident."
-    },
-    "complaint": {
-      "title": "Police Complaint Submission",
-      "intro": "Submit a complaint about the conduct of a police officer."
+    "track": {
+      "title": "Track a Case",
+      "intro": "Enter a case reference number to check its status. This only works for a case where you are the named subject on record.",
+      "caseReferenceLabel": "Case reference number",
+      "search": "Check status",
+      "notFound": "No case found with that reference number on your record.",
+      "result": {
+        "reference": "Case reference",
+        "caseType": "Case type",
+        "status": "Status",
+        "openedOn": "Opened on",
+        "closedOn": "Closed on"
+      }
     },
     "information": {
-      "title": "Police Information Request",
-      "intro": "Ask about procedures, requirements, office locations or service hours. An officer will respond to your request."
+      "title": "Police Information",
+      "intro": "General procedures, requirements and office information for police services.",
+      "proceduresTitle": "Common procedures",
+      "procedure1Title": "Reporting an incident",
+      "procedure1Body": "Use the relevant reporting service from the Police hub (lost/stolen property, general or cybercrime, missing persons, domestic violence, traffic accidents, or a complaint). You will receive a reference number and can track progress from My Applications.",
+      "procedure2Title": "Applying for a Police Clearance Certificate",
+      "procedure2Body": "Apply online, state your purpose (employment, travel/visa, education, immigration, or other), and choose a branch for collection. You will be notified once it is ready for collection.",
+      "procedure3Title": "Booking an appointment",
+      "procedure3Body": "Some services require a visit in person. Book a Police appointment from the Appointments page and choose a convenient branch and time.",
+      "officesTitle": "Office locations",
+      "officesIntro": "Branches currently on record. For exact opening hours, contact the branch directly or ask using the information request form below.",
+      "noOffices": "No office information is available right now.",
+      "askTitle": "Still have a question?",
+      "askIntro": "Submit an information request and an officer will respond."
     }
-  },
-  "track": {
-    "title": "Track a Case",
-    "intro": "Enter a case reference number to check its status. This only works for a case where you are the named subject on record.",
-    "caseReferenceLabel": "Case reference number",
-    "search": "Check status",
-    "notFound": "No case found with that reference number on your record.",
-    "result": {
-      "reference": "Case reference",
-      "caseType": "Case type",
-      "status": "Status",
-      "openedOn": "Opened on",
-      "closedOn": "Closed on"
-    }
-  },
-  "information": {
-    "title": "Police Information",
-    "intro": "General procedures, requirements and office information for police services.",
-    "proceduresTitle": "Common procedures",
-    "procedure1Title": "Reporting an incident",
-    "procedure1Body": "Use the relevant reporting service from the Police hub (lost/stolen property, general or cybercrime, missing persons, domestic violence, traffic accidents, or a complaint). You will receive a reference number and can track progress from My Applications.",
-    "procedure2Title": "Applying for a Police Clearance Certificate",
-    "procedure2Body": "Apply online, state your purpose (employment, travel/visa, education, immigration, or other), and choose a branch for collection. You will be notified once it is ready for collection.",
-    "procedure3Title": "Booking an appointment",
-    "procedure3Body": "Some services require a visit in person. Book a Police appointment from the Appointments page and choose a convenient branch and time.",
-    "officesTitle": "Office locations",
-    "officesIntro": "Branches currently on record. For exact opening hours, contact the branch directly or ask using the information request form below.",
-    "noOffices": "No office information is available right now.",
-    "askTitle": "Still have a question?",
-    "askIntro": "Submit an information request and an officer will respond."
-  }
   },
   "applications": {
     "title": "My Applications",

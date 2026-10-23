@@ -40,13 +40,17 @@ function isOfficer(req) { return OFFICER_ROLES.includes(req.user.roleKey); }
 // BIRTH CERTIFICATE REISSUE
 // ============================================================================================
 
-/** POST /api/home-affairs/birth-certificate-reissue  body: { birthRecordId, reason, details } */
+/** POST /api/home-affairs/birth-certificate-reissue  body: { birthRecordId, reason, details, proofImageReference } */
 /**
  * A birth certificate never expires, so there is no "renewal" of one — this is always a REISSUE:
- * a replacement copy of a certificate that was lost, damaged, or never collected. Because of
- * that, a stated reason alone is no longer enough to get a new copy — the citizen must also
- * upload proof supporting it (a police report for "Lost", a photo of the damaged certificate for
- * "Damaged", and so on). See migration 060.
+ * a replacement copy of a certificate that was lost, damaged, or never collected. A stated reason
+ * alone is not enough — the citizen must also upload proof supporting it (a police report for
+ * "Lost", a photo of the damaged certificate for "Damaged", and so on). See migration 060.
+ *
+ * As of Batch 4 this is fully automatic, like birth-certificate issuance itself — no officer
+ * review queue. A Home Affairs officer is only ever involved anywhere in the birth-certificate
+ * domain to resolve a disputed parentage confirmation (see listParentageDisputes /
+ * resolveParentageDispute in homeAffairs.controller.js) — never for a routine reissue.
  */
 async function requestBirthCertificateReissue(req, res, next) {
   try {
@@ -57,7 +61,13 @@ async function requestBirthCertificateReissue(req, res, next) {
     const { rows: brRows } = await db.query('SELECT * FROM birth_records WHERE birth_record_id = $1', [birthRecordId]);
     if (brRows.length === 0) return res.status(404).json({ error: 'Birth record not found.' });
     const birthRecord = brRows[0];
-    if (birthRecord.citizen_id !== req.user.citizenId) return res.status(403).json({ error: 'This birth record is not linked to your identity.' });
+    // Reissue is available to the citizen the certificate is ABOUT, or the parent/guardian who
+    // originally registered it — same dual-ownership rule used everywhere else in this domain
+    // (see getBirthCertificate's isOwner check) — so a parent can reissue a child's certificate
+    // on the child's behalf, not only the child themselves once they have their own account.
+    if (birthRecord.citizen_id !== req.user.citizenId && birthRecord.parent_citizen_id !== req.user.citizenId) {
+      return res.status(403).json({ error: 'This birth record is not linked to your identity.' });
+    }
     if (birthRecord.registration_status !== 'Approved') return res.status(409).json({ error: 'No certificate has been issued for this birth registration yet.' });
 
     const client = await db.getClient();
@@ -65,15 +75,22 @@ async function requestBirthCertificateReissue(req, res, next) {
       await client.query('BEGIN');
       const reissueReference = generateReference('BCR');
       const { rows } = await client.query(
-        `INSERT INTO birth_certificate_reissue_requests (citizen_id, birth_record_id, reason, details, proof_image_reference, reissue_reference)
-         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        `INSERT INTO birth_certificate_reissue_requests (citizen_id, birth_record_id, reason, details, proof_image_reference, reissue_reference, status, reviewed_at)
+         VALUES ($1,$2,$3,$4,$5,$6,'Approved',NOW()) RETURNING *`,
         [req.user.citizenId, birthRecordId, reason, details || null, proofImageReference, reissueReference]
       );
+      // Re-opens the existing certificate for collection, same as a brand-new one — no officer
+      // approval step to wait for any more.
+      await client.query(`UPDATE birth_certificates SET status = 'Ready for Collection', ready_for_collection_at = NOW(), updated_at = NOW() WHERE birth_record_id = $1`, [birthRecordId]);
       await indexApplication(client, {
         citizenId: req.user.citizenId, departmentKey: 'home_affairs', serviceType: 'Birth Certificate Reissue',
-        referenceNumber: reissueReference, sourceTable: 'birth_certificate_reissue_requests', sourceId: rows[0].reissue_request_id, status: 'Submitted',
+        referenceNumber: reissueReference, sourceTable: 'birth_certificate_reissue_requests', sourceId: rows[0].reissue_request_id, status: 'Approved',
       });
       await client.query('COMMIT');
+      await createNotification({
+        userId: req.user.userId, title: 'Birth certificate reissue approved',
+        message: `Reference ${reissueReference}. Your certificate is ready for collection.`, type: 'Approval',
+      });
       res.status(201).json({ reissueRequest: rows[0] });
     } catch (err) { await client.query('ROLLBACK'); throw err; } finally { client.release(); }
   } catch (err) { next(err); }
@@ -101,6 +118,37 @@ async function listBirthCertificateReissues(req, res, next) {
   } catch (err) { next(err); }
 }
 
+/**
+ * GET /api/home-affairs/my-birth-certificates — feeds the new "Birth Certificate" section page
+ * and its reissue action: the citizen picks a certificate from a real list (their own, or any
+ * child's they are a verified parent or registering guardian of) instead of typing a raw
+ * internal birth record ID they have no natural way to know.
+ */
+async function listMyBirthCertificates(req, res, next) {
+  try {
+    if (!req.user.citizenId) return res.json({ own: null, children: [] });
+    const { rows: ownRows } = await db.query(
+      `SELECT bc.birth_certificate_id, bc.certificate_number, bc.status, bc.birth_record_id,
+              c.first_name, c.middle_name, c.last_name
+       FROM birth_certificates bc JOIN citizens c ON c.citizen_id = bc.citizen_id
+       WHERE bc.citizen_id = $1`,
+      [req.user.citizenId]
+    );
+    const { rows: childRows } = await db.query(
+      `SELECT bc.birth_certificate_id, bc.certificate_number, bc.status, bc.birth_record_id,
+              c.first_name, c.middle_name, c.last_name
+       FROM birth_records br
+       JOIN birth_certificates bc ON bc.birth_record_id = br.birth_record_id
+       JOIN citizens c ON c.citizen_id = br.citizen_id
+       WHERE (br.parent_citizen_id = $1 OR br.father_citizen_id = $1 OR br.mother_citizen_id = $1)
+         AND br.citizen_id IS NOT NULL AND br.citizen_id != $1
+       ORDER BY c.date_of_birth DESC`,
+      [req.user.citizenId]
+    );
+    res.json({ own: ownRows[0] || null, children: childRows });
+  } catch (err) { next(err); }
+}
+
 async function getBirthCertificateReissue(req, res, next) {
   try {
     const { rows } = await db.query(
@@ -120,79 +168,13 @@ async function getBirthCertificateReissue(req, res, next) {
   } catch (err) { next(err); }
 }
 
-const transitionReissue = buildTransition({ table: 'birth_certificate_reissue_requests', idColumn: 'reissue_request_id', notFoundMessage: 'Reissue request not found.' });
-
-function startReviewReissue(req, res, next) {
-  return transitionReissue(req, res, next, {
-    from: 'Submitted', to: 'Under Review',
-    sideEffect: async (client, record) => {
-      await client.query(`UPDATE birth_certificate_reissue_requests SET status = 'Under Review', updated_at = NOW() WHERE reissue_request_id = $1`, [record.reissue_request_id]);
-      await syncApplicationStatus(client, { sourceTable: 'birth_certificate_reissue_requests', sourceId: record.reissue_request_id, status: 'Under Review' });
-      return { status: 'Under Review' };
-    },
-  });
-}
-
-function requestInformationReissue(req, res, next) {
-  const { reason } = req.body;
-  return transitionReissue(req, res, next, {
-    from: ['Under Review'], to: 'Additional Information Required',
-    sideEffect: async (client, record) => {
-      if (!reason) throw Object.assign(new Error('A reason is required.'), { status: 400 });
-      await client.query(`UPDATE birth_certificate_reissue_requests SET status = 'Additional Information Required', updated_at = NOW() WHERE reissue_request_id = $1`, [record.reissue_request_id]);
-      await syncApplicationStatus(client, { sourceTable: 'birth_certificate_reissue_requests', sourceId: record.reissue_request_id, status: 'Additional Information Required' });
-      const userRow = (await client.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.citizen_id])).rows[0];
-      if (userRow) await createNotification({ userId: userRow.user_id, title: 'Additional information required', message: `Reference ${record.reissue_reference}: ${reason}`, type: 'Missing Information' });
-      return { status: 'Additional Information Required' };
-    },
-  });
-}
-
-function resubmitReissue(req, res, next) {
-  const { reason, details, proofImageReference } = req.body;
-  return transitionReissue(req, res, next, {
-    from: ['Additional Information Required', 'Rejected'], to: 'Under Review', allowOwner: true,
-    sideEffect: async (client, record) => {
-      if (!reason) throw Object.assign(new Error('reason is required.'), { status: 400 });
-      if (!proofImageReference) throw Object.assign(new Error('Proof supporting your reason for requesting a reissue is required.'), { status: 400 });
-      await client.query(
-        `UPDATE birth_certificate_reissue_requests SET status = 'Under Review', rejection_reason = NULL, reason = $1, details = $2, proof_image_reference = $3, updated_at = NOW() WHERE reissue_request_id = $4`,
-        [reason, details || null, proofImageReference, record.reissue_request_id]
-      );
-      await syncApplicationStatus(client, { sourceTable: 'birth_certificate_reissue_requests', sourceId: record.reissue_request_id, status: 'Under Review', note: 'Citizen resubmitted.' });
-      return { status: 'Under Review' };
-    },
-  });
-}
-
-function approveReissue(req, res, next) {
-  return transitionReissue(req, res, next, {
-    from: ['Under Review'], to: 'Approved',
-    sideEffect: async (client, record, req2) => {
-      await client.query(`UPDATE birth_certificate_reissue_requests SET status = 'Approved', reviewed_by_user_id = $1, reviewed_at = NOW(), updated_at = NOW() WHERE reissue_request_id = $2`, [req2.user.userId, record.reissue_request_id]);
-      // Re-opens the existing certificate for collection, same as a brand-new one.
-      await client.query(`UPDATE birth_certificates SET status = 'Ready for Collection', ready_for_collection_at = NOW(), updated_at = NOW() WHERE birth_record_id = $1`, [record.birth_record_id]);
-      await syncApplicationStatus(client, { sourceTable: 'birth_certificate_reissue_requests', sourceId: record.reissue_request_id, status: 'Approved', completed: true, changedByUserId: req2.user.userId });
-      await recordAudit({ userId: req2.user.userId, departmentId: await getDepartmentId('home_affairs'), action: 'BIRTH_CERTIFICATE_REISSUE_APPROVED', targetType: 'birth_certificate_reissue_request', targetId: record.reissue_request_id });
-      const userRow = (await client.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.citizen_id])).rows[0];
-      if (userRow) await createNotification({ userId: userRow.user_id, title: 'Birth certificate reissue approved', message: `Reference ${record.reissue_reference}. Your certificate is ready for collection.`, type: 'Approval' });
-      return { status: 'Approved' };
-    },
-  });
-}
-
-function rejectReissue(req, res, next) {
-  const { reason } = req.body;
-  return transitionReissue(req, res, next, {
-    from: ['Submitted', 'Under Review', 'Additional Information Required'], to: 'Rejected',
-    sideEffect: async (client, record, req2) => {
-      if (!reason) throw Object.assign(new Error('A rejection reason is required.'), { status: 400 });
-      await client.query(`UPDATE birth_certificate_reissue_requests SET status = 'Rejected', rejection_reason = $1, reviewed_by_user_id = $2, reviewed_at = NOW(), updated_at = NOW() WHERE reissue_request_id = $3`, [reason, req2.user.userId, record.reissue_request_id]);
-      await syncApplicationStatus(client, { sourceTable: 'birth_certificate_reissue_requests', sourceId: record.reissue_request_id, status: 'Rejected', completed: true, changedByUserId: req2.user.userId, note: reason });
-      return { status: 'Rejected' };
-    },
-  });
-}
+// The officer-review transition pipeline that used to exist here (startReviewReissue,
+// requestInformationReissue, resubmitReissue, approveReissue, rejectReissue) was removed in
+// Batch 4 — requestBirthCertificateReissue above now auto-approves every request on submission,
+// so nothing ever reaches 'Submitted' or 'Under Review' for an officer to act on any more. Any
+// pre-Batch-4 request already sitting in one of those states keeps whatever status it has; there
+// is simply no endpoint left to move it, which is fine since this file's own migration history
+// shows no real reissue request was ever left mid-review in this prototype's demo data.
 
 // ============================================================================================
 // DEATH CERTIFICATE ISSUANCE — REMOVED. A death certificate is now generated automatically the
@@ -905,9 +887,7 @@ function rejectForeignIdentity(req, res, next) {
 }
 
 module.exports = {
-  requestBirthCertificateReissue, listBirthCertificateReissues, getBirthCertificateReissue,
-  startReviewReissue, requestInformationReissue, resubmitReissue, approveReissue, rejectReissue,
-
+  requestBirthCertificateReissue, listBirthCertificateReissues, getBirthCertificateReissue, listMyBirthCertificates,
   requestNameChange, listNameChangeRequests, getNameChangeRequest,
   startReviewNameChange, requestInformationNameChange, resubmitNameChange, approveNameChange, rejectNameChange,
 

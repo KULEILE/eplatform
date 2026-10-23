@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import FormField from './ui/FormField';
 import DataTable from './ui/DataTable';
 import StatusBadge from './ui/StatusBadge';
+import BackToDepartment from './BackToDepartment';
 
 /**
  * Generic error-correction UI (FR12): a citizen flags a wrong field in a department's own
@@ -62,6 +63,8 @@ export default function CorrectionsPanel({ departmentKey, officerRoleKey, fields
 
   return (
     <div className="mx-auto max-w-3xl">
+      {/* Scoped to Home Affairs for this batch — see BackToDepartment.jsx. */}
+      {departmentKey === 'home_affairs' && <BackToDepartment departmentKey={departmentKey} to="/home-affairs" />}
       <h1 className="mb-6 text-2xl font-bold text-slate-900">{t(titleKey)}</h1>
 
       {!isOfficer && (

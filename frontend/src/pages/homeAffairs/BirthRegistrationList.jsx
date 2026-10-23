@@ -6,6 +6,7 @@ import { api } from '../../api/client';
 import Loading from '../../components/ui/Loading';
 import DataTable from '../../components/ui/DataTable';
 import StatusBadge from '../../components/ui/StatusBadge';
+import BackToDepartment from '../../components/BackToDepartment';
 
 export default function BirthRegistrationList() {
   const { user } = useAuth();
@@ -24,6 +25,7 @@ export default function BirthRegistrationList() {
 
   return (
     <div>
+      <BackToDepartment />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-slate-900">{t('homeAffairs.birthRegistration')}</h1>
         {!isOfficer && <Link to="/home-affairs/birth-registration/apply" className="btn-primary">{t('homeAffairs.birthRegistrationForm.submit')}</Link>}

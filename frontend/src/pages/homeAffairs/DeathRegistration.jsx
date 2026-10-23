@@ -7,6 +7,7 @@ import Loading from '../../components/ui/Loading';
 import DataTable from '../../components/ui/DataTable';
 import StatusBadge from '../../components/ui/StatusBadge';
 import FormField from '../../components/ui/FormField';
+import BackToDepartment from '../../components/BackToDepartment';
 import { formatDateOnly } from '../../utils/format';
 
 const emptyForm = { permanentIdentityNumber: '', dateOfDeath: '', placeOfDeath: '' };
@@ -49,6 +50,7 @@ function CitizenReportForm({ t }) {
 
   return (
     <div>
+      <BackToDepartment />
       <h1 className="mb-2 text-2xl font-bold text-slate-900">{t('homeAffairs.deathRegistration')}</h1>
       <p className="mb-6 text-sm text-slate-600">{t('homeAffairs.deathForm.intro')}</p>
 
@@ -116,6 +118,7 @@ function OfficerQueue({ t }) {
 
   return (
     <div>
+      <BackToDepartment />
       <h1 className="mb-1 text-2xl font-bold text-slate-900">{t('homeAffairs.deathRegistration')}</h1>
       <p className="mb-6 text-sm text-slate-500">{t('homeAffairs.deathForm.officerIntro')}</p>
       {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}

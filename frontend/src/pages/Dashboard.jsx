@@ -151,6 +151,17 @@ export default function Dashboard() {
             </div>
           )}
 
+          {isCitizen && profile?.pendingParentConfirmations?.length > 0 && (
+            <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-4 rounded-xl bg-amber-400/20 px-4 py-3 backdrop-blur-sm">
+              <div>
+                <p className="flex items-center gap-1.5 font-semibold text-amber-300">⚠ {t('dashboard.pendingParentConfirmationNotice', { count: profile.pendingParentConfirmations.length })}</p>
+              </div>
+              <Link to="/home-affairs/parent-confirmations" className="btn-secondary !border-white/30 !bg-white/10 !text-white hover:!bg-white/20">
+                {t('common.viewDetails')}
+              </Link>
+            </div>
+          )}
+
           {isEmployee && (
             <p className="mt-2 max-w-xl text-sm text-white/80">
               {t(`role.${user.roleKey}`)}

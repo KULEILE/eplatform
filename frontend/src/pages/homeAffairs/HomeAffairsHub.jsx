@@ -15,11 +15,17 @@ const SERVICES = [
   { key: 'deathRegistration', to: '/home-affairs/death-registration', icon: '🕊️', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'correction', to: '/home-affairs/corrections', icon: '✏️', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'nationalIdRenewReplace', to: '/home-affairs/national-id/renew-replace', icon: '🔄', roles: ['citizen'] },
-  { key: 'birthCertificateReissue', to: '/home-affairs/birth-certificate-reissue', icon: '📜', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
+  // Birth certificate reissue no longer has its own tile — it's reached from inside the "Birth
+  // Certificate" section below, where a citizen picks their own certificate or a specific
+  // child's instead of going straight to a standalone reissue form.
+  { key: 'birthCertificates', to: '/home-affairs/birth-certificates', icon: '📜', roles: ['citizen'] },
   { key: 'nameChange', to: '/home-affairs/name-change', icon: '🖋️', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'adoption', to: '/home-affairs/adoption', icon: '👨‍👩‍👧', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'solemnisation', to: '/home-affairs/marriage-solemnisation', icon: '⛪', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'marriageOfficers', to: '/home-affairs/marriage-officers', icon: '📋', roles: ['home_affairs_officer', 'system_administrator'] },
+  // Officer-only: the ONE point anywhere in the birth-certificate domain an officer is involved —
+  // resolving a parentage dispute. See migration 061.
+  { key: 'parentageDisputes', to: '/home-affairs/parentage-disputes', icon: '⚖️', roles: ['home_affairs_officer', 'system_administrator'] },
   { key: 'naturalization', to: '/home-affairs/naturalization', icon: '🌍', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'applicationTracking', to: '/applications', icon: '📊', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
 ];

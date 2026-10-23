@@ -6,8 +6,9 @@ import FormField from '../../components/ui/FormField';
 import DistrictOfficeSelect from '../../components/DistrictOfficeSelect';
 import ParentIdentityFields from '../../components/ParentIdentityFields';
 import DocumentCapture from '../../components/DocumentCapture';
+import BackToDepartment from '../../components/BackToDepartment';
 
-const BLANK_PARENT = { name: '', nationality: 'Mosotho', isCitizen: true, identityNumber: '', passportNumber: '', passportImageReference: '' };
+const BLANK_PARENT = { name: '', nationality: 'Mosotho', isCitizen: true, identityNumber: '', passportNumber: '', passportImageReference: '', declaredStatus: '' };
 
 /**
  * A logged-in parent/guardian registers their child's birth. Since migration 059, this is fully
@@ -46,8 +47,10 @@ export default function BirthRegistrationApply() {
         ...form, preferredOfficeId,
         fatherName: father.name, fatherNationality: father.nationality, fatherIsCitizen: father.isCitizen,
         fatherIdentityNumber: father.identityNumber, fatherPassportNumber: father.passportNumber, fatherPassportImageReference: father.passportImageReference,
+        fatherDeclaredStatus: father.declaredStatus || undefined,
         motherName: mother.name, motherNationality: mother.nationality, motherIsCitizen: mother.isCitizen,
         motherIdentityNumber: mother.identityNumber, motherPassportNumber: mother.passportNumber, motherPassportImageReference: mother.passportImageReference,
+        motherDeclaredStatus: mother.declaredStatus || undefined,
         chiefLetterImageReference, proofOfBirthImageReference,
         marriageCertificateImageReference: marriageCertificateImageReference || undefined,
         acknowledgementOfPaternityImageReference: acknowledgementOfPaternityImageReference || undefined,
@@ -92,6 +95,7 @@ export default function BirthRegistrationApply() {
 
   return (
     <div className="mx-auto max-w-xl">
+      <BackToDepartment />
       <h1 className="mb-6 text-2xl font-bold text-slate-900">{t('homeAffairs.birthRegistrationForm.title')}</h1>
       <p className="mb-4 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800">ℹ {t('homeAffairs.birthRegistrationForm.automaticNotice')}</p>
       {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}

@@ -9,6 +9,7 @@ import StatusBadge from './ui/StatusBadge';
 import FormField from './ui/FormField';
 import Modal from './ui/Modal';
 import DocumentCapture from './DocumentCapture';
+import BackToDepartment from './BackToDepartment';
 import { formatDateOnly } from '../utils/format';
 
 /**
@@ -242,6 +243,7 @@ function CitizenView({ t, apiBase, idField, listKey, singleKey, referenceField, 
 
   return (
     <div>
+      <BackToDepartment />
       <h1 className="mb-2 text-2xl font-bold text-slate-900">{title}</h1>
       <p className="mb-6 text-sm text-slate-600">{intro}</p>
       {notice && <p className="mb-4 rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-800">ℹ {notice}</p>}
@@ -337,6 +339,7 @@ function OfficerQueue({ t, apiBase, idField, listKey, columns, resultFields, ref
 
   return (
     <div>
+      <BackToDepartment />
       <h1 className="mb-2 text-2xl font-bold text-slate-900">{title}</h1>
       <p className="mb-6 text-sm text-slate-600">{intro}</p>
 

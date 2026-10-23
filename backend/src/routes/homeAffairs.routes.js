@@ -13,6 +13,8 @@ router.post('/national-id/renew-replace', hac.applyNationalIdRenewalReplacement)
 // Birth registration
 router.post('/birth-registration', hac.createBirthRegistration);
 router.get('/birth-registration', hac.listBirthRegistrations);
+// Specific paths before the generic '/:id' route below, or Express would swallow them as an id.
+router.get('/birth-registration/pending-confirmations', hac.listPendingParentConfirmations);
 router.get('/birth-registration/:id', hac.getBirthRegistration);
 router.post('/birth-registration/:id/start-review', hac.startReviewBirthRegistration);
 router.post('/birth-registration/:id/request-information', hac.requestInformationBirthRegistration);
@@ -21,8 +23,15 @@ router.post('/birth-registration/:id/verify', hac.verifyBirthRegistration);
 router.post('/birth-registration/:id/confirm-verification', hac.confirmVerificationBirthRegistration);
 router.post('/birth-registration/:id/approve', hac.approveBirthRegistration);
 router.post('/birth-registration/:id/reject', hac.rejectBirthRegistration);
+// Parentage confirm/dispute — the other named parent confirms or disputes (non-blocking; see
+// migration 061). A dispute is the only officer touchpoint left in this whole domain.
+router.post('/birth-registration/:id/confirm-parentage', hac.confirmParentage);
+router.post('/birth-registration/:id/dispute-parentage', hac.disputeParentage);
+router.get('/parentage-disputes', hac.listParentageDisputes);
+router.post('/parentage-disputes/:id/resolve', hac.resolveParentageDispute);
 
 // Birth certificate
+router.get('/my-birth-certificates', hac2.listMyBirthCertificates);
 router.get('/birth-certificate/:id', hac.getBirthCertificate);
 router.post('/birth-certificate/:id/ready-for-collection', hac.markCertificateReadyForCollection);
 router.post('/birth-certificate/:id/collect', hac.collectBirthCertificate);
@@ -65,15 +74,11 @@ router.post('/divorce-registration/:id/approve', hac.approveDivorce);
 router.post('/divorce-registration/:id/reject', hac.rejectDivorce);
 router.get('/divorce-certificate/:id', hac.getDivorceCertificate);
 
-// Birth certificate reissue (new service)
+// Birth certificate reissue — fully automatic as of Batch 4 (auto-approved on submission), so
+// there is no officer review pipeline left here any more; see homeAffairsServices2.controller.js.
 router.post('/birth-certificate-reissue', hac2.requestBirthCertificateReissue);
 router.get('/birth-certificate-reissue', hac2.listBirthCertificateReissues);
 router.get('/birth-certificate-reissue/:id', hac2.getBirthCertificateReissue);
-router.post('/birth-certificate-reissue/:id/start-review', hac2.startReviewReissue);
-router.post('/birth-certificate-reissue/:id/request-information', hac2.requestInformationReissue);
-router.post('/birth-certificate-reissue/:id/resubmit', hac2.resubmitReissue);
-router.post('/birth-certificate-reissue/:id/approve', hac2.approveReissue);
-router.post('/birth-certificate-reissue/:id/reject', hac2.rejectReissue);
 
 // Death certificate issuance — REMOVED. The certificate is now generated automatically when a
 // death registration is approved (see /death-registration/:id/approve above and migration 058).
