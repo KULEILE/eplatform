@@ -219,7 +219,10 @@ export default function NationalIdDetail() {
             </div>
           )}
         </dl>
-        {record.production_status === 'Ready for Collection' && (
+        {/* Citizen-only: this is an instruction to go collect the physical card, so it's only
+            relevant to the person who's actually going to do that — an officer viewing the same
+            record already knows its status and doesn't need to be told to visit the office. */}
+        {record.production_status === 'Ready for Collection' && !isOfficer && (
           <p className="mt-4 text-sm text-gov-amber">⚠ {t('homeAffairs.birthCertificateView.notCollectedWarning')}</p>
         )}
         {next && (
