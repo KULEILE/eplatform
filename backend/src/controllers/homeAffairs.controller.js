@@ -1243,18 +1243,40 @@ async function getNationalIdEligibility(req, res, next) {
        FROM national_id_cards WHERE citizen_id = $1 ORDER BY application_date DESC`,
       [req.user.citizenId]
     );
-    const collectedCard = rows.find((r) => r.production_status === 'Collected') || null;
+    const collectedCardRow = rows.find((r) => r.production_status === 'Collected') || null;
     const hasInProgressApplication = rows.some((r) => !['Rejected', 'Collected'].includes(r.production_status));
     const today = new Date().toISOString().slice(0, 10);
-    const isExpired = !!(collectedCard && collectedCard.expiry_date && String(collectedCard.expiry_date).slice(0, 10) < today);
+    const isExpired = !!(collectedCardRow && collectedCardRow.expiry_date && String(collectedCardRow.expiry_date).slice(0, 10) < today);
     const biometricsOnFile = await hasBothHandsEnrolled(db, req.user.citizenId);
+
+    // The renewal/replacement form no longer asks the citizen to take a new photo at all — it
+    // always carries the existing one forward (see applyNationalIdRenewalReplacement) — and
+    // instead DISPLAYS the current card on screen so the citizen can see exactly what they're
+    // renewing/replacing. That display needs the same identity/photo fields getNationalId
+    // already pulls together for the full card view, so they're fetched here too, but only for
+    // the one row that matters (collectedCardRow), not the whole list above.
+    let collectedCard = null;
+    if (collectedCardRow) {
+      const { rows: detailRows } = await db.query(
+        `SELECT n.photo_reference, c.first_name, c.middle_name, c.last_name, c.sex, c.date_of_birth, c.citizenship_status, c.permanent_identity_number
+         FROM national_id_cards n JOIN citizens c ON c.citizen_id = n.citizen_id
+         WHERE n.national_id_card_id = $1`,
+        [collectedCardRow.national_id_card_id]
+      );
+      const detail = detailRows[0] || {};
+      collectedCard = {
+        cardNumber: collectedCardRow.card_number, approvalDate: collectedCardRow.approval_date, expiryDate: collectedCardRow.expiry_date, isExpired,
+        photoReference: detail.photo_reference, firstName: detail.first_name, middleName: detail.middle_name, lastName: detail.last_name,
+        sex: detail.sex, dateOfBirth: detail.date_of_birth, citizenshipStatus: detail.citizenship_status, permanentIdentityNumber: detail.permanent_identity_number,
+      };
+    }
 
     res.json({
       age,
       meetsMinimumAge: age >= MIN_NATIONAL_ID_AGE,
       minimumAge: MIN_NATIONAL_ID_AGE,
       hasCollectedCard: !!collectedCard,
-      collectedCard: collectedCard ? { cardNumber: collectedCard.card_number, approvalDate: collectedCard.approval_date, expiryDate: collectedCard.expiry_date, isExpired } : null,
+      collectedCard,
       hasInProgressApplication,
       biometricsOnFile,
       allowedReplacementReasons: ['Lost', 'Stolen', 'Damaged'],

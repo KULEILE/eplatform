@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../api/client';
 import FormField from '../../components/ui/FormField';
-import PhotoCapture from '../../components/PhotoCapture';
 import DocumentCapture from '../../components/DocumentCapture';
 import DistrictOfficeSelect from '../../components/DistrictOfficeSelect';
 import BackToDepartment from '../../components/BackToDepartment';
@@ -12,7 +11,7 @@ import { formatDateOnly } from '../../utils/format';
 
 const emptyForm = {
   applicationType: 'Renewal', replacementReason: '', replacementDetails: '',
-  replacementProofReference: '', reportedLostAt: '', preferredOfficeId: '', photoReference: '',
+  replacementProofReference: '', reportedLostAt: '', preferredOfficeId: '',
 };
 
 /**
@@ -83,15 +82,31 @@ export default function NationalIdRenewReplace() {
       ) : card ? (
         <>
           <div className="card mb-4">
-            <p className="mb-2 text-xs uppercase tracking-wide text-slate-500">{t('homeAffairs.nationalIdRenewReplaceForm.currentCard')}</p>
-            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div><dt className="text-xs text-slate-500">{t('homeAffairs.nationalIdCardView.field.idNumber')}</dt><dd className="font-mono font-medium">{card.cardNumber}</dd></div>
-              <div><dt className="text-xs text-slate-500">{t('homeAffairs.nationalIdCardView.field.dateOfIssue')}</dt><dd className="font-medium">{formatDateOnly(card.approvalDate)}</dd></div>
-              <div>
-                <dt className="text-xs text-slate-500">{t('homeAffairs.nationalIdCardView.field.dateOfExpiry')}</dt>
-                <dd className={`font-medium ${card.isExpired ? 'text-gov-red' : 'text-gov-green'}`}>{formatDateOnly(card.expiryDate)} {card.isExpired ? `(${t('homeAffairs.nationalIdRenewReplaceForm.expired')})` : `(${t('homeAffairs.nationalIdRenewReplaceForm.notExpired')})`}</dd>
+            <p className="mb-3 text-xs uppercase tracking-wide text-slate-500">{t('homeAffairs.nationalIdRenewReplaceForm.currentCard')}</p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="flex h-32 w-28 flex-none items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+                {card.photoReference ? (
+                  <img src={`/uploads/${card.photoReference}`} alt={t('homeAffairs.nationalIdCardView.field.photo')} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-3xl text-slate-300" aria-hidden="true">🪪</span>
+                )}
               </div>
-            </dl>
+              <dl className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <dt className="text-xs text-slate-500">{t('homeAffairs.nationalIdCardView.field.fullName')}</dt>
+                  <dd className="font-medium">{[card.firstName, card.middleName, card.lastName].filter(Boolean).join(' ')}</dd>
+                </div>
+                <div><dt className="text-xs text-slate-500">{t('homeAffairs.nationalIdCardView.field.idNumber')}</dt><dd className="font-mono font-medium">{card.permanentIdentityNumber || card.cardNumber}</dd></div>
+                <div><dt className="text-xs text-slate-500">{t('homeAffairs.nationalIdCardView.field.cardNumber')}</dt><dd className="font-mono font-medium">{card.cardNumber}</dd></div>
+                {card.dateOfBirth && <div><dt className="text-xs text-slate-500">{t('homeAffairs.nationalIdCardView.field.dateOfBirth')}</dt><dd className="font-medium">{formatDateOnly(card.dateOfBirth)}</dd></div>}
+                {card.sex && <div><dt className="text-xs text-slate-500">{t('homeAffairs.nationalIdCardView.field.sex')}</dt><dd className="font-medium">{card.sex}</dd></div>}
+                <div><dt className="text-xs text-slate-500">{t('homeAffairs.nationalIdCardView.field.dateOfIssue')}</dt><dd className="font-medium">{formatDateOnly(card.approvalDate)}</dd></div>
+                <div>
+                  <dt className="text-xs text-slate-500">{t('homeAffairs.nationalIdCardView.field.dateOfExpiry')}</dt>
+                  <dd className={`font-medium ${card.isExpired ? 'text-gov-red' : 'text-gov-green'}`}>{formatDateOnly(card.expiryDate)} {card.isExpired ? `(${t('homeAffairs.nationalIdRenewReplaceForm.expired')})` : `(${t('homeAffairs.nationalIdRenewReplaceForm.notExpired')})`}</dd>
+                </div>
+              </dl>
+            </div>
           </div>
 
           <form onSubmit={onSubmit} className="card" noValidate>
@@ -151,8 +166,9 @@ export default function NationalIdRenewReplace() {
               </>
             )}
 
-            <PhotoCapture value={form.photoReference} onChange={(ref) => update('photoReference', ref)}
-              label={t('homeAffairs.nationalIdRenewReplaceForm.field.photo')} help={t('homeAffairs.nationalIdRenewReplaceForm.field.photoHelp')} faceCheck />
+            <p className="mb-4 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              ℹ {t('homeAffairs.nationalIdRenewReplaceForm.photoReused')}
+            </p>
 
             <DistrictOfficeSelect departmentKey="home_affairs" value={form.preferredOfficeId} onChange={(id) => update('preferredOfficeId', id)} />
 

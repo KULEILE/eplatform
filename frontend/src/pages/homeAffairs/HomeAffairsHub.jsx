@@ -14,7 +14,10 @@ const SERVICES = [
   { key: 'divorceRegistration', to: '/home-affairs/divorce-registration', icon: '📑', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'deathRegistration', to: '/home-affairs/death-registration', icon: '🕊️', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'correction', to: '/home-affairs/corrections', icon: '✏️', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
-  { key: 'nationalIdRenewReplace', to: '/home-affairs/national-id/renew-replace', icon: '🔄', roles: ['citizen'] },
+  // National ID renewal & replacement no longer has its own standalone hub tile — it was a
+  // duplicate entry point to the exact same form already reached from inside the "National ID
+  // Application" tile above (NationalIdList.jsx has its own "National ID renewal & replacement"
+  // button right there), so having both here and there was pure repetition.
   // Birth certificate reissue no longer has its own tile — it's reached from inside the "Birth
   // Certificate" section below, where a citizen picks their own certificate or a specific
   // child's instead of going straight to a standalone reissue form.
