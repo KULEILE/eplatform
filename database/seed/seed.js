@@ -350,9 +350,9 @@ async function main() {
   // Thabo — approved, ready for collection
   const thaboPassRef = ref('PA', 2026, 1);
   const { rows: pass1 } = await client.query(
-    `INSERT INTO passport_records (citizen_id, application_reference, passport_type, status,
+    `INSERT INTO passport_records (citizen_id, applicant_citizen_id, application_reference, passport_type, status,
         issue_date, expiry_date, collection_office_id, preferred_office_id, ready_for_collection_at)
-     VALUES ($1,$2,'Ordinary','Ready for Collection', CURRENT_DATE - 3, CURRENT_DATE + (365*9), $3, $3, NOW() - INTERVAL '3 days')
+     VALUES ($1,$1,$2,'Ordinary','Ready for Collection', CURRENT_DATE - 3, CURRENT_DATE + (365*9), $3, $3, NOW() - INTERVAL '3 days')
      RETURNING passport_record_id`,
     [cid.thabo, thaboPassRef, officeId['Maseru Passport Office']]
   );
@@ -370,8 +370,8 @@ async function main() {
   // Retse — documents checked, mid-workflow
   const retsePassRef = ref('PA', 2026, 2);
   const { rows: pass2 } = await client.query(
-    `INSERT INTO passport_records (citizen_id, application_reference, passport_type, status, preferred_office_id)
-     VALUES ($1,$2,'Ordinary','Documents Checked',$3) RETURNING passport_record_id`,
+    `INSERT INTO passport_records (citizen_id, applicant_citizen_id, application_reference, passport_type, status, preferred_office_id)
+     VALUES ($1,$1,$2,'Ordinary','Documents Checked',$3) RETURNING passport_record_id`,
     [cid.retse, retsePassRef, officeId['Maseru Passport Office']]
   );
   await indexApplication({

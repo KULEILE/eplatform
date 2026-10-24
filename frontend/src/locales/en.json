@@ -857,20 +857,53 @@
     "title": "Passport Services",
     "apply": "Apply for a passport",
     "renew": "Renew passport",
+    "replace": "Replace passport",
     "applicationTypeLabel": "Application type",
     "applicationType": {
       "New": "New",
-      "Renewal": "Renewal"
+      "Renewal": "Renewal",
+      "Replacement": "Replacement (Lost / Stolen)"
     },
-    "renewalNotice": "Your previous passport details will be reused where possible. The passport fee is payable again for a renewal.",
     "type": "Passport type",
     "ordinary": "Ordinary",
     "diplomatic": "Diplomatic",
     "official": "Official",
-    "reuseNotice": "Your verified Home Affairs identity information will be reused for this application.",
     "feeNotice": "The passport fee must be paid before you apply — enter your payment reference and attach a photo of your receipt.",
     "passportNumber": "Passport number",
     "expiryDate": "Expiry date",
+    "subject": {
+      "label": "Who is this passport for?",
+      "myself": "Myself",
+      "age": "age {{age}}",
+      "selfTooYoung": "You must be at least {{minimumAge}} years old to apply for a passport for yourself.",
+      "chooseSomeone": "Choose who this application is for.",
+      "childTooOld": "This child is now {{age}} years old and must apply for their own passport — a parent can no longer apply on their behalf.",
+      "childInProgress": "This child already has a passport application in progress.",
+      "selfInProgress": "You already have a passport application in progress.",
+      "idRequired": "You must already hold a National ID card before applying for a passport. Please apply for your National ID first.",
+      "currentPassport": "Current passport",
+      "holderColumn": "Passport holder"
+    },
+    "renewal": {
+      "notYetExpiredNotice": "This passport is not yet expired — it expires on {{expiryDate}}. Renewal is only available once it has expired, unless its pages are full.",
+      "pagesFullDeclaration": "This passport's pages are full and it needs to be renewed even though it hasn't expired yet."
+    },
+    "replacement": {
+      "field": {
+        "reason": "Reason for replacement",
+        "details": "Additional details",
+        "reportedAt": "Date it was {{reason}}",
+        "proof": "Supporting document",
+        "proofHelp": "Upload evidence supporting your reason — e.g. a police report for a lost or stolen passport."
+      },
+      "waitNotice": "A {{months}}-month wait applies before a lost/stolen passport can be replaced. You will be able to apply from {{date}}.",
+      "waitPassedNotice": "The {{months}}-month wait has passed — you can submit this replacement."
+    },
+    "photoChoice": {
+      "label": "Photo",
+      "reuseId": "Reuse my National ID photo",
+      "captureNew": "Capture a new photo"
+    },
     "document": {
       "title": "Passport",
       "cardTitle": "Passport",

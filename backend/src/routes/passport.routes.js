@@ -7,7 +7,10 @@ router.use(requireAuth);
 
 router.post('/apply', pc.apply);
 router.post('/renew', pc.applyRenewal);
+router.post('/replace', pc.applyReplacement);
 router.get('/', pc.list);
+// Must come before the generic '/:id' route below, or a GET here would be captured as :id='eligibility'.
+router.get('/eligibility', pc.getEligibility);
 router.get('/:id', pc.getOne);
 router.post('/:id/request-information', pc.requestInformation);
 router.post('/:id/reject', pc.reject);

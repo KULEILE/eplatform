@@ -857,20 +857,53 @@
     "title": "Ditshebeletso tsa Pasepoto",
     "apply": "Kopa pasepoto",
     "renew": "Nchafatsa pasepoto",
+    "replace": "Fetola pasepoto",
     "applicationTypeLabel": "Mofuta wa kopo",
     "applicationType": {
       "New": "E ntjha",
-      "Renewal": "Ho nchafatsa"
+      "Renewal": "Ho nchafatsa",
+      "Replacement": "Phetiso (E lahlehileng / E utswitsweng)"
     },
-    "renewalNotice": "Lintlha tsa pasepoto ya hao ya pele di tla sebediswa hape moo ho kgonehang. Tefo ya pasepoto e lefshwa hape bakeng sa ho nchafatsa.",
     "type": "Mofuta wa pasepoto",
     "ordinary": "E tlwaelehileng",
     "diplomatic": "Ya Boemeli",
     "official": "Ya Molao",
-    "reuseNotice": "Lesedi la hao le netefaditsweng la Home Affairs le tla sebediswa hape bakeng sa kopo ena.",
     "feeNotice": "Tefo ya pasepoto e tlameha ho lefshwa pele o kopa — kenya nomoro ya hao ya tshupiso ya tefo mme o kenye setshwantsho sa resiti ya hao.",
     "passportNumber": "Nomoro ya pasepoto",
     "expiryDate": "Letsatsi la ho fela",
+    "subject": {
+      "label": "Pasepoto ena ke ya mang?",
+      "myself": "Nna",
+      "age": "dilemo {{age}}",
+      "selfTooYoung": "O tlameha ho ba dilemo tse {{minimumAge}} kapa ho feta ho kopa pasepoto bakeng sa hao.",
+      "chooseSomeone": "Kgetha motho eo kopo ena e lebisitsweng ho yena.",
+      "childTooOld": "Ngwana enwa jwale o dilemo tse {{age}} mme o tlameha ho kopa pasepoto ya hae — motswadi a ke ke a kopa bakeng sa hae hape.",
+      "childInProgress": "Ngwana enwa o se a na kopo ya pasepoto e ntseng e tswela pele.",
+      "selfInProgress": "O se o na kopo ya pasepoto e ntseng e tswela pele.",
+      "idRequired": "O tlameha ho ba o na le karete ya ID ya Naha pele o kopa pasepoto. Ka kopo kopa ID ya hao ya Naha pele.",
+      "currentPassport": "Pasepoto e teng",
+      "holderColumn": "Mong wa pasepoto"
+    },
+    "renewal": {
+      "notYetExpiredNotice": "Pasepoto ena ha e eso fele nako — e tla fela ka {{expiryDate}}. Nchafatso e fumaneha feela ha e se e felile nako, ntle le haeba maqephe a yona a tletse.",
+      "pagesFullDeclaration": "Maqephe a pasepoto ena a tletse mme e hloka ho nchafatswa le hoja e eso fele nako."
+    },
+    "replacement": {
+      "field": {
+        "reason": "Lebaka la phetiso",
+        "details": "Dintlha tse eketsehileng",
+        "reportedAt": "Letsatsi leo e {{reason}}",
+        "proof": "Tokomane ya tshehetso",
+        "proofHelp": "Kenya bopaki bo tshehetsang lebaka la hau — mohlala, tlaleho ya sepolesa bakeng sa pasepoto e lahlehileng kapa e utswitsweng."
+      },
+      "waitNotice": "Ho ema ba dikgwedi tse {{months}} ho sebetsa pele pasepoto e lahlehileng/e utswitsweng e ka fetoswa. O tla kgona ho kopa ho tloha ka {{date}}.",
+      "waitPassedNotice": "Nako ya ho ema ya dikgwedi tse {{months}} e fetile — o ka romela phetiso ena."
+    },
+    "photoChoice": {
+      "label": "Setshwantsho",
+      "reuseId": "Sebedisa hape setshwantsho sa ID ya Naha",
+      "captureNew": "Nka setshwantsho se setjha"
+    },
     "document": {
       "title": "Pasepoto",
       "cardTitle": "Pasepoto",
