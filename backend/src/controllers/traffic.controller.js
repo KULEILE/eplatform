@@ -1,15 +1,20 @@
 const db = require('../config/db');
 const { makeDepartmentController } = require('../utils/simpleDepartmentController');
 
-// A driving credential (application, renewal, learner permit, replacement, public driving
-// permit) identifies a specific person and must be checked against that person's own captured
-// photo and fingerprints, exactly like a National ID card — see migrations 007/034/036 and
-// homeAffairs.controller.js's applyNationalId. Previously traffic_records accepted these with
-// nothing but a bare serviceType; see migration 042.
-const DRIVING_CREDENTIAL_TYPES = [
-  'Driving Licence Application', 'Driving Licence Renewal', 'Learner Permit',
-  'Driving Licence Replacement', 'Public Driving Permit',
-];
+// A driving credential identifies a specific person and must be checked against that person's
+// own captured photo and fingerprints, exactly like a National ID card — see migrations
+// 007/034/036 and homeAffairs.controller.js's applyNationalId. Previously traffic_records
+// accepted these with nothing but a bare serviceType; see migration 042.
+//
+// Driving Licence Application/Renewal/Replacement and Learner Permit moved OUT of this generic
+// department-factory controller in migration 067 / driving_licence.controller.js and
+// trafficServices2.controller.js: a Learner Permit is no longer something a citizen applies for
+// directly (it is produced automatically after passing the theory and practical driving tests),
+// and a driving licence now needs eligibility logic (reusing the National ID photo/fingerprints,
+// requiring a valid Learner Permit for a first licence, blocking early renewal unless damaged,
+// a 3-month lost/stolen wait, a single-confirm Learner Permit surrender at collection) that this
+// shared factory has no hook for. Public Driving Permit stays here — nothing about it changed.
+const DRIVING_CREDENTIAL_TYPES = ['Public Driving Permit'];
 const VEHICLE_REGISTRATION_TYPES = [
   'Vehicle Registration', 'Vehicle Registration (Imported/SADC)', 'Vehicle Registration (Second-Hand Local)',
 ];
@@ -38,11 +43,6 @@ async function beforeApply(req) {
       return { error: 'A fingerprint scan of both the left and right hand is required for this driving credential application.' };
     }
     if (!b.preferredOfficeId) return { error: 'preferredOfficeId is required — choose the branch where you will collect it.' };
-  }
-
-  if (serviceType === 'Driving Licence Replacement') {
-    if (!b.replacementReason) return { error: 'replacementReason is required (Lost, Stolen, Damaged, or Other).' };
-    if (!b.previousLicenceNumber) return { error: 'previousLicenceNumber is required.' };
   }
 
   if (serviceType === 'Public Driving Permit') {
@@ -118,10 +118,6 @@ function vehicleRegistrationApprove() {
 // mismatched several of the new service types (e.g. "Vehicle Licence Disc" contains "Licence"
 // but issues no licence number at all).
 const APPROVE_EXTRA = {
-  'Driving Licence Application': drivingLicenceApprove('DL', 5),
-  'Driving Licence Renewal': drivingLicenceApprove('DL', 5),
-  'Learner Permit': drivingLicenceApprove('DL', 1),
-  'Driving Licence Replacement': drivingLicenceApprove('DL', 5),
   'Public Driving Permit': drivingLicenceApprove('PDP', 1),
   'Vehicle Registration': vehicleRegistrationApprove,
   'Vehicle Registration (Imported/SADC)': vehicleRegistrationApprove,
@@ -140,8 +136,7 @@ const controller = makeDepartmentController({
   officerRoleKey: 'traffic_officer',
   refPrefix: 'TR',
   serviceTypes: [
-    'Driving Licence Application', 'Driving Licence Renewal', 'Vehicle Registration', 'Vehicle Transfer', 'Learner Permit',
-    'Driving Licence Replacement', 'Public Driving Permit',
+    'Vehicle Registration', 'Vehicle Transfer', 'Public Driving Permit',
     'Vehicle Registration (Imported/SADC)', 'Vehicle Registration (Second-Hand Local)',
     'Vehicle Number Plate', 'Temporary Permit (Awaiting Registration)',
     'Vehicle Licence Disc Application', 'Vehicle Licence Disc Renewal',

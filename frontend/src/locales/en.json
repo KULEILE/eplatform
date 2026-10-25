@@ -63,7 +63,8 @@
     "copy": "Copy",
     "copied": "Copied",
     "citizen": "Citizen",
-    "backTo": "Back to {{department}}"
+    "backTo": "Back to {{department}}",
+    "remove": "Remove"
   },
   "nav": {
     "home": "Home",
@@ -964,10 +965,8 @@
     "vehicleRegistrationNumber": "Vehicle registration number",
     "hubIntro": "Driving licences, vehicle registration and transport permit services.",
     "hub": {
-      "drivingLicenceApply": "Driving Licence Application",
-      "drivingLicenceRenew": "Driving Licence Renewal",
+      "drivingLicence": "Driving Licence (Apply / Renew / Replace)",
       "learnerPermit": "Learner Permit",
-      "drivingLicenceReplace": "Driving Licence Replacement",
       "publicDrivingPermit": "Public Driving Permit",
       "testBookings": "Driving Theory / Practical Test",
       "vehicleRegistration": "Vehicle Registration",
@@ -1122,13 +1121,28 @@
       "field": {
         "testType": "Test type",
         "requestedDate": "Preferred date",
-        "confirmedDate": "Confirmed test date"
+        "confirmedDate": "Confirmed test date",
+        "location": "Test location",
+        "marks": "Marks",
+        "questions": "Questions set"
       },
       "cancelled": "Booking cancelled.",
       "schedule": "Schedule",
       "recordPass": "Record pass",
       "recordFail": "Record fail",
-      "result": "Result"
+      "result": "Result",
+      "introNew": "Book your theory test. It is scheduled automatically for the date you choose - there is no waiting for an officer to confirm it. Once you pass, your practical test is scheduled automatically too, at least three days later.",
+      "introOfficer": "Set each theory sitting's questions and each practical sitting's location before recording a result. A passed theory test automatically schedules the practical test; a passed practical test automatically issues a Learner's Permit.",
+      "autoScheduleHelp": "Your test is confirmed for this date as soon as you submit - no further waiting.",
+      "bookTheory": "Book theory test",
+      "theoryAlreadyBooked": "You already have a theory test booked. It will show in the table below.",
+      "autoScheduled": "Your theory test is confirmed for {{date}}.",
+      "setQuestions": "Set questions",
+      "setLocation": "Set location",
+      "recordResult": "Record result",
+      "questionsHelp": "Enter the questions for this theory sitting. The citizen is marked on these when the result is recorded.",
+      "questionPlaceholder": "Question {{n}}",
+      "addQuestion": "Add question"
     },
     "testType": {
       "theory": "Theory",
@@ -1153,6 +1167,57 @@
     "certificationType": {
       "instructor": "Instructor",
       "examiner": "Examiner"
+    },
+    "learnerPermitStatus": {
+      "intro": "Your Learner's Permit is issued automatically once you pass your theory and practical driving tests - there is nothing to apply for here.",
+      "officerIntro": "Every Learner's Permit issued, system-generated on a passed practical test. There is nothing to action here.",
+      "noneYet": "You don't hold a Learner's Permit yet. Book and pass your theory test, then your practical test, to earn one.",
+      "bookTheoryLink": "Book theory test",
+      "approvedBadge": "Valid",
+      "expiredBadge": "Expired"
+    },
+    "drivingLicence": {
+      "title": "Driving Licence",
+      "applicationTypeLabel": "What are you applying for?",
+      "applicationType": {
+        "New": "New Licence",
+        "Renewal": "Renewal",
+        "Replacement": "Replacement"
+      },
+      "inProgress": "You already have a driving licence application in progress.",
+      "apply": "Apply",
+      "renew": "Renew",
+      "replace": "Replace",
+      "expiry": "Expiry date",
+      "learnerPermitBox": {
+        "title": "Your Learner's Permit",
+        "number": "Permit number",
+        "issued": "Issued",
+        "expiry": "Expiry date",
+        "required": "A valid Learner's Permit is required before applying for a driving licence. You must pass the theory and practical driving tests to earn one - see Driving Tests.",
+        "surrenderNotice": "Bring your original Learner's Permit to the office. It must be physically surrendered when your driving licence is collected."
+      },
+      "renewal": {
+        "notYetExpiredNotice": "Your driving licence is still valid until {{expiryDate}}. You can only renew early if it is damaged, with proof.",
+        "damagedDeclaration": "My driving licence is damaged",
+        "damageProof": "Photo of the damaged licence"
+      },
+      "replacement": {
+        "reportedAt": "Date {{reason}}",
+        "waitNotice": "A {{months}}-month wait applies before a lost or stolen driving licence can be replaced. You can apply again from {{date}}.",
+        "waitPassedNotice": "The {{months}}-month wait has passed - you may continue."
+      },
+      "biometricsChoice": {
+        "label": "Photo and fingerprints",
+        "reuseId": "Reuse my National ID photo and fingerprints",
+        "captureNew": "Capture new"
+      },
+      "surrender": {
+        "confirmBoth": "Confirm - Learner's Permit surrendered and licence collected",
+        "failed": "Cannot surrender",
+        "failedModalTitle": "Learner's Permit not surrendered",
+        "failedModalHelp": "The citizen could not produce their Learner's Permit. This rejects the application - a canned reason is used if you leave this blank."
+      }
     }
   },
   "finance": {

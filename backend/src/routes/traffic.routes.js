@@ -2,6 +2,7 @@ const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const c = require('../controllers/traffic.controller');
 const c2 = require('../controllers/trafficServices2.controller');
+const dl = require('../controllers/drivingLicence.controller');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -12,9 +13,25 @@ router.post('/test-bookings', c2.requestTestBooking);
 router.get('/test-bookings', c2.listTestBookings);
 router.get('/test-bookings/:id', c2.getTestBooking);
 router.post('/test-bookings/:id/schedule', c2.scheduleTestBooking);
+router.post('/test-bookings/:id/questions', c2.setTheoryQuestions);
+router.post('/test-bookings/:id/set-location', c2.setTestLocation);
 router.post('/test-bookings/:id/record-result', c2.recordTestResult);
 router.post('/test-bookings/:id/cancel', c2.cancelTestBooking);
 router.post('/test-bookings/:id/reject', c2.rejectTestBooking);
+
+// Driving Licence — Application/Renewal/Replacement, consolidated onto one bespoke controller
+// (migration 067). Registered BEFORE the generic '/:id/:action' catch-all below, for the same
+// reason as test-bookings/inspections/transport-permits: '/driving-licence/apply' is two path
+// segments and would otherwise be swallowed by '/:id/:action' with id='driving-licence'.
+router.get('/driving-licence/eligibility', dl.getEligibility);
+router.post('/driving-licence/apply', dl.apply);
+router.get('/driving-licence', dl.list);
+router.get('/driving-licence/:id', dl.getOne);
+router.post('/driving-licence/:id/resubmit', dl.resubmit);
+router.post('/driving-licence/:id/request-information', dl.requestInformation);
+router.post('/driving-licence/:id/reject', dl.reject);
+router.post('/driving-licence/:id/surrender-failed', dl.failSurrender);
+router.post('/driving-licence/:id/:action', dl.transition);
 
 // Roadworthiness test & Certificate of Fitness — its own sub-resource, same apply/list/get/
 // transition/resubmit/request-information/reject shape as traffic_records below.

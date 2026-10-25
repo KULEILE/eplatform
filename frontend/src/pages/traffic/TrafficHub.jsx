@@ -4,10 +4,11 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 
 const SERVICES = [
-  { key: 'drivingLicenceApply', to: '/traffic/driving-licence/apply', icon: '🪪', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
-  { key: 'drivingLicenceRenew', to: '/traffic/driving-licence/renew', icon: '🔄', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
+  // Application / Renewal / Replacement are now one service with a selector — see
+  // DrivingLicence.jsx — instead of three separate tiles/pages, per the explicit request to stop
+  // duplicating "renew" and "replace" as their own services.
+  { key: 'drivingLicence', to: '/traffic/driving-licence', icon: '🪪', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
   { key: 'learnerPermit', to: '/traffic/learner-permit', icon: '📘', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
-  { key: 'drivingLicenceReplace', to: '/traffic/driving-licence/replace', icon: '♻️', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
   { key: 'publicDrivingPermit', to: '/traffic/public-driving-permit', icon: '🚐', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
   { key: 'testBookings', to: '/traffic/test-bookings', icon: '📝', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
   { key: 'vehicleRegistration', to: '/traffic/vehicle-registration', icon: '🚗', roles: ['citizen', 'traffic_officer', 'system_administrator'] },

@@ -11,15 +11,16 @@ import DistrictOfficeSelect from '../../components/DistrictOfficeSelect';
 import { formatDateOnly } from '../../utils/format';
 
 const API_BASE = '/traffic/test-bookings';
-const emptyForm = { testType: 'Theory', requestedDate: '', officeId: '' };
+const emptyForm = { requestedDate: '', officeId: '' };
 
 /**
- * Driving theory test & practical driving test booking, combined into one page (covers both of
- * the two approved service-list items) since they share the same booking UI — only the
- * eligibility rule differs, and that is enforced server-side (see trafficServices2.controller.js):
- * a Theory test requires an Approved Learner Permit on record, a Practical test additionally
- * requires a Passed Theory test. A citizen cannot book either without the prerequisite already
- * in place — the backend rejects the booking with a clear reason if it's missing.
+ * Driving theory test booking (migration 067 rebuild): a citizen can only book the THEORY test —
+ * it is auto-scheduled the moment they submit (no officer "schedule" step needed). The practical
+ * test is created automatically once an officer records a passed theory result (see
+ * recordTestResult() in trafficServices2.controller.js); it appears in this same table with no
+ * citizen action required. An officer must set that specific theory sitting's questions and,
+ * for a practical sitting, its location, before a result can be recorded — both open as small
+ * modals here, with professional (btn-primary) buttons, same as Record Result.
  */
 export default function DrivingTestBookings() {
   const { user } = useAuth();
@@ -44,8 +45,8 @@ function CitizenView({ t }) {
     e.preventDefault();
     setError(''); setSuccess(''); setBusy(true);
     try {
-      const result = await api.post(API_BASE, form);
-      setSuccess(t('services.submittedWithReference', { reference: result.booking.booking_reference }));
+      const result = await api.post(API_BASE, { testType: 'Theory', ...form });
+      setSuccess(t('traffic.testBookingsForm.autoScheduled', { date: formatDateOnly(result.booking.confirmed_date) }));
       setForm(emptyForm);
       load();
     } catch (err) { setError(err.message || t('common.somethingWentWrong')); } finally { setBusy(false); }
@@ -60,27 +61,27 @@ function CitizenView({ t }) {
     } catch (err) { setError(err.message || t('common.somethingWentWrong')); } finally { setBusy(false); }
   }
 
+  const hasTheoryBooked = (rows || []).some((r) => r.test_type === 'Theory' && ['Requested', 'Scheduled'].includes(r.status));
+
   return (
     <div>
       <h1 className="mb-2 text-2xl font-bold text-slate-900">{t('traffic.testBookings')}</h1>
-      <p className="mb-6 text-sm text-slate-600">{t('traffic.testBookingsForm.intro')}</p>
+      <p className="mb-6 text-sm text-slate-600">{t('traffic.testBookingsForm.introNew')}</p>
 
       {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}
       {success && <p className="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-gov-green" role="status">✓ {success}</p>}
 
-      <form onSubmit={onSubmit} className="card mb-8" noValidate>
-        <FormField label={t('traffic.testBookingsForm.field.testType')} htmlFor="testType" required>
-          <select id="testType" required className="form-input" value={form.testType} onChange={(e) => update('testType', e.target.value)}>
-            <option value="Theory">{t('traffic.testType.theory')}</option>
-            <option value="Practical">{t('traffic.testType.practical')}</option>
-          </select>
-        </FormField>
-        <FormField label={t('traffic.testBookingsForm.field.requestedDate')} htmlFor="requestedDate" required>
-          <input id="requestedDate" type="date" required className="form-input" value={form.requestedDate} onChange={(e) => update('requestedDate', e.target.value)} />
-        </FormField>
-        <DistrictOfficeSelect departmentKey="traffic" value={form.officeId} onChange={(id) => update('officeId', id)} />
-        <button type="submit" disabled={busy} className="btn-primary">{busy ? t('common.loading') : t('common.submit')}</button>
-      </form>
+      {hasTheoryBooked ? (
+        <p className="mb-8 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">{t('traffic.testBookingsForm.theoryAlreadyBooked')}</p>
+      ) : (
+        <form onSubmit={onSubmit} className="card mb-8" noValidate>
+          <FormField label={t('traffic.testBookingsForm.field.requestedDate')} htmlFor="requestedDate" required help={t('traffic.testBookingsForm.autoScheduleHelp')}>
+            <input id="requestedDate" type="date" min={new Date().toISOString().slice(0, 10)} required className="form-input" value={form.requestedDate} onChange={(e) => update('requestedDate', e.target.value)} />
+          </FormField>
+          <DistrictOfficeSelect departmentKey="traffic" value={form.officeId} onChange={(id) => update('officeId', id)} />
+          <button type="submit" disabled={busy} className="btn-primary">{busy ? t('common.loading') : t('traffic.testBookingsForm.bookTheory')}</button>
+        </form>
+      )}
 
       <h2 className="mb-3 text-lg font-semibold text-slate-900">{t('services.myRequests')}</h2>
       {!rows ? <Loading /> : (
@@ -92,6 +93,8 @@ function CitizenView({ t }) {
             { key: 'reference', header: t('applications.reference'), render: (r) => <span className="font-mono text-xs">{r.booking_reference}</span> },
             { key: 'testType', header: t('traffic.testBookingsForm.field.testType'), render: (r) => t(`traffic.testType.${r.test_type.toLowerCase()}`) },
             { key: 'date', header: t('traffic.testBookingsForm.field.requestedDate'), render: (r) => formatDateOnly(r.confirmed_date || r.requested_date) },
+            { key: 'location', header: t('traffic.testBookingsForm.field.location'), render: (r) => r.test_location || '—' },
+            { key: 'marks', header: t('traffic.testBookingsForm.field.marks'), render: (r) => r.marks ?? '—' },
             { key: 'result', header: t('traffic.testBookingsForm.result'), render: (r) => r.result === 'Pending' ? '—' : <StatusBadge status={r.result} kind={r.result === 'Passed' ? 'positive' : 'negative'} /> },
             { key: 'status', header: t('common.status'), render: (r) => <StatusBadge status={r.status} /> },
             {
@@ -112,10 +115,15 @@ function OfficerQueue({ t }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [busy, setBusy] = useState(null);
-  const [scheduleTarget, setScheduleTarget] = useState(null);
-  const [confirmedDate, setConfirmedDate] = useState('');
   const [reasonTarget, setReasonTarget] = useState(null);
   const [reason, setReason] = useState('');
+  const [questionsTarget, setQuestionsTarget] = useState(null);
+  const [questions, setQuestions] = useState(['']);
+  const [locationTarget, setLocationTarget] = useState(null);
+  const [testLocation, setTestLocation] = useState('');
+  const [resultTarget, setResultTarget] = useState(null);
+  const [resultValue, setResultValue] = useState('Passed');
+  const [marksValue, setMarksValue] = useState('');
 
   function load() { api.get(API_BASE).then((d) => setRows(d.bookings)).catch(() => setRows([])); }
   useEffect(() => { load(); }, []);
@@ -129,13 +137,6 @@ function OfficerQueue({ t }) {
     } catch (err) { setError(err.message || t('common.somethingWentWrong')); } finally { setBusy(null); }
   }
 
-  async function onScheduleSubmit(e) {
-    e.preventDefault();
-    if (!scheduleTarget || !confirmedDate) return;
-    await act(scheduleTarget, 'schedule', { confirmedDate });
-    setScheduleTarget(null); setConfirmedDate('');
-  }
-
   async function onReasonSubmit(e) {
     e.preventDefault();
     if (!reasonTarget) return;
@@ -143,10 +144,31 @@ function OfficerQueue({ t }) {
     setReasonTarget(null); setReason('');
   }
 
+  async function onQuestionsSubmit(e) {
+    e.preventDefault();
+    if (!questionsTarget) return;
+    await act(questionsTarget, 'questions', { questions: questions.map((q) => q.trim()).filter(Boolean) });
+    setQuestionsTarget(null); setQuestions(['']);
+  }
+
+  async function onLocationSubmit(e) {
+    e.preventDefault();
+    if (!locationTarget || !testLocation.trim()) return;
+    await act(locationTarget, 'set-location', { testLocation: testLocation.trim() });
+    setLocationTarget(null); setTestLocation('');
+  }
+
+  async function onResultSubmit(e) {
+    e.preventDefault();
+    if (!resultTarget) return;
+    await act(resultTarget, 'record-result', { result: resultValue, marks: marksValue === '' ? undefined : Number(marksValue) });
+    setResultTarget(null); setResultValue('Passed'); setMarksValue('');
+  }
+
   return (
     <div>
       <h1 className="mb-2 text-2xl font-bold text-slate-900">{t('traffic.testBookings')}</h1>
-      <p className="mb-6 text-sm text-slate-600">{t('traffic.testBookingsForm.intro')}</p>
+      <p className="mb-6 text-sm text-slate-600">{t('traffic.testBookingsForm.introOfficer')}</p>
 
       {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}
       {success && <p className="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-gov-green" role="status">✓ {success}</p>}
@@ -161,52 +183,110 @@ function OfficerQueue({ t }) {
             { key: 'citizen', header: t('common.citizen'), render: (r) => `${r.first_name} ${r.last_name}` },
             { key: 'testType', header: t('traffic.testBookingsForm.field.testType'), render: (r) => t(`traffic.testType.${r.test_type.toLowerCase()}`) },
             { key: 'date', header: t('traffic.testBookingsForm.field.requestedDate'), render: (r) => formatDateOnly(r.confirmed_date || r.requested_date) },
+            { key: 'location', header: t('traffic.testBookingsForm.field.location'), render: (r) => r.test_location || '—' },
+            { key: 'questions', header: t('traffic.testBookingsForm.field.questions'), render: (r) => r.test_type === 'Theory' ? (r.theory_questions ? `✓ (${r.theory_questions.length})` : '—') : '—' },
             { key: 'status', header: t('common.status'), render: (r) => <StatusBadge status={r.status} /> },
             {
               key: 'actions', header: t('common.actions'),
-              render: (r) => (
-                <div className="flex flex-wrap gap-2">
-                  {r.status === 'Requested' && (
-                    <>
-                      <button type="button" disabled={busy === r.driving_test_booking_id} className="text-xs font-semibold text-gov-navy underline" onClick={() => setScheduleTarget(r.driving_test_booking_id)}>{t('traffic.testBookingsForm.schedule')}</button>
-                      <button type="button" disabled={busy === r.driving_test_booking_id} className="text-xs font-semibold text-gov-red underline" onClick={() => setReasonTarget(r.driving_test_booking_id)}>{t('common.reject')}</button>
-                    </>
-                  )}
-                  {r.status === 'Scheduled' && (
-                    <>
-                      <button type="button" disabled={busy === r.driving_test_booking_id} className="text-xs font-semibold text-gov-green underline" onClick={() => act(r.driving_test_booking_id, 'record-result', { result: 'Passed' })}>{t('traffic.testBookingsForm.recordPass')}</button>
-                      <button type="button" disabled={busy === r.driving_test_booking_id} className="text-xs font-semibold text-gov-red underline" onClick={() => act(r.driving_test_booking_id, 'record-result', { result: 'Failed' })}>{t('traffic.testBookingsForm.recordFail')}</button>
-                    </>
-                  )}
-                </div>
-              ),
+              render: (r) => {
+                const rowBusy = busy === r.driving_test_booking_id;
+                if (r.status === 'Requested') {
+                  return <button type="button" disabled={rowBusy} className="text-xs font-semibold text-gov-red underline" onClick={() => setReasonTarget(r.driving_test_booking_id)}>{t('common.reject')}</button>;
+                }
+                if (r.status !== 'Scheduled') return null;
+                const needsQuestions = r.test_type === 'Theory' && !r.theory_questions;
+                const needsLocation = r.test_type === 'Practical' && !r.test_location;
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    {needsQuestions && (
+                      <button type="button" disabled={rowBusy} className="btn-primary !whitespace-nowrap !px-3 !py-1.5 !text-xs" onClick={() => { setQuestionsTarget(r.driving_test_booking_id); setQuestions(['']); }}>
+                        {t('traffic.testBookingsForm.setQuestions')}
+                      </button>
+                    )}
+                    {needsLocation && (
+                      <button type="button" disabled={rowBusy} className="btn-primary !whitespace-nowrap !px-3 !py-1.5 !text-xs" onClick={() => { setLocationTarget(r.driving_test_booking_id); setTestLocation(''); }}>
+                        {t('traffic.testBookingsForm.setLocation')}
+                      </button>
+                    )}
+                    {!needsQuestions && !needsLocation && (
+                      <button type="button" disabled={rowBusy} className="btn-primary !whitespace-nowrap !px-3 !py-1.5 !text-xs" onClick={() => { setResultTarget(r.driving_test_booking_id); setResultValue('Passed'); setMarksValue(''); }}>
+                        {t('traffic.testBookingsForm.recordResult')}
+                      </button>
+                    )}
+                    <button type="button" disabled={rowBusy} className="text-xs font-semibold text-gov-red underline" onClick={() => setReasonTarget(r.driving_test_booking_id)}>{t('common.reject')}</button>
+                  </div>
+                );
+              },
             },
           ]}
         />
       )}
 
-      <Modal open={!!scheduleTarget} onClose={() => setScheduleTarget(null)} title={t('traffic.testBookingsForm.schedule')}
-        footer={<>
-          <button type="button" className="btn-secondary" onClick={() => setScheduleTarget(null)}>{t('common.cancel')}</button>
-          <button type="submit" form="schedule-form" disabled={!confirmedDate} className="btn-primary">{t('common.confirm')}</button>
-        </>}
-      >
-        <form id="schedule-form" onSubmit={onScheduleSubmit} noValidate>
-          <FormField label={t('traffic.testBookingsForm.field.confirmedDate')} htmlFor="confirmedDate" required>
-            <input id="confirmedDate" type="date" required className="form-input" value={confirmedDate} onChange={(e) => setConfirmedDate(e.target.value)} />
-          </FormField>
-        </form>
-      </Modal>
-
       <Modal open={!!reasonTarget} onClose={() => setReasonTarget(null)} title={t('common.reject')}
         footer={<>
           <button type="button" className="btn-secondary" onClick={() => setReasonTarget(null)}>{t('common.cancel')}</button>
-          <button type="submit" form="reject-form" className="btn-primary">{t('common.submit')}</button>
+          <button type="submit" form="reject-form" className="btn-danger">{t('common.submit')}</button>
         </>}
       >
         <form id="reject-form" onSubmit={onReasonSubmit} noValidate>
           <FormField label={t('services.reason')} htmlFor="t-reason" required>
             <textarea id="t-reason" required rows={3} className="form-input" value={reason} onChange={(e) => setReason(e.target.value)} />
+          </FormField>
+        </form>
+      </Modal>
+
+      <Modal open={!!questionsTarget} onClose={() => setQuestionsTarget(null)} title={t('traffic.testBookingsForm.setQuestions')}
+        footer={<>
+          <button type="button" className="btn-secondary" onClick={() => setQuestionsTarget(null)}>{t('common.cancel')}</button>
+          <button type="submit" form="questions-form" disabled={!questions.some((q) => q.trim())} className="btn-primary">{t('common.confirm')}</button>
+        </>}
+      >
+        <form id="questions-form" onSubmit={onQuestionsSubmit} noValidate>
+          <p className="mb-3 text-sm text-slate-600">{t('traffic.testBookingsForm.questionsHelp')}</p>
+          {questions.map((q, i) => (
+            <div key={i} className="mb-2 flex gap-2">
+              <input
+                type="text" className="form-input" value={q}
+                onChange={(e) => setQuestions((qs) => qs.map((x, j) => (j === i ? e.target.value : x)))}
+                placeholder={t('traffic.testBookingsForm.questionPlaceholder', { n: i + 1 })}
+              />
+              {questions.length > 1 && (
+                <button type="button" className="text-xs font-semibold text-gov-red underline" onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== i))}>{t('common.remove')}</button>
+              )}
+            </div>
+          ))}
+          <button type="button" className="text-sm font-medium text-gov-navy hover:underline" onClick={() => setQuestions((qs) => [...qs, ''])}>+ {t('traffic.testBookingsForm.addQuestion')}</button>
+        </form>
+      </Modal>
+
+      <Modal open={!!locationTarget} onClose={() => setLocationTarget(null)} title={t('traffic.testBookingsForm.setLocation')}
+        footer={<>
+          <button type="button" className="btn-secondary" onClick={() => setLocationTarget(null)}>{t('common.cancel')}</button>
+          <button type="submit" form="location-form" disabled={!testLocation.trim()} className="btn-primary">{t('common.confirm')}</button>
+        </>}
+      >
+        <form id="location-form" onSubmit={onLocationSubmit} noValidate>
+          <FormField label={t('traffic.testBookingsForm.field.location')} htmlFor="testLocation" required>
+            <input id="testLocation" type="text" required className="form-input" value={testLocation} onChange={(e) => setTestLocation(e.target.value)} />
+          </FormField>
+        </form>
+      </Modal>
+
+      <Modal open={!!resultTarget} onClose={() => setResultTarget(null)} title={t('traffic.testBookingsForm.recordResult')}
+        footer={<>
+          <button type="button" className="btn-secondary" onClick={() => setResultTarget(null)}>{t('common.cancel')}</button>
+          <button type="submit" form="result-form" className={resultValue === 'Passed' ? 'btn-primary' : 'btn-danger'}>{t('common.confirm')}</button>
+        </>}
+      >
+        <form id="result-form" onSubmit={onResultSubmit} noValidate>
+          <FormField label={t('traffic.testBookingsForm.result')} htmlFor="resultValue" required>
+            <select id="resultValue" className="form-input" value={resultValue} onChange={(e) => setResultValue(e.target.value)}>
+              <option value="Passed">{t('traffic.testBookingsForm.recordPass')}</option>
+              <option value="Failed">{t('traffic.testBookingsForm.recordFail')}</option>
+            </select>
+          </FormField>
+          <FormField label={t('traffic.testBookingsForm.field.marks')} htmlFor="marksValue" help={t('common.optional')}>
+            <input id="marksValue" type="number" min="0" max="100" className="form-input" value={marksValue} onChange={(e) => setMarksValue(e.target.value)} />
           </FormField>
         </form>
       </Modal>

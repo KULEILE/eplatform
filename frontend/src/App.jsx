@@ -49,10 +49,8 @@ import MarriageOfficers from './pages/homeAffairs/MarriageOfficers';
 import CitizenshipNaturalization from './pages/homeAffairs/CitizenshipNaturalization';
 
 import TrafficHub from './pages/traffic/TrafficHub';
-import DrivingLicenceApply from './pages/traffic/DrivingLicenceApply';
-import DrivingLicenceRenew from './pages/traffic/DrivingLicenceRenew';
+import DrivingLicence from './pages/traffic/DrivingLicence';
 import LearnerPermit from './pages/traffic/LearnerPermit';
-import DrivingLicenceReplace from './pages/traffic/DrivingLicenceReplace';
 import PublicDrivingPermit from './pages/traffic/PublicDrivingPermit';
 import DrivingTestBookings from './pages/traffic/DrivingTestBookings';
 import VehicleRegistration from './pages/traffic/VehicleRegistration';
@@ -155,10 +153,8 @@ export default function App() {
         <Route path="/home-affairs/naturalization" element={<ProtectedRoute><CitizenshipNaturalization /></ProtectedRoute>} />
 
         <Route path="/traffic" element={<ProtectedRoute><TrafficHub /></ProtectedRoute>} />
-        <Route path="/traffic/driving-licence/apply" element={<ProtectedRoute><DrivingLicenceApply /></ProtectedRoute>} />
-        <Route path="/traffic/driving-licence/renew" element={<ProtectedRoute><DrivingLicenceRenew /></ProtectedRoute>} />
+        <Route path="/traffic/driving-licence" element={<ProtectedRoute><DrivingLicence /></ProtectedRoute>} />
         <Route path="/traffic/learner-permit" element={<ProtectedRoute><LearnerPermit /></ProtectedRoute>} />
-        <Route path="/traffic/driving-licence/replace" element={<ProtectedRoute><DrivingLicenceReplace /></ProtectedRoute>} />
         <Route path="/traffic/public-driving-permit" element={<ProtectedRoute><PublicDrivingPermit /></ProtectedRoute>} />
         <Route path="/traffic/test-bookings" element={<ProtectedRoute><DrivingTestBookings /></ProtectedRoute>} />
         <Route path="/traffic/vehicle-registration" element={<ProtectedRoute><VehicleRegistration /></ProtectedRoute>} />
