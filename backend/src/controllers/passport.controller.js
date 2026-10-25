@@ -261,7 +261,12 @@ async function apply(req, res, next) {
 
 /** POST /api/passport/renew — body adds renewalReason ('Expired' | 'Pages Full') on top of
  *  apply()'s fields. Requires the subject to already hold a COLLECTED passport. Blocked unless
- *  that passport has actually expired, unless the citizen declares renewalReason = 'Pages Full'. */
+ *  that passport has actually expired, unless the citizen declares renewalReason = 'Pages Full'
+ *  AND backs that up with proof — see migration 065: a declared reason alone was never enough
+ *  anywhere else in this system (every other "prove it" moment requires an actual document), so
+ *  this one shouldn't be the exception. pagesFullPageCount (how many pages the passport has) and
+ *  pagesFullProofReference (a photo of the last page, showing it's actually full) are both
+ *  required whenever renewalReason is 'Pages Full'. */
 async function applyRenewal(req, res, next) {
   try {
     if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required to apply for a passport.' });
@@ -269,7 +274,10 @@ async function applyRenewal(req, res, next) {
     if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
     const { subjectCitizenId, isOnBehalf } = auth;
 
-    const { passportType, preferredOfficeId, photoSource, photoReference, paymentReference, receiptImageReference, renewalReason } = req.body;
+    const {
+      passportType, preferredOfficeId, photoSource, photoReference, paymentReference, receiptImageReference,
+      renewalReason, pagesFullPageCount, pagesFullProofReference,
+    } = req.body;
     if (!preferredOfficeId) {
       return res.status(400).json({ error: 'preferredOfficeId is required — choose the branch where you will collect the passport.' });
     }
@@ -299,6 +307,13 @@ async function applyRenewal(req, res, next) {
           currentPassportNumber: previous.passport_number, expiryDate: previous.expiry_date,
         });
       }
+      const pageCount = Number(pagesFullPageCount);
+      if (!pagesFullPageCount || !Number.isInteger(pageCount) || pageCount <= 0) {
+        return res.status(400).json({ error: 'How many pages your passport has is required to declare its pages are full.' });
+      }
+      if (!pagesFullProofReference) {
+        return res.status(400).json({ error: 'A photo of the last page is required to prove your passport\'s pages are full.' });
+      }
     }
 
     const photoResolution = await resolvePhotoReference(subjectCitizenId, photoSource, photoReference);
@@ -315,10 +330,12 @@ async function applyRenewal(req, res, next) {
       const { rows } = await client.query(
         `INSERT INTO passport_records
             (citizen_id, applicant_citizen_id, application_reference, passport_type, status, preferred_office_id, collection_office_id,
-             photo_reference, payment_reference, receipt_image_reference, application_type, previous_passport_number, renewal_reason)
-         VALUES ($1,$2,$3,$4,'Submitted',$5,$5,$6,$7,$8,'Renewal',$9,$10) RETURNING passport_record_id`,
+             photo_reference, payment_reference, receipt_image_reference, application_type, previous_passport_number, renewal_reason,
+             pages_full_page_count, pages_full_proof_reference)
+         VALUES ($1,$2,$3,$4,'Submitted',$5,$5,$6,$7,$8,'Renewal',$9,$10,$11,$12) RETURNING passport_record_id`,
         [subjectCitizenId, req.user.citizenId, referenceNumber, passportType || previous.passport_type, preferredOfficeId,
-          resolvedPhotoReference, paymentReference, receiptImageReference, previous.passport_number || null, isExpired ? 'Expired' : 'Pages Full']
+          resolvedPhotoReference, paymentReference, receiptImageReference, previous.passport_number || null, isExpired ? 'Expired' : 'Pages Full',
+          isExpired ? null : Number(pagesFullPageCount), isExpired ? null : pagesFullProofReference]
       );
       await indexApplication(client, {
         citizenId: req.user.citizenId, departmentKey: 'passport', serviceType: 'Passport Renewal',

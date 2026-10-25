@@ -886,7 +886,12 @@
     },
     "renewal": {
       "notYetExpiredNotice": "This passport is not yet expired — it expires on {{expiryDate}}. Renewal is only available once it has expired, unless its pages are full.",
-      "pagesFullDeclaration": "This passport's pages are full and it needs to be renewed even though it hasn't expired yet."
+      "pagesFullDeclaration": "This passport's pages are full and it needs to be renewed even though it hasn't expired yet.",
+      "field": {
+        "pageCount": "How many pages does your passport have?",
+        "lastPageProof": "Photo of the last page",
+        "lastPageProofHelp": "Upload a clear photo of the last page of your passport, showing it is fully used."
+      }
     },
     "replacement": {
       "field": {

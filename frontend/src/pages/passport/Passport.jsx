@@ -56,6 +56,8 @@ export default function Passport() {
   const [photoSource, setPhotoSource] = useState(''); // '' | 'id' | 'new'
   const [photoReference, setPhotoReference] = useState(null);
   const [pagesFullAcknowledged, setPagesFullAcknowledged] = useState(false);
+  const [pagesFullPageCount, setPagesFullPageCount] = useState('');
+  const [pagesFullProofReference, setPagesFullProofReference] = useState('');
   const [replacementReason, setReplacementReason] = useState('');
   const [replacementDetails, setReplacementDetails] = useState('');
   const [replacementProofReference, setReplacementProofReference] = useState('');
@@ -94,6 +96,8 @@ export default function Passport() {
     setPhotoSource('');
     setPhotoReference(null);
     setPagesFullAcknowledged(false);
+    setPagesFullPageCount('');
+    setPagesFullProofReference('');
     setReplacementReason('');
     setReplacementDetails('');
     setReplacementProofReference('');
@@ -119,6 +123,8 @@ export default function Passport() {
     setPhotoSource('');
     setPhotoReference(null);
     setPagesFullAcknowledged(false);
+    setPagesFullPageCount('');
+    setPagesFullProofReference('');
   }, [subjectChoice, eligibility]);
 
   const waitEligibleFrom = reportedLostAt && applicationType === 'Replacement'
@@ -131,7 +137,7 @@ export default function Passport() {
     !preferredOfficeId ||
     !receipt.paymentReference.trim() || !receipt.receiptImageReference ||
     (idPhotoAvailable ? !photoSource || (photoSource === 'new' && !photoReference) : !photoReference) ||
-    (currentPassportNotExpired && !pagesFullAcknowledged) ||
+    (currentPassportNotExpired && (!pagesFullAcknowledged || !pagesFullPageCount || Number(pagesFullPageCount) <= 0 || !pagesFullProofReference)) ||
     (applicationType === 'Replacement' && (!replacementReason || !reportedLostAt || !replacementProofReference || stillWaiting));
 
   async function onSubmit(e) {
@@ -163,7 +169,12 @@ export default function Passport() {
       if (applicationType === 'New') {
         await api.post('/passport/apply', base);
       } else if (applicationType === 'Renewal') {
-        await api.post('/passport/renew', { ...base, renewalReason: subject.currentPassport.isExpired ? undefined : 'Pages Full' });
+        await api.post('/passport/renew', {
+          ...base,
+          renewalReason: subject.currentPassport.isExpired ? undefined : 'Pages Full',
+          pagesFullPageCount: subject.currentPassport.isExpired ? undefined : Number(pagesFullPageCount),
+          pagesFullProofReference: subject.currentPassport.isExpired ? undefined : pagesFullProofReference,
+        });
       } else {
         await api.post('/passport/replace', {
           ...base, replacementReason, replacementDetails: replacementDetails || undefined,
@@ -291,6 +302,23 @@ export default function Passport() {
                         <input type="checkbox" checked={pagesFullAcknowledged} onChange={(e) => setPagesFullAcknowledged(e.target.checked)} />
                         {t('passport.renewal.pagesFullDeclaration')}
                       </label>
+                      {pagesFullAcknowledged && (
+                        <div className="mt-3 rounded-md bg-white p-3">
+                          <FormFieldLike label={t('passport.renewal.field.pageCount')} required>
+                            <input
+                              type="number" min="1" className="form-input max-w-[10rem]"
+                              value={pagesFullPageCount} onChange={(e) => setPagesFullPageCount(e.target.value)}
+                            />
+                          </FormFieldLike>
+                          <DocumentCapture
+                            label={t('passport.renewal.field.lastPageProof')}
+                            help={t('passport.renewal.field.lastPageProofHelp')}
+                            value={pagesFullProofReference}
+                            onChange={setPagesFullProofReference}
+                            required
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
 

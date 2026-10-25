@@ -886,7 +886,12 @@
     },
     "renewal": {
       "notYetExpiredNotice": "Pasepoto ena ha e eso fele nako — e tla fela ka {{expiryDate}}. Nchafatso e fumaneha feela ha e se e felile nako, ntle le haeba maqephe a yona a tletse.",
-      "pagesFullDeclaration": "Maqephe a pasepoto ena a tletse mme e hloka ho nchafatswa le hoja e eso fele nako."
+      "pagesFullDeclaration": "Maqephe a pasepoto ena a tletse mme e hloka ho nchafatswa le hoja e eso fele nako.",
+      "field": {
+        "pageCount": "Pasepoto ya hau e na le maqephe a makae?",
+        "lastPageProof": "Setshwantsho sa leqephe la ho qetela",
+        "lastPageProofHelp": "Kenya setshwantsho se hlakileng sa leqephe la ho qetela la pasepoto ya hau, se bontshang hore e sebelisitswe ka botlalo."
+      }
     },
     "replacement": {
       "field": {
