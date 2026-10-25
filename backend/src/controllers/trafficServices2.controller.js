@@ -44,6 +44,12 @@ const { makeDepartmentController } = require('../utils/simpleDepartmentControlle
 const TRAFFIC_OFFICER_ROLES = ['traffic_officer', 'system_administrator'];
 const isOfficer = (req) => TRAFFIC_OFFICER_ROLES.includes(req.user.roleKey);
 
+// Migration 068: the Theory test is now a multiple-choice exam the system marks itself. A
+// citizen's score is correctCount / totalQuestions * 100, rounded; this is the line between
+// Passed and Failed. Not specified by the request, so a reasonable real-world figure is used —
+// called out here, once, rather than buried in the scoring code below.
+const THEORY_PASS_PERCENT = 70;
+
 function genNumber(prefix) {
   return `${prefix}-${String(Math.floor(100000 + Math.random() * 900000))}`;
 }
@@ -90,33 +96,280 @@ async function requestTestBooking(req, res, next) {
        VALUES ($1,$2,'Theory',$3,$3,$4,'Scheduled') RETURNING *`,
       [req.user.citizenId, bookingReference, requestedDate, officeId]
     );
-    const booking = rows[0];
+    let booking = rows[0];
     await indexApplication(db, {
       citizenId: req.user.citizenId, departmentKey: 'traffic', serviceType: 'Theory Driving Test',
       referenceNumber: bookingReference, sourceTable: 'driving_test_bookings', sourceId: booking.driving_test_booking_id, status: 'Scheduled',
     });
     await createNotification({ userId: req.user.userId, title: 'Theory test scheduled', message: `Reference ${bookingReference}, on ${requestedDate}.`, type: 'Application Submitted' });
+
+    // If the office already published a session for this exact date (a citizen booking in
+    // after the officer published — e.g. another citizen for the same sitting), attach this
+    // booking to it immediately rather than making them wait for the next publish.
+    const { rows: sessionRows } = await db.query(
+      `SELECT * FROM theory_test_sessions WHERE office_id = $1 AND test_date = $2 AND status = 'Published'`,
+      [officeId, requestedDate]
+    );
+    if (sessionRows.length > 0) {
+      const session = sessionRows[0];
+      const { rows: linked } = await db.query(
+        `UPDATE driving_test_bookings SET theory_session_id = $1, updated_at = NOW() WHERE driving_test_booking_id = $2 RETURNING *`,
+        [session.theory_test_session_id, booking.driving_test_booking_id]
+      );
+      booking = linked[0];
+      await createNotification({
+        userId: req.user.userId, title: 'Theory test open', type: 'Status Change',
+        message: `Your theory test for ${requestedDate}${session.test_time ? ` at ${String(session.test_time).slice(0, 5)}` : ''} is open — you can take it now.`,
+      });
+    }
     res.status(201).json({ booking });
   } catch (err) { next(err); }
 }
 
-/** POST /traffic/test-bookings/:id/questions (officer) — the questions set for one specific
- *  Theory sitting; must be set before a result can be recorded for it. A lightweight per-sitting
- *  list (JSON array of strings), not a reusable bank with auto-grading — nothing asked for that. */
-async function setTheoryQuestions(req, res, next) {
+// ============================================================================================
+// THEORY TEST SESSIONS — the shared, officer-authored, multiple-choice question set every
+// citizen sitting the Theory test on a given day (at a given office) writes, scored by the
+// system itself. See migration 068.
+// ============================================================================================
+
+function validateQuestions(questions) {
+  if (!Array.isArray(questions) || questions.length === 0) return 'questions must be a non-empty list.';
+  for (const q of questions) {
+    if (!q || typeof q !== 'object') return 'Each question must be an object.';
+    if (!q.question || !String(q.question).trim()) return 'Every question needs question text.';
+    if (!Array.isArray(q.options) || q.options.length < 2 || q.options.length > 6) return 'Every question needs between 2 and 6 options.';
+    if (q.options.some((o) => !o || !String(o).trim())) return 'Every option needs text.';
+    const idx = Number(q.correctIndex);
+    if (!Number.isInteger(idx) || idx < 0 || idx >= q.options.length) return 'Every question needs a valid correctIndex.';
+  }
+  return null;
+}
+
+function normalizeQuestions(questions) {
+  return questions.map((q) => ({
+    question: String(q.question).trim(),
+    options: q.options.map((o) => String(o).trim()),
+    correctIndex: Number(q.correctIndex),
+  }));
+}
+
+/** POST /traffic/theory-sessions (officer) body:{testDate, testTime?, questions} — creates the
+ *  session for the officer's own office on that date if none exists yet, or updates it (while
+ *  still Draft — "officer must set time" and author the shared question set before publishing).
+ *  A Published session is locked: citizens may already be relying on exactly these questions. */
+async function upsertTheorySession(req, res, next) {
   try {
     if (!isOfficer(req)) return res.status(403).json({ error: 'Officer only.' });
-    const { questions } = req.body;
-    if (!Array.isArray(questions) || questions.length === 0 || questions.some((q) => !q || !String(q).trim())) {
-      return res.status(400).json({ error: 'questions must be a non-empty list of non-empty question strings.' });
+    if (!req.user.officeId) return res.status(400).json({ error: 'Your account has no office assigned — cannot manage theory sessions.' });
+    const { testDate, testTime, questions } = req.body;
+    if (!testDate) return res.status(400).json({ error: 'testDate is required.' });
+    if (questions !== undefined) {
+      const err = validateQuestions(questions);
+      if (err) return res.status(400).json({ error: err });
     }
-    const { rows } = await db.query(
-      `UPDATE driving_test_bookings SET theory_questions = $1::jsonb, questions_set_by_user_id = $2, questions_set_at = NOW(), updated_at = NOW()
-       WHERE driving_test_booking_id = $3 AND test_type = 'Theory' AND status = 'Scheduled' RETURNING *`,
-      [JSON.stringify(questions.map((q) => String(q).trim())), req.user.userId, req.params.id]
+
+    const { rows: existingRows } = await db.query(
+      `SELECT * FROM theory_test_sessions WHERE office_id = $1 AND test_date = $2`,
+      [req.user.officeId, testDate]
     );
-    if (rows.length === 0) return res.status(409).json({ error: 'Cannot set questions for this booking in its current state.' });
-    res.json({ booking: rows[0] });
+    if (existingRows.length > 0 && existingRows[0].status === 'Published') {
+      return res.status(409).json({ error: 'This session is already published and cannot be edited.' });
+    }
+
+    let rows;
+    if (existingRows.length > 0) {
+      ({ rows } = await db.query(
+        `UPDATE theory_test_sessions SET test_time = COALESCE($1, test_time), questions = COALESCE($2::jsonb, questions), updated_at = NOW()
+         WHERE theory_test_session_id = $3 RETURNING *`,
+        [testTime || null, questions ? JSON.stringify(normalizeQuestions(questions)) : null, existingRows[0].theory_test_session_id]
+      ));
+    } else {
+      ({ rows } = await db.query(
+        `INSERT INTO theory_test_sessions (office_id, test_date, test_time, questions, created_by_user_id)
+         VALUES ($1,$2,$3,$4::jsonb,$5) RETURNING *`,
+        [req.user.officeId, testDate, testTime || null, questions ? JSON.stringify(normalizeQuestions(questions)) : null, req.user.userId]
+      ));
+    }
+    res.status(201).json({ session: rows[0] });
+  } catch (err) { next(err); }
+}
+
+/** GET /traffic/theory-sessions (officer) — every session for the officer's own office, newest
+ *  date first, with a count of how many Theory bookings are waiting on each one. */
+async function listTheorySessions(req, res, next) {
+  try {
+    if (!isOfficer(req)) return res.status(403).json({ error: 'Officer only.' });
+    if (!req.user.officeId) return res.json({ sessions: [] });
+    const { rows } = await db.query(
+      `SELECT s.*,
+              (SELECT COUNT(*) FROM driving_test_bookings b
+                WHERE b.test_type = 'Theory' AND b.office_id = s.office_id AND b.confirmed_date = s.test_date
+                  AND b.status IN ('Scheduled', 'Completed')) AS booking_count
+       FROM theory_test_sessions s WHERE s.office_id = $1 ORDER BY s.test_date DESC`,
+      [req.user.officeId]
+    );
+    res.json({ sessions: rows });
+  } catch (err) { next(err); }
+}
+
+/** POST /traffic/theory-sessions/:id/publish (officer) — "officer publish it, test all citizen
+ *  who supposed to write must receive notification and open for them to take test." Locks the
+ *  session, links every currently-Scheduled Theory booking for that office/date to it, and
+ *  notifies each of those citizens that their test is now open. */
+async function publishTheorySession(req, res, next) {
+  try {
+    if (!isOfficer(req)) return res.status(403).json({ error: 'Officer only.' });
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      const { rows: sessionRows } = await client.query('SELECT * FROM theory_test_sessions WHERE theory_test_session_id = $1 FOR UPDATE', [req.params.id]);
+      if (sessionRows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Session not found.' }); }
+      const existing = sessionRows[0];
+      if (!isOfficer(req) || existing.office_id !== req.user.officeId) {
+        await client.query('ROLLBACK'); return res.status(403).json({ error: 'Not your office.' });
+      }
+      if (existing.status === 'Published') { await client.query('ROLLBACK'); return res.status(409).json({ error: 'Already published.' }); }
+      if (!existing.test_time) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Set a test time before publishing.' }); }
+      if (!existing.questions || existing.questions.length === 0) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Add at least one question before publishing.' }); }
+
+      const { rows: sessRows } = await client.query(
+        `UPDATE theory_test_sessions SET status = 'Published', published_by_user_id = $1, published_at = NOW(), updated_at = NOW()
+         WHERE theory_test_session_id = $2 RETURNING *`,
+        [req.user.userId, req.params.id]
+      );
+      const session = sessRows[0];
+
+      const { rows: bookings } = await client.query(
+        `UPDATE driving_test_bookings SET theory_session_id = $1, updated_at = NOW()
+         WHERE test_type = 'Theory' AND status = 'Scheduled' AND office_id = $2 AND confirmed_date = $3 AND theory_session_id IS NULL
+         RETURNING *`,
+        [session.theory_test_session_id, session.office_id, session.test_date]
+      );
+      await client.query('COMMIT');
+
+      for (const booking of bookings) {
+        const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [booking.citizen_id])).rows[0];
+        if (userRow) {
+          await createNotification({
+            userId: userRow.user_id, title: 'Theory test open', type: 'Status Change',
+            message: `Your theory test on ${String(session.test_date).slice(0, 10)} at ${String(session.test_time).slice(0, 5)} is open — you can take it now.`,
+          });
+        }
+      }
+      res.json({ session, bookingsOpened: bookings.length });
+    } catch (err) {
+      await client.query('ROLLBACK'); throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) { next(err); }
+}
+
+/** GET /traffic/test-bookings/:id/theory-test (citizen) — the questions for the citizen's own
+ *  Theory booking, WITHOUT correctIndex (never sent to the citizen — see scoring below). Only
+ *  available once the session it belongs to is published and the citizen has not already
+ *  submitted their answers. */
+async function getTheoryTest(req, res, next) {
+  try {
+    const { rows } = await db.query(
+      `SELECT b.*, s.test_time, s.questions, s.status AS session_status FROM driving_test_bookings b
+       LEFT JOIN theory_test_sessions s ON s.theory_test_session_id = b.theory_session_id
+       WHERE b.driving_test_booking_id = $1`,
+      [req.params.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Booking not found.' });
+    const booking = rows[0];
+    if (booking.citizen_id !== req.user.citizenId) return res.status(403).json({ error: 'Not your booking.' });
+    if (booking.test_type !== 'Theory') return res.status(400).json({ error: 'Not a theory booking.' });
+    if (!booking.theory_session_id || booking.session_status !== 'Published') {
+      return res.status(409).json({ error: 'Your theory test has not been published yet.' });
+    }
+    if (booking.submitted_at) return res.status(409).json({ error: 'You have already submitted this test.' });
+    res.json({
+      testDate: booking.confirmed_date, testTime: booking.test_time,
+      questions: (booking.questions || []).map((q) => ({ question: q.question, options: q.options })),
+    });
+  } catch (err) { next(err); }
+}
+
+/** POST /traffic/test-bookings/:id/submit-answers (citizen) body:{answers:[index,...]} — the
+ *  system marks the test itself: "so that system can mark and automated the process ... system
+ *  must record the result and tell if citizen pass or fail". Scores correctCount/total*100
+ *  (THEORY_PASS_PERCENT decides pass/fail), records it as both the result and the marks, and —
+ *  same as before — a Pass auto-creates the Practical booking in the same transaction. */
+async function submitTheoryAnswers(req, res, next) {
+  try {
+    const { answers } = req.body;
+    if (!Array.isArray(answers) || answers.length === 0) return res.status(400).json({ error: 'answers must be a non-empty list.' });
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      const { rows: bRows } = await client.query(
+        `SELECT b.*, s.questions, s.status AS session_status FROM driving_test_bookings b
+         LEFT JOIN theory_test_sessions s ON s.theory_test_session_id = b.theory_session_id
+         WHERE b.driving_test_booking_id = $1 FOR UPDATE OF b`,
+        [req.params.id]
+      );
+      if (bRows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Booking not found.' }); }
+      const existing = bRows[0];
+      if (existing.citizen_id !== req.user.citizenId) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Not your booking.' }); }
+      if (existing.test_type !== 'Theory' || existing.status !== 'Scheduled') {
+        await client.query('ROLLBACK'); return res.status(409).json({ error: 'Cannot submit answers for this booking in its current state.' });
+      }
+      if (!existing.theory_session_id || existing.session_status !== 'Published') {
+        await client.query('ROLLBACK'); return res.status(409).json({ error: 'Your theory test has not been published yet.' });
+      }
+      if (existing.submitted_at) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'You have already submitted this test.' }); }
+      const questions = existing.questions || [];
+      if (answers.length !== questions.length) {
+        await client.query('ROLLBACK'); return res.status(400).json({ error: `answers must have exactly ${questions.length} entries.` });
+      }
+
+      let correct = 0;
+      questions.forEach((q, i) => { if (Number(answers[i]) === q.correctIndex) correct += 1; });
+      const score = Math.round((correct / questions.length) * 100);
+      const result = score >= THEORY_PASS_PERCENT ? 'Passed' : 'Failed';
+
+      const { rows } = await client.query(
+        `UPDATE driving_test_bookings SET status = 'Completed', result = $1, marks = $2, answers = $3::jsonb, submitted_at = NOW(), updated_at = NOW()
+         WHERE driving_test_booking_id = $4 RETURNING *`,
+        [result, score, JSON.stringify(answers.map(Number)), req.params.id]
+      );
+      const booking = rows[0];
+      await syncApplicationStatus(client, { sourceTable: 'driving_test_bookings', sourceId: booking.driving_test_booking_id, status: 'Completed', completed: true });
+
+      let autoScheduledPractical = null;
+      if (result === 'Passed') {
+        const bookingReference = generateReference('DTB');
+        const { rows: practicalRows } = await client.query(
+          `INSERT INTO driving_test_bookings (citizen_id, booking_reference, test_type, office_id, requested_date, confirmed_date, status, theory_booking_id)
+           VALUES ($1,$2,'Practical',$3, (DATE($4) + INTERVAL '3 days'), (DATE($4) + INTERVAL '3 days'), 'Scheduled', $5) RETURNING *`,
+          [booking.citizen_id, bookingReference, booking.office_id, booking.confirmed_date, booking.driving_test_booking_id]
+        );
+        autoScheduledPractical = practicalRows[0];
+        await indexApplication(client, {
+          citizenId: booking.citizen_id, departmentKey: 'traffic', serviceType: 'Practical Driving Test',
+          referenceNumber: bookingReference, sourceTable: 'driving_test_bookings', sourceId: autoScheduledPractical.driving_test_booking_id, status: 'Scheduled',
+        });
+      }
+      await client.query('COMMIT');
+
+      await createNotification({
+        userId: req.user.userId, title: `Theory test: ${result}`, type: result === 'Passed' ? 'Approval' : 'Rejection',
+        message: `You scored ${score}%. Reference ${booking.booking_reference}.`,
+      });
+      if (autoScheduledPractical) {
+        await createNotification({
+          userId: req.user.userId, title: 'Practical driving test scheduled', type: 'Status Change',
+          message: `Reference ${autoScheduledPractical.booking_reference}, on ${String(autoScheduledPractical.confirmed_date).slice(0, 10)}.`,
+        });
+      }
+      res.json({ booking, score, passed: result === 'Passed', autoScheduledPractical });
+    } catch (err) {
+      await client.query('ROLLBACK'); throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) { next(err); }
 }
 
@@ -173,13 +426,20 @@ async function listTestBookings(req, res, next) {
   try {
     if (isOfficer(req)) {
       const { rows } = await db.query(
-        `SELECT b.*, c.first_name, c.last_name FROM driving_test_bookings b
-         JOIN citizens c ON c.citizen_id = b.citizen_id ORDER BY b.requested_at DESC`
+        `SELECT b.*, c.first_name, c.last_name, s.test_time AS theory_test_time FROM driving_test_bookings b
+         JOIN citizens c ON c.citizen_id = b.citizen_id
+         LEFT JOIN theory_test_sessions s ON s.theory_test_session_id = b.theory_session_id
+         ORDER BY b.requested_at DESC`
       );
       return res.json({ bookings: rows });
     }
     if (!req.user.citizenId) return res.json({ bookings: [] });
-    const { rows } = await db.query(`SELECT * FROM driving_test_bookings WHERE citizen_id = $1 ORDER BY requested_at DESC`, [req.user.citizenId]);
+    const { rows } = await db.query(
+      `SELECT b.*, s.test_time AS theory_test_time FROM driving_test_bookings b
+       LEFT JOIN theory_test_sessions s ON s.theory_test_session_id = b.theory_session_id
+       WHERE b.citizen_id = $1 ORDER BY b.requested_at DESC`,
+      [req.user.citizenId]
+    );
     res.json({ bookings: rows });
   } catch (err) { next(err); }
 }
@@ -239,9 +499,9 @@ async function recordTestResult(req, res, next) {
         await client.query('ROLLBACK');
         return res.status(409).json({ error: 'Cannot record a result for this booking in its current state.' });
       }
-      if (existing.test_type === 'Theory' && !existing.theory_questions) {
+      if (existing.test_type === 'Theory') {
         await client.query('ROLLBACK');
-        return res.status(409).json({ error: 'Set the theory test questions before recording a result.' });
+        return res.status(409).json({ error: 'The theory test is multiple choice and marks itself automatically once the citizen submits their answers — there is nothing to record manually.' });
       }
       if (existing.test_type === 'Practical' && !existing.test_location) {
         await client.query('ROLLBACK');
@@ -256,24 +516,10 @@ async function recordTestResult(req, res, next) {
       const booking = rows[0];
       await syncApplicationStatus(client, { sourceTable: 'driving_test_bookings', sourceId: booking.driving_test_booking_id, status: 'Completed', completed: true });
 
-      let autoScheduledPractical = null;
+      // Only a Practical booking ever reaches here now — a Theory result is refused above and
+      // produced automatically by submitTheoryAnswers() instead. A Practical Pass still
+      // auto-generates the Learner's Permit, exactly as before.
       let generatedPermit = null;
-      if (result === 'Passed' && booking.test_type === 'Theory') {
-        const bookingReference = generateReference('DTB');
-        const { rows: practicalRows } = await client.query(
-          // requested_date has no real citizen-chosen value here (nothing was requested — this
-          // booking is entirely auto-created), but the column is NOT NULL (migration 043), so it
-          // is set to the same auto-computed date as confirmed_date rather than left null.
-          `INSERT INTO driving_test_bookings (citizen_id, booking_reference, test_type, office_id, requested_date, confirmed_date, status, theory_booking_id)
-           VALUES ($1,$2,'Practical',$3, (DATE($4) + INTERVAL '3 days'), (DATE($4) + INTERVAL '3 days'), 'Scheduled', $5) RETURNING *`,
-          [booking.citizen_id, bookingReference, booking.office_id, booking.confirmed_date, booking.driving_test_booking_id]
-        );
-        autoScheduledPractical = practicalRows[0];
-        await indexApplication(client, {
-          citizenId: booking.citizen_id, departmentKey: 'traffic', serviceType: 'Practical Driving Test',
-          referenceNumber: bookingReference, sourceTable: 'driving_test_bookings', sourceId: autoScheduledPractical.driving_test_booking_id, status: 'Scheduled',
-        });
-      }
       if (result === 'Passed' && booking.test_type === 'Practical') {
         generatedPermit = await autoGenerateLearnerPermit(client, booking.citizen_id, booking.driving_test_booking_id);
       }
@@ -283,12 +529,6 @@ async function recordTestResult(req, res, next) {
       const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [booking.citizen_id])).rows[0];
       if (userRow) {
         await createNotification({ userId: userRow.user_id, title: `${booking.test_type} test: ${result}`, message: `Reference ${booking.booking_reference}.`, type: result === 'Passed' ? 'Approval' : 'Rejection' });
-        if (autoScheduledPractical) {
-          await createNotification({
-            userId: userRow.user_id, title: 'Practical driving test scheduled',
-            message: `Reference ${autoScheduledPractical.booking_reference}, on ${String(autoScheduledPractical.confirmed_date).slice(0, 10)}.`, type: 'Status Change',
-          });
-        }
         if (generatedPermit) {
           await createNotification({
             userId: userRow.user_id, title: "Learner's Permit issued",
@@ -296,7 +536,7 @@ async function recordTestResult(req, res, next) {
           });
         }
       }
-      res.json({ booking, autoScheduledPractical, generatedPermit });
+      res.json({ booking, generatedPermit });
     } catch (err) {
       await client.query('ROLLBACK'); throw err;
     } finally {
@@ -490,8 +730,9 @@ async function updateDrivingInstructorStatus(req, res, next) {
 }
 
 module.exports = {
-  requestTestBooking, listTestBookings, getTestBooking, scheduleTestBooking, setTheoryQuestions, setTestLocation,
+  requestTestBooking, listTestBookings, getTestBooking, scheduleTestBooking, setTestLocation,
   recordTestResult, cancelTestBooking, rejectTestBooking,
+  upsertTheorySession, listTheorySessions, publishTheorySession, getTheoryTest, submitTheoryAnswers,
   vehicleInspectionsController,
   transportPermitsController,
   createDrivingInstructor, listDrivingInstructors, getDrivingInstructor, updateDrivingInstructorStatus,

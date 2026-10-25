@@ -13,11 +13,20 @@ router.post('/test-bookings', c2.requestTestBooking);
 router.get('/test-bookings', c2.listTestBookings);
 router.get('/test-bookings/:id', c2.getTestBooking);
 router.post('/test-bookings/:id/schedule', c2.scheduleTestBooking);
-router.post('/test-bookings/:id/questions', c2.setTheoryQuestions);
 router.post('/test-bookings/:id/set-location', c2.setTestLocation);
 router.post('/test-bookings/:id/record-result', c2.recordTestResult);
 router.post('/test-bookings/:id/cancel', c2.cancelTestBooking);
 router.post('/test-bookings/:id/reject', c2.rejectTestBooking);
+router.get('/test-bookings/:id/theory-test', c2.getTheoryTest);
+router.post('/test-bookings/:id/submit-answers', c2.submitTheoryAnswers);
+
+// Theory test sessions (migration 068) — the shared, officer-published, multiple-choice question
+// set every citizen writing the theory test on a given day at a given office sits. Registered
+// here, before '/:id/:action' below, for the same route-ordering reason as everything else in
+// this block: a two-segment literal path must come before the generic single-segment catch-all.
+router.post('/theory-sessions', c2.upsertTheorySession);
+router.get('/theory-sessions', c2.listTheorySessions);
+router.post('/theory-sessions/:id/publish', c2.publishTheorySession);
 
 // Driving Licence — Application/Renewal/Replacement, consolidated onto one bespoke controller
 // (migration 067). Registered BEFORE the generic '/:id/:action' catch-all below, for the same

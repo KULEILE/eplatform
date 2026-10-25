@@ -4,6 +4,7 @@
     "demoBanner": "Prototype / Demonstration Data — no real citizen information is used.",
     "loading": "Loading…",
     "save": "Save",
+    "saved": "Saved.",
     "cancel": "Cancel",
     "submit": "Submit",
     "back": "Back",
@@ -377,7 +378,8 @@
     "Disputed": "Disputed",
     "Dispute Upheld": "Dispute Upheld",
     "Dispute Dismissed": "Dispute Dismissed",
-    "Not Applicable": "Not Applicable"
+    "Not Applicable": "Not Applicable",
+    "Published": "Published"
   },
   "statusHelp": {
     "Draft": "You haven't submitted this yet.",
@@ -1123,8 +1125,7 @@
         "requestedDate": "Preferred date",
         "confirmedDate": "Confirmed test date",
         "location": "Test location",
-        "marks": "Marks",
-        "questions": "Questions set"
+        "marks": "Marks"
       },
       "cancelled": "Booking cancelled.",
       "schedule": "Schedule",
@@ -1132,15 +1133,13 @@
       "recordFail": "Record fail",
       "result": "Result",
       "introNew": "Book your theory test. It is scheduled automatically for the date you choose - there is no waiting for an officer to confirm it. Once you pass, your practical test is scheduled automatically too, at least three days later.",
-      "introOfficer": "Set each theory sitting's questions and each practical sitting's location before recording a result. A passed theory test automatically schedules the practical test; a passed practical test automatically issues a Learner's Permit.",
+      "introOfficer": "Publish one shared set of multiple-choice questions for each day's theory sitting at your office — citizens are notified and mark their own test automatically. A practical sitting still needs its location entered and its result recorded by hand.",
       "autoScheduleHelp": "Your test is confirmed for this date as soon as you submit - no further waiting.",
       "bookTheory": "Book theory test",
       "theoryAlreadyBooked": "You already have a theory test booked. It will show in the table below.",
       "autoScheduled": "Your theory test is confirmed for {{date}}.",
-      "setQuestions": "Set questions",
       "setLocation": "Set location",
       "recordResult": "Record result",
-      "questionsHelp": "Enter the questions for this theory sitting. The citizen is marked on these when the result is recorded.",
       "questionPlaceholder": "Question {{n}}",
       "addQuestion": "Add question"
     },
@@ -1218,6 +1217,38 @@
         "failedModalTitle": "Learner's Permit not surrendered",
         "failedModalHelp": "The citizen could not produce their Learner's Permit. This rejects the application - a canned reason is used if you leave this blank."
       }
+    },
+    "theorySessions": {
+      "title": "Theory Test Sessions",
+      "intro": "One shared, multiple-choice question set per day for your office. Save it as a draft, then Publish to notify every citizen booked for that date and open the test for them to take.",
+      "newSession": "New session",
+      "date": "Date",
+      "time": "Time",
+      "questionsCount": "Questions",
+      "bookings": "Bookings",
+      "status": "Status",
+      "publish": "Publish",
+      "save": "Save draft",
+      "question": "Question",
+      "optionPlaceholder": "Option {{n}}",
+      "addOption": "Add option",
+      "correctAnswer": "Correct answer",
+      "noneYet": "No theory sessions yet for your office.",
+      "publishedNotice": "Published — {{count}} citizen(s) notified and able to take the test now.",
+      "bookingAwaitingSession": "Awaiting officer to publish the test",
+      "bookingOpen": "Open — citizen can take it now",
+      "bookingGraded": "Graded automatically",
+      "addQuestion": "Add question",
+      "editSession": "Edit session"
+    },
+    "theoryTest": {
+      "takeTest": "Take test",
+      "awaitingPublish": "Not published yet",
+      "title": "Theory Test",
+      "instructions": "Select one answer for each question, then submit. Your result is automatic.",
+      "submit": "Submit answers",
+      "resultPassed": "You passed with a score of {{score}}%.",
+      "resultFailed": "You scored {{score}}% — the pass mark is {{passMark}}%."
     }
   },
   "finance": {

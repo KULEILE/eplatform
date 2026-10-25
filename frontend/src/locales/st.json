@@ -4,6 +4,7 @@
     "demoBanner": "Mohlala / Data ea Pontsho — ha ho lesedi la nnete la moahi le sebediswang.",
     "loading": "E ea laela…",
     "save": "Boloka",
+    "saved": "Ho bolokiloe.",
     "cancel": "Hlakola",
     "submit": "Romela",
     "back": "Morao",
@@ -377,7 +378,8 @@
     "Disputed": "E hanyeditswe",
     "Dispute Upheld": "Kgohlano e tshehetswe",
     "Dispute Dismissed": "Kgohlano e hanywe",
-    "Not Applicable": "Ha e sebetse"
+    "Not Applicable": "Ha e sebetse",
+    "Published": "E phatlalalitsoe"
   },
   "statusHelp": {
     "Draft": "Ha o e so e romele.",
@@ -1123,8 +1125,7 @@
         "requestedDate": "Letsatsi le khethoang",
         "confirmedDate": "Letsatsi la tlhahlobo le netefatsitsoeng",
         "location": "Sebaka sa tlhahlobo",
-        "marks": "Matsha",
-        "questions": "Lipotso tse behiloeng"
+        "marks": "Matsha"
       },
       "cancelled": "Peeletso e hlakotsoe.",
       "schedule": "Beha nako",
@@ -1132,15 +1133,13 @@
       "recordFail": "Ngola o hlolehile",
       "result": "Sephetho",
       "introNew": "Beha nako ea tlhahlobo ea hau ea thiori. E behoa nako ka boeona bakeng sa letsatsi leo u le khethang - ha ho eme molaoli ho e netefatsa. Ha u phasitse, tlhahlobo ea ketso e boetse e behoa nako ka boeona, nako e telele ea matsatsi a mararo kamora moo.",
-      "introOfficer": "Beha lipotso tsa tlhahlobo ea thiori le sebaka sa tlhahlobo ea ketso pele u ngola sephetho. Tlhahlobo ea thiori e phasitseng e beha nako ea tlhahlobo ea ketso ka boeona; tlhahlobo ea ketso e phasitseng e fana ka Laesense ea Seithuti ka boeona.",
+      "introOfficer": "Phatlalatsa sete e le 'ngoe ea lipotso tsa khetho e mengata bakeng sa tlhahlobo ea thiori ea letsatsi ka leng ofising ea hau — baahi ba tsebisoa 'me tlhahlobo ea bona e lekoa ka boeona. Tlhahlobo ea ketso e ntse e hloka hore sebaka se beoe le hore sephetho se ngoloe ka letsoho.",
       "autoScheduleHelp": "Tlhahlobo ea hau e netefatsoa bakeng sa letsatsi lena hang ha u e romella - ha ho tlhoka ho ema.",
       "bookTheory": "Beha nako ea tlhahlobo ea thiori",
       "theoryAlreadyBooked": "U se u na le tlhahlobo ea thiori e behiloeng nako. E tla bonahala tafoleng e ka tlase.",
       "autoScheduled": "Tlhahlobo ea hau ea thiori e netefatsitsoe bakeng sa {{date}}.",
-      "setQuestions": "Beha lipotso",
       "setLocation": "Beha sebaka",
       "recordResult": "Ngola sephetho",
-      "questionsHelp": "Kenya lipotso tsa tlhahlobo ena ea thiori. Moahi o tla lekanngoa ka tsena nakong eo sephetho se ngoloang.",
       "questionPlaceholder": "Potso {{n}}",
       "addQuestion": "Eketsa potso"
     },
@@ -1218,6 +1217,38 @@
         "failedModalTitle": "Laesense ea Seithuti ha e neheloe",
         "failedModalHelp": "Moahi o ne a sitoa ho hlahisa Laesense ea hae ea Seithuti. Sena se hana kopo - lebaka le lokelang le sebelisoa haeba u sa tlatse mona."
       }
+    },
+    "theorySessions": {
+      "title": "Likhoeli tsa Tlhahlobo ea Thiori",
+      "intro": "Sete e le 'ngoe ea lipotso tsa khetho e mengata ka letsatsi bakeng sa ofisi ea hau. E boloke e le pampiri ea pele, eaba u e Phatlalatsa ho tsebisa baahi bohle ba behileng nako bakeng sa letsatsi leo le ho bula tlhahlobo hore ba e nke.",
+      "newSession": "Khoeli e ncha",
+      "date": "Letsatsi",
+      "time": "Nako",
+      "questionsCount": "Lipotso",
+      "bookings": "Lipeeletso",
+      "status": "Boemo",
+      "publish": "Phatlalatsa",
+      "save": "Boloka pampiri ea pele",
+      "question": "Potso",
+      "optionPlaceholder": "Khetho {{n}}",
+      "addOption": "Eketsa khetho",
+      "correctAnswer": "Karabo e nepahetseng",
+      "noneYet": "Ha ho khoeli ea tlhahlobo ea thiori bakeng sa ofisi ea hau hajoale.",
+      "publishedNotice": "E phatlalalitsoe — baahi ba {{count}} ba tsebisitsoe 'me ba ka nka tlhahlobo hona joale.",
+      "bookingAwaitingSession": "E ntse e emetse molaoli ho phatlalatsa tlhahlobo",
+      "bookingOpen": "E buletsoe — moahi a ka e nka hona joale",
+      "bookingGraded": "E lekoe ka boeona",
+      "addQuestion": "Eketsa potso",
+      "editSession": "Fetola khoeli"
+    },
+    "theoryTest": {
+      "takeTest": "Nka tlhahlobo",
+      "awaitingPublish": "Ha e so phatlalatsoe",
+      "title": "Tlhahlobo ea Thiori",
+      "instructions": "Khetha karabo e le 'ngoe bakeng sa potso ka 'ngoe, eaba u romella. Sephetho sa hau se tla tsoa ka boeona.",
+      "submit": "Romella likarabo",
+      "resultPassed": "U phasitse ka lintlha tse {{score}}%.",
+      "resultFailed": "U fumane {{score}}% — boemo bo tlamehang ke {{passMark}}%."
     }
   },
   "finance": {
