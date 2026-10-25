@@ -278,7 +278,7 @@ export default function PassportDocument() {
               </button>
             )}
             {record.surrender_status === 'Awaiting Surrender' && (
-              <button type="button" disabled={busy} className="text-sm font-medium text-gov-red hover:underline" onClick={() => setModal('surrender-failed')}>
+              <button type="button" disabled={busy} className="btn-danger" onClick={() => setModal('surrender-failed')}>
                 {t('passport.surrender.failed')}
               </button>
             )}

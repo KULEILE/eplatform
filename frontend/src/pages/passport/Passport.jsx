@@ -483,14 +483,15 @@ export default function Passport() {
                   {next && (
                     <button
                       type="button"
-                      className="text-sm font-medium text-gov-navy hover:underline"
+                      className="btn-primary !whitespace-nowrap !px-3 !py-1.5 !text-xs"
+                      title={awaitingSurrender && next.action === 'confirm' ? t('passport.surrender.confirmBoth') : undefined}
                       onClick={() => (next.action === 'collect' ? setSignatureModal(r.passport_record_id) : transition(r.passport_record_id, next.action))}
                     >
-                      {awaitingSurrender && next.action === 'confirm' ? t('passport.surrender.confirmBoth') : t(next.labelKey)}
+                      {t(next.labelKey)}
                     </button>
                   )}
                   {awaitingSurrender && (
-                    <button type="button" className="text-sm font-medium text-gov-red hover:underline" onClick={() => setModal({ id: r.passport_record_id, kind: 'surrender-failed' })}>
+                    <button type="button" className="btn-danger !px-3 !py-1.5 !text-xs" onClick={() => setModal({ id: r.passport_record_id, kind: 'surrender-failed' })}>
                       {t('passport.surrender.failed')}
                     </button>
                   )}
