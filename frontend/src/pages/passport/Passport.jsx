@@ -480,22 +480,18 @@ export default function Passport() {
               return (
                 <div className="flex flex-wrap gap-2">
                   <Link to={`/passport/${r.passport_record_id}`} className="text-sm font-medium text-gov-navy hover:underline">{t('common.view')}</Link>
-                  {awaitingSurrender ? (
-                    <>
-                      <button type="button" className="text-sm font-medium text-gov-green hover:underline" onClick={() => transition(r.passport_record_id, 'surrender')}>
-                        {t('passport.surrender.verify')}
-                      </button>
-                      <button type="button" className="text-sm font-medium text-gov-red hover:underline" onClick={() => setModal({ id: r.passport_record_id, kind: 'surrender-failed' })}>
-                        {t('passport.surrender.failed')}
-                      </button>
-                    </>
-                  ) : next && (
+                  {next && (
                     <button
                       type="button"
                       className="text-sm font-medium text-gov-navy hover:underline"
                       onClick={() => (next.action === 'collect' ? setSignatureModal(r.passport_record_id) : transition(r.passport_record_id, next.action))}
                     >
-                      {t(next.labelKey)}
+                      {awaitingSurrender && next.action === 'confirm' ? t('passport.surrender.confirmBoth') : t(next.labelKey)}
+                    </button>
+                  )}
+                  {awaitingSurrender && (
+                    <button type="button" className="text-sm font-medium text-gov-red hover:underline" onClick={() => setModal({ id: r.passport_record_id, kind: 'surrender-failed' })}>
+                      {t('passport.surrender.failed')}
                     </button>
                   )}
                   {!['Rejected', 'Collected'].includes(r.status) && (

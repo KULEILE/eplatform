@@ -913,10 +913,11 @@
     },
     "surrender": {
       "verify": "Mark passport surrendered",
+      "confirmBoth": "Confirm — original submitted & payment legitimate",
       "failed": "Cannot surrender",
       "failedModalTitle": "Passport not surrendered",
       "failedModalHelp": "This rejects the application. If the citizen's passport is genuinely lost or stolen, tell them to apply through Passport Replacement instead.",
-      "awaitingNotice": "This application cannot proceed until the citizen brings their original passport to the office for an officer to verify in person.",
+      "awaitingNotice": "Bring your original passport to the office. Once an officer has checked it and your payment together, your new passport will be produced right away.",
       "verifiedNotice": "The original passport has been received and verified."
     },
     "photoChoice": {

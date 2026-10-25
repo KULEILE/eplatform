@@ -267,23 +267,19 @@ export default function PassportDocument() {
         {canAct && (
           <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
             {actionError && <p className="w-full rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {actionError}</p>}
-            {record.surrender_status === 'Awaiting Surrender' ? (
-              <>
-                <button type="button" disabled={busy} className="btn-primary" onClick={() => runAction('surrender')}>
-                  {t('passport.surrender.verify')}
-                </button>
-                <button type="button" disabled={busy} className="text-sm font-medium text-gov-red hover:underline" onClick={() => setModal('surrender-failed')}>
-                  {t('passport.surrender.failed')}
-                </button>
-              </>
-            ) : next && (
+            {next && (
               <button
                 type="button"
                 disabled={busy}
                 className="btn-primary"
                 onClick={() => (next.action === 'collect' ? setSignatureModalOpen(true) : runAction(next.action))}
               >
-                {t(next.labelKey)}
+                {record.surrender_status === 'Awaiting Surrender' && next.action === 'confirm' ? t('passport.surrender.confirmBoth') : t(next.labelKey)}
+              </button>
+            )}
+            {record.surrender_status === 'Awaiting Surrender' && (
+              <button type="button" disabled={busy} className="text-sm font-medium text-gov-red hover:underline" onClick={() => setModal('surrender-failed')}>
+                {t('passport.surrender.failed')}
               </button>
             )}
             <button type="button" disabled={busy} className="text-sm font-medium text-slate-500 hover:underline" onClick={() => setModal('request-information')}>{t('common.requestInformation')}</button>

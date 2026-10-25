@@ -913,10 +913,11 @@
     },
     "surrender": {
       "verify": "Tshwaya pasepoto e neelanwe",
+      "confirmBoth": "Netefatsa — ya nnete e romelwe hape tefo e lokile",
       "failed": "E ke keng e neelanwe",
       "failedModalTitle": "Pasepoto ha e neelanwe",
       "failedModalHelp": "Sena se hana kopo. Haeba pasepoto ya moahi e lahlehile kapa e utswitswe ka nnete, mo bolelle hore a kope ka Phetiso ya Pasepoto bakeng sa hoo.",
-      "awaitingNotice": "Kopo ena e ke ke e tswela pele ho fihlela moahi a tlisa pasepoto ya hae ya nnete ofising e le hore ofisiri a e netefatse ka boyena.",
+      "awaitingNotice": "Tlisa pasepoto ya hau ya nnete ofising. Hang ha ofisiri a e hlahlobile hammoho le tefo ya hau, pasepoto ya hau e ntjha e tla hlahiswa hanghang.",
       "verifiedNotice": "Pasepoto ya nnete e fumanwe le ho netefatswa."
     },
     "photoChoice": {

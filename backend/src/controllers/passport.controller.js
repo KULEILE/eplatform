@@ -555,15 +555,6 @@ async function transition(req, res, next) {
       const record = rows[0];
       if (!fromStatuses.includes(record.status)) { await client.query('ROLLBACK'); return res.status(409).json({ error: `Cannot move from '${record.status}' to '${t.to}'.` }); }
 
-      // Batch 14: a Pages Full renewal can't be confirmed until the citizen has physically
-      // brought in the original passport and an officer has verified it in hand — see
-      // verifySurrender()/failSurrender() below. Checked before the FIFO queue below so the error
-      // is specific ("surrender it first") rather than a generic queue-order message.
-      if (req.params.action === 'confirm' && record.surrender_status === 'Awaiting Surrender') {
-        await client.query('ROLLBACK');
-        return res.status(409).json({ error: 'The citizen must bring in their original passport for verification before this application can be confirmed. Use "Mark passport surrendered" once you have checked it.' });
-      }
-
       // Anti-corruption / anti-favouritism: "payment confirmation must force the officer to start
       // with the first application". Confirming must happen in the order applications were
       // submitted, so an officer cannot skip past an earlier, legitimate application to approve a
@@ -572,16 +563,10 @@ async function transition(req, res, next) {
       // deliberately NOT constrained this way, because either of those only removes a problem
       // application from the front of the queue (naturally letting the next-oldest become next),
       // and can't be used to unfairly jump anyone ahead the way approving one out of order could.
-      //
-      // Applications still 'Awaiting Surrender' are excluded from this "oldest pending" check —
-      // nobody can confirm one of those yet regardless of order (it's not a choice the officer is
-      // making, it's waiting on the citizen to physically show up), so it would be unfair to make
-      // every other applicant's turn wait behind one that simply hasn't come in yet.
       if (req.params.action === 'confirm') {
         const { rows: queue } = await client.query(
           `SELECT passport_record_id, application_reference FROM passport_records
-           WHERE status = ANY($1::varchar[]) AND surrender_status IS DISTINCT FROM 'Awaiting Surrender'
-           ORDER BY created_at ASC, passport_record_id ASC LIMIT 1`,
+           WHERE status = ANY($1::varchar[]) ORDER BY created_at ASC, passport_record_id ASC LIMIT 1`,
           [PRE_PRODUCTION_STATUSES]
         );
         if (queue.length > 0 && queue[0].passport_record_id !== record.passport_record_id) {
@@ -592,6 +577,15 @@ async function transition(req, res, next) {
           });
         }
       }
+
+      // Batch 15: a single 'confirm' now covers everything in one officer action, including for a
+      // Pages Full renewal — the officer has the citizen in front of them with the original
+      // passport in hand and the payment reference/proof on screen, checks both at once, and
+      // confirming resolves the surrender AND produces the passport together. (Previously this
+      // was two separate steps — verify the surrender, then separately confirm — see
+      // verifySurrender() below, which still exists and still works if an officer ever wants to
+      // record the surrender as its own step, but is no longer the only way through.)
+      const resolvesSurrender = req.params.action === 'confirm' && record.surrender_status === 'Awaiting Surrender';
 
       const passportNumber = t.to === 'Passport Produced' ? 'P' + String(Math.floor(1000000 + Math.random() * 9000000)) : record.passport_number;
       const officeId = req.body.officeId || record.collection_office_id;
@@ -607,14 +601,24 @@ async function transition(req, res, next) {
             ready_for_collection_at = CASE WHEN $1::varchar = 'Ready for Collection' THEN NOW() ELSE ready_for_collection_at END,
             collected_at = CASE WHEN $1::varchar = 'Collected' THEN NOW() ELSE collected_at END,
             signature_reference = CASE WHEN $1::varchar = 'Collected' THEN $5 ELSE signature_reference END,
+            surrender_status = CASE WHEN $6 THEN 'Surrendered' ELSE surrender_status END,
+            surrender_verified_by_user_id = CASE WHEN $6 THEN $7 ELSE surrender_verified_by_user_id END,
+            surrender_verified_at = CASE WHEN $6 THEN NOW() ELSE surrender_verified_at END,
             updated_at = NOW()
          WHERE passport_record_id = $4`,
-        [t.to, passportNumber, officeId, record.passport_record_id, req.body.signatureReference || null]
+        [t.to, passportNumber, officeId, record.passport_record_id, req.body.signatureReference || null, resolvesSurrender, req.user.userId]
       );
       await syncApplicationStatus(client, { sourceTable: 'passport_records', sourceId: record.passport_record_id, status: t.to, completed: t.to === 'Collected' });
       await client.query('COMMIT');
 
       if (req.params.action === 'confirm') {
+        if (resolvesSurrender) {
+          await recordAudit({
+            userId: req.user.userId, departmentId: await getDepartmentId('passport'), action: 'PASSPORT_SURRENDER_VERIFIED',
+            targetType: 'passport_record', targetId: record.passport_record_id,
+            reason: 'Officer verified the citizen\'s original passport in hand as part of the single confirm action.',
+          });
+        }
         await recordAudit({
           userId: req.user.userId, departmentId: await getDepartmentId('passport'), action: 'PASSPORT_PROOF_CONFIRMED',
           targetType: 'passport_record', targetId: record.passport_record_id,
