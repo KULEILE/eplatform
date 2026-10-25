@@ -891,7 +891,10 @@
     "renewal": {
       "notYetExpiredNotice": "Pasepoto ena ha e eso fele nako — e tla fela ka {{expiryDate}}. Nchafatso e fumaneha feela ha e se e felile nako, ntle le haeba maqephe a yona a tletse.",
       "pagesFullDeclaration": "Maqephe a pasepoto ena a tletse mme e hloka ho nchafatswa le hoja e eso fele nako.",
+      "surrenderNotice": "O tla hloka ho tlisa pasepoto ya hau ya nnete ofising e le hore ofisiri a e netefatse ka boyena pele kopo ena e ka phethwa. E ke ke e dumellwa ntle le sena.",
       "field": {
+        "confirmPassportNumber": "Netefatsa nomoro ya pasepoto ya hau ya jwale",
+        "confirmPassportNumberHelp": "Kenya nomoro ya pasepoto e hatisitsweng ka hare ho pasepoto ya hau ya jwale.",
         "pageCount": "Pasepoto ya hau e na le maqephe a makae?",
         "lastPageProof": "Setshwantsho sa leqephe la ho qetela",
         "lastPageProofHelp": "Nka setshwantsho se hlakileng hona jwale sa leqephe la ho qetela la pasepoto ya hau, se bontshang hore e sebelisitswe ka botlalo."
@@ -907,6 +910,14 @@
       },
       "waitNotice": "Ho ema ba dikgwedi tse {{months}} ho sebetsa pele pasepoto e lahlehileng/e utswitsweng e ka fetoswa. O tla kgona ho kopa ho tloha ka {{date}}.",
       "waitPassedNotice": "Nako ya ho ema ya dikgwedi tse {{months}} e fetile — o ka romela phetiso ena."
+    },
+    "surrender": {
+      "verify": "Tshwaya pasepoto e neelanwe",
+      "failed": "E ke keng e neelanwe",
+      "failedModalTitle": "Pasepoto ha e neelanwe",
+      "failedModalHelp": "Sena se hana kopo. Haeba pasepoto ya moahi e lahlehile kapa e utswitswe ka nnete, mo bolelle hore a kope ka Phetiso ya Pasepoto bakeng sa hoo.",
+      "awaitingNotice": "Kopo ena e ke ke e tswela pele ho fihlela moahi a tlisa pasepoto ya hae ya nnete ofising e le hore ofisiri a e netefatse ka boyena.",
+      "verifiedNotice": "Pasepoto ya nnete e fumanwe le ho netefatswa."
     },
     "photoChoice": {
       "label": "Setshwantsho",

@@ -216,6 +216,16 @@ export default function PassportDocument() {
           <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red">⚠ {record.rejection_reason}</p>
         )}
 
+        {/* Batch 14: a Pages Full renewal can't be produced until the citizen brings the original
+            passport in and an officer checks it — visible to the citizen too, so they know to
+            bring it, not just to the officer deciding whether it's been done. */}
+        {record.surrender_status === 'Awaiting Surrender' && (
+          <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-gov-amber">⚠ {t('passport.surrender.awaitingNotice')}</p>
+        )}
+        {record.surrender_status === 'Surrendered' && (
+          <p className="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-gov-green">✓ {t('passport.surrender.verifiedNotice')}</p>
+        )}
+
         {/* Full-size photo + receipt review — this is the part that lets an officer actually
             catch a bad image instead of guessing from the thumbnail on the list page. */}
         {isOfficer && (
@@ -239,13 +249,34 @@ export default function PassportDocument() {
                 </a>
               ) : <p className="text-sm text-slate-400">—</p>}
             </div>
+            {record.pages_full_proof_reference && (
+              <div className="sm:col-span-2">
+                <p className="mb-1 text-xs font-semibold uppercase text-slate-500">{t('passport.renewal.field.lastPageProof')}</p>
+                <a href={`/uploads/${record.pages_full_proof_reference}`} target="_blank" rel="noreferrer">
+                  <img src={`/uploads/${record.pages_full_proof_reference}`} alt={t('passport.renewal.field.lastPageProof')} className="h-48 w-full rounded border border-slate-200 object-contain bg-slate-50" />
+                  <span className="mt-1 block text-xs text-gov-navy underline">{t('passport.document.openFullSize')}</span>
+                </a>
+                <p className="mt-1 text-xs text-slate-500">
+                  {t('passport.renewal.field.pageCount')}: {record.pages_full_page_count} · {t('passport.renewal.field.confirmPassportNumber')}: <span className="font-mono">{record.entered_passport_number || '—'}</span>
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         {canAct && (
           <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
             {actionError && <p className="w-full rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {actionError}</p>}
-            {next && (
+            {record.surrender_status === 'Awaiting Surrender' ? (
+              <>
+                <button type="button" disabled={busy} className="btn-primary" onClick={() => runAction('surrender')}>
+                  {t('passport.surrender.verify')}
+                </button>
+                <button type="button" disabled={busy} className="text-sm font-medium text-gov-red hover:underline" onClick={() => setModal('surrender-failed')}>
+                  {t('passport.surrender.failed')}
+                </button>
+              </>
+            ) : next && (
               <button
                 type="button"
                 disabled={busy}
@@ -264,15 +295,23 @@ export default function PassportDocument() {
       <Modal
         open={!!modal}
         onClose={() => { setModal(null); setReason(''); }}
-        title={modal === 'reject' ? t('common.reject') : t('common.requestInformation')}
+        title={modal === 'reject' ? t('common.reject') : modal === 'surrender-failed' ? t('passport.surrender.failedModalTitle') : t('common.requestInformation')}
         footer={
           <>
             <button type="button" className="btn-secondary" onClick={() => { setModal(null); setReason(''); }}>{t('common.cancel')}</button>
-            <button type="button" disabled={busy || !reason.trim()} className={modal === 'reject' ? 'btn-danger' : 'btn-primary'} onClick={submitModal}>{t('common.confirm')}</button>
+            <button
+              type="button"
+              disabled={busy || (modal !== 'surrender-failed' && !reason.trim())}
+              className={modal === 'reject' || modal === 'surrender-failed' ? 'btn-danger' : 'btn-primary'}
+              onClick={submitModal}
+            >
+              {t('common.confirm')}
+            </button>
           </>
         }
       >
-        <label htmlFor="passportDocReason" className="form-label">{t('common.reason')}</label>
+        {modal === 'surrender-failed' && <p className="mb-3 text-sm text-slate-600">{t('passport.surrender.failedModalHelp')}</p>}
+        <label htmlFor="passportDocReason" className="form-label">{t('common.reason')}{modal === 'surrender-failed' && ` (${t('common.optional')})`}</label>
         <textarea id="passportDocReason" className="form-input" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
       </Modal>
 

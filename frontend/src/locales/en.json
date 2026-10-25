@@ -891,7 +891,10 @@
     "renewal": {
       "notYetExpiredNotice": "This passport is not yet expired — it expires on {{expiryDate}}. Renewal is only available once it has expired, unless its pages are full.",
       "pagesFullDeclaration": "This passport's pages are full and it needs to be renewed even though it hasn't expired yet.",
+      "surrenderNotice": "You will need to bring your original passport to the office so an officer can verify it in person before this application can be completed. It will not be approved without this.",
       "field": {
+        "confirmPassportNumber": "Confirm your current passport number",
+        "confirmPassportNumberHelp": "Type the passport number printed inside your current passport.",
         "pageCount": "How many pages does your passport have?",
         "lastPageProof": "Photo of the last page",
         "lastPageProofHelp": "Take a clear photo right now of the last page of your passport, showing it is fully used."
@@ -907,6 +910,14 @@
       },
       "waitNotice": "A {{months}}-month wait applies before a lost/stolen passport can be replaced. You will be able to apply from {{date}}.",
       "waitPassedNotice": "The {{months}}-month wait has passed — you can submit this replacement."
+    },
+    "surrender": {
+      "verify": "Mark passport surrendered",
+      "failed": "Cannot surrender",
+      "failedModalTitle": "Passport not surrendered",
+      "failedModalHelp": "This rejects the application. If the citizen's passport is genuinely lost or stolen, tell them to apply through Passport Replacement instead.",
+      "awaitingNotice": "This application cannot proceed until the citizen brings their original passport to the office for an officer to verify in person.",
+      "verifiedNotice": "The original passport has been received and verified."
     },
     "photoChoice": {
       "label": "Photo",

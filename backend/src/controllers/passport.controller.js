@@ -276,7 +276,7 @@ async function applyRenewal(req, res, next) {
 
     const {
       passportType, preferredOfficeId, photoSource, photoReference, paymentReference, receiptImageReference,
-      renewalReason, pagesFullPageCount, pagesFullProofReference,
+      renewalReason, pagesFullPageCount, pagesFullProofReference, enteredPassportNumber,
     } = req.body;
     if (!preferredOfficeId) {
       return res.status(400).json({ error: 'preferredOfficeId is required — choose the branch where you will collect the passport.' });
@@ -314,6 +314,17 @@ async function applyRenewal(req, res, next) {
       if (!pagesFullProofReference) {
         return res.status(400).json({ error: 'A photo of the last page is required to prove your passport\'s pages are full.' });
       }
+      // Batch 14: the citizen must also type in the number printed on their current passport — a
+      // lightweight corroboration check before the application is even accepted. The real check
+      // (whether the physical booklet still exists at all) happens later, in person: see
+      // verifySurrender()/failSurrender() below and the 'surrender_status' column.
+      if (!enteredPassportNumber || !String(enteredPassportNumber).trim()) {
+        return res.status(400).json({ error: 'Enter the passport number printed on your current passport to continue.' });
+      }
+      const normalize = (s) => String(s).toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (!previous.passport_number || normalize(enteredPassportNumber) !== normalize(previous.passport_number)) {
+        return res.status(400).json({ error: 'The passport number you entered doesn\'t match our records for your current passport. Please check the number printed on your passport and try again.' });
+      }
     }
 
     const photoResolution = await resolvePhotoReference(subjectCitizenId, photoSource, photoReference);
@@ -331,11 +342,15 @@ async function applyRenewal(req, res, next) {
         `INSERT INTO passport_records
             (citizen_id, applicant_citizen_id, application_reference, passport_type, status, preferred_office_id, collection_office_id,
              photo_reference, payment_reference, receipt_image_reference, application_type, previous_passport_number, renewal_reason,
-             pages_full_page_count, pages_full_proof_reference)
-         VALUES ($1,$2,$3,$4,'Submitted',$5,$5,$6,$7,$8,'Renewal',$9,$10,$11,$12) RETURNING passport_record_id`,
+             pages_full_page_count, pages_full_proof_reference, entered_passport_number, surrender_status)
+         VALUES ($1,$2,$3,$4,'Submitted',$5,$5,$6,$7,$8,'Renewal',$9,$10,$11,$12,$13,$14) RETURNING passport_record_id`,
         [subjectCitizenId, req.user.citizenId, referenceNumber, passportType || previous.passport_type, preferredOfficeId,
           resolvedPhotoReference, paymentReference, receiptImageReference, previous.passport_number || null, isExpired ? 'Expired' : 'Pages Full',
-          isExpired ? null : Number(pagesFullPageCount), isExpired ? null : pagesFullProofReference]
+          isExpired ? null : Number(pagesFullPageCount), isExpired ? null : pagesFullProofReference,
+          // Batch 14: only a Pages Full renewal carries an entered number to corroborate and a
+          // surrender gate to clear — an Expired renewal has nothing to physically surrender for
+          // (the expired booklet itself isn't in question the way "is it really full" is).
+          isExpired ? null : enteredPassportNumber, isExpired ? null : 'Awaiting Surrender']
       );
       await indexApplication(client, {
         citizenId: req.user.citizenId, departmentKey: 'passport', serviceType: 'Passport Renewal',
@@ -540,6 +555,15 @@ async function transition(req, res, next) {
       const record = rows[0];
       if (!fromStatuses.includes(record.status)) { await client.query('ROLLBACK'); return res.status(409).json({ error: `Cannot move from '${record.status}' to '${t.to}'.` }); }
 
+      // Batch 14: a Pages Full renewal can't be confirmed until the citizen has physically
+      // brought in the original passport and an officer has verified it in hand — see
+      // verifySurrender()/failSurrender() below. Checked before the FIFO queue below so the error
+      // is specific ("surrender it first") rather than a generic queue-order message.
+      if (req.params.action === 'confirm' && record.surrender_status === 'Awaiting Surrender') {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'The citizen must bring in their original passport for verification before this application can be confirmed. Use "Mark passport surrendered" once you have checked it.' });
+      }
+
       // Anti-corruption / anti-favouritism: "payment confirmation must force the officer to start
       // with the first application". Confirming must happen in the order applications were
       // submitted, so an officer cannot skip past an earlier, legitimate application to approve a
@@ -548,10 +572,16 @@ async function transition(req, res, next) {
       // deliberately NOT constrained this way, because either of those only removes a problem
       // application from the front of the queue (naturally letting the next-oldest become next),
       // and can't be used to unfairly jump anyone ahead the way approving one out of order could.
+      //
+      // Applications still 'Awaiting Surrender' are excluded from this "oldest pending" check —
+      // nobody can confirm one of those yet regardless of order (it's not a choice the officer is
+      // making, it's waiting on the citizen to physically show up), so it would be unfair to make
+      // every other applicant's turn wait behind one that simply hasn't come in yet.
       if (req.params.action === 'confirm') {
         const { rows: queue } = await client.query(
           `SELECT passport_record_id, application_reference FROM passport_records
-           WHERE status = ANY($1::varchar[]) ORDER BY created_at ASC, passport_record_id ASC LIMIT 1`,
+           WHERE status = ANY($1::varchar[]) AND surrender_status IS DISTINCT FROM 'Awaiting Surrender'
+           ORDER BY created_at ASC, passport_record_id ASC LIMIT 1`,
           [PRE_PRODUCTION_STATUSES]
         );
         if (queue.length > 0 && queue[0].passport_record_id !== record.passport_record_id) {
@@ -615,6 +645,69 @@ async function transition(req, res, next) {
   }
 }
 
+/** POST /api/passport/:id/surrender (officer only) — Batch 14: the officer has the citizen's
+ *  original passport in hand, checked it, and confirms it is genuinely the one on file. Clears
+ *  the way for 'confirm' to proceed. Deliberately not subject to the FIFO/anti-favouritism check
+ *  above — which citizen happens to be standing at the counter right now isn't something an
+ *  officer chooses the way picking which application to approve is. */
+async function verifySurrender(req, res, next) {
+  try {
+    if (!['passport_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
+    const { rows } = await db.query(
+      `UPDATE passport_records SET surrender_status = 'Surrendered', surrender_verified_by_user_id = $1, surrender_verified_at = NOW(), updated_at = NOW()
+       WHERE passport_record_id = $2 AND surrender_status = 'Awaiting Surrender' RETURNING *`,
+      [req.user.userId, req.params.id]
+    );
+    if (rows.length === 0) return res.status(409).json({ error: 'This application is not awaiting passport surrender.' });
+    const record = rows[0];
+    await recordAudit({
+      userId: req.user.userId, departmentId: await getDepartmentId('passport'), action: 'PASSPORT_SURRENDER_VERIFIED',
+      targetType: 'passport_record', targetId: record.passport_record_id,
+      reason: 'Officer verified the citizen\'s original passport in hand.',
+    });
+    const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.applicant_citizen_id || record.citizen_id])).rows[0];
+    if (userRow) {
+      await createNotification({
+        userId: userRow.user_id, title: 'Original passport received',
+        message: `Your original passport has been received and verified for application ${record.application_reference}. It is now being processed.`,
+        type: 'Status Change',
+      });
+    }
+    res.json({ passportRecord: record });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/** POST /api/passport/:id/surrender-failed body:{reason?} (officer only) — Batch 14: the citizen
+ *  could not produce their original passport when asked, so the Pages Full claim can't be
+ *  verified. Rejects the application outright — if the passport is genuinely lost or stolen, the
+ *  citizen needs to apply through Replacement instead, which is built for exactly that. */
+async function failSurrender(req, res, next) {
+  try {
+    if (!['passport_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
+    const reason = (req.body.reason && String(req.body.reason).trim())
+      || 'The original passport was not presented for verification, so this Pages Full renewal cannot proceed. If your passport is lost or stolen, please apply through Passport Replacement instead.';
+    const { rows } = await db.query(
+      `UPDATE passport_records SET status = 'Rejected', surrender_status = 'Not Surrendered', rejection_reason = $1, updated_at = NOW()
+       WHERE passport_record_id = $2 AND surrender_status = 'Awaiting Surrender' RETURNING *`,
+      [reason, req.params.id]
+    );
+    if (rows.length === 0) return res.status(409).json({ error: 'This application is not awaiting passport surrender.' });
+    const record = rows[0];
+    await syncApplicationStatus(db, { sourceTable: 'passport_records', sourceId: record.passport_record_id, status: 'Rejected', completed: true });
+    await recordAudit({
+      userId: req.user.userId, departmentId: await getDepartmentId('passport'), action: 'PASSPORT_SURRENDER_FAILED',
+      targetType: 'passport_record', targetId: record.passport_record_id, reason,
+    });
+    const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.applicant_citizen_id || record.citizen_id])).rows[0];
+    if (userRow) await createNotification({ userId: userRow.user_id, title: 'Passport renewal rejected', message: reason, type: 'Rejection' });
+    res.json({ passportRecord: record });
+  } catch (err) {
+    next(err);
+  }
+}
+
 /** POST /api/passport/:id/resubmit (citizen, owner only) — Feature 4: lets the citizen correct
  *  and resubmit after Additional Information Required or Rejected, instead of starting a new
  *  application. Built from scratch — passport had no resubmit concept before this. */
@@ -642,8 +735,15 @@ async function resubmit(req, res, next) {
         return res.status(409).json({ error: `Cannot resubmit from '${record.status}'.` });
       }
       await client.query(
+        // Batch 14: a Pages Full renewal that was rejected for failing to surrender the original
+        // passport (surrender_status = 'Not Surrendered') goes back to 'Awaiting Surrender' on
+        // resubmission, giving the officer a fresh chance to verify it next time the citizen comes
+        // in — it never resubmits straight past that check. Every other application's
+        // surrender_status is NULL and stays NULL (the CASE is a no-op for them).
         `UPDATE passport_records SET status = 'Under Review', rejection_reason = NULL,
-            passport_type = $1, preferred_office_id = $2, photo_reference = $3, payment_reference = $4, receipt_image_reference = $5, updated_at = NOW()
+            passport_type = $1, preferred_office_id = $2, photo_reference = $3, payment_reference = $4, receipt_image_reference = $5, updated_at = NOW(),
+            surrender_status = CASE WHEN surrender_status IS NOT NULL THEN 'Awaiting Surrender' ELSE surrender_status END,
+            surrender_verified_by_user_id = NULL, surrender_verified_at = NULL
          WHERE passport_record_id = $6`,
         [passportType || record.passport_type, preferredOfficeId, photoReference || record.photo_reference, paymentReference, receiptImageReference, record.passport_record_id]
       );
@@ -707,4 +807,4 @@ async function reject(req, res, next) {
   }
 }
 
-module.exports = { getEligibility, apply, applyRenewal, applyReplacement, list, getOne, transition, requestInformation, reject, resubmit };
+module.exports = { getEligibility, apply, applyRenewal, applyReplacement, list, getOne, transition, requestInformation, reject, resubmit, verifySurrender, failSurrender };

@@ -63,6 +63,7 @@ export default function Passport() {
   const [pagesFullAcknowledged, setPagesFullAcknowledged] = useState(false);
   const [pagesFullPageCount, setPagesFullPageCount] = useState('');
   const [pagesFullProofReference, setPagesFullProofReference] = useState('');
+  const [enteredPassportNumber, setEnteredPassportNumber] = useState('');
   const [replacementReason, setReplacementReason] = useState('');
   const [replacementDetails, setReplacementDetails] = useState('');
   const [replacementProofReference, setReplacementProofReference] = useState('');
@@ -103,6 +104,7 @@ export default function Passport() {
     setPagesFullAcknowledged(false);
     setPagesFullPageCount('');
     setPagesFullProofReference('');
+    setEnteredPassportNumber('');
     setReplacementReason('');
     setReplacementDetails('');
     setReplacementProofReference('');
@@ -130,6 +132,7 @@ export default function Passport() {
     setPagesFullAcknowledged(false);
     setPagesFullPageCount('');
     setPagesFullProofReference('');
+    setEnteredPassportNumber('');
   }, [subjectChoice, eligibility]);
 
   const waitEligibleFrom = reportedLostAt && applicationType === 'Replacement'
@@ -142,7 +145,7 @@ export default function Passport() {
     !preferredOfficeId ||
     !receipt.paymentReference.trim() || !receipt.receiptImageReference ||
     (idPhotoAvailable ? !photoSource || (photoSource === 'new' && !photoReference) : !photoReference) ||
-    (currentPassportNotExpired && (!pagesFullAcknowledged || !pagesFullPageCount || Number(pagesFullPageCount) <= 0 || !pagesFullProofReference)) ||
+    (currentPassportNotExpired && (!pagesFullAcknowledged || !pagesFullPageCount || Number(pagesFullPageCount) <= 0 || !pagesFullProofReference || !enteredPassportNumber.trim())) ||
     (applicationType === 'Replacement' && (!replacementReason || !reportedLostAt || !replacementProofReference || stillWaiting));
 
   async function onSubmit(e) {
@@ -179,6 +182,7 @@ export default function Passport() {
           renewalReason: subject.currentPassport.isExpired ? undefined : 'Pages Full',
           pagesFullPageCount: subject.currentPassport.isExpired ? undefined : Number(pagesFullPageCount),
           pagesFullProofReference: subject.currentPassport.isExpired ? undefined : pagesFullProofReference,
+          enteredPassportNumber: subject.currentPassport.isExpired ? undefined : enteredPassportNumber.trim(),
         });
       } else {
         await api.post('/passport/replace', {
@@ -315,6 +319,12 @@ export default function Passport() {
                       </label>
                       {pagesFullAcknowledged && (
                         <div className="mt-3 rounded-md bg-white p-3">
+                          <FormFieldLike label={t('passport.renewal.field.confirmPassportNumber')} help={t('passport.renewal.field.confirmPassportNumberHelp')} required>
+                            <input
+                              type="text" className="form-input max-w-[14rem] font-mono uppercase"
+                              value={enteredPassportNumber} onChange={(e) => setEnteredPassportNumber(e.target.value)}
+                            />
+                          </FormFieldLike>
                           <FormFieldLike label={t('passport.renewal.field.pageCount')} required>
                             <input
                               type="number" min="1" className="form-input max-w-[10rem]"
@@ -329,6 +339,9 @@ export default function Passport() {
                             required
                             requireLiveCapture
                           />
+                          <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-gov-amber">
+                            ⚠ {t('passport.renewal.surrenderNotice')}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -463,10 +476,20 @@ export default function Passport() {
             key: 'actions', header: t('common.actions'),
             render: (r) => {
               const next = NEXT[r.status];
+              const awaitingSurrender = r.surrender_status === 'Awaiting Surrender';
               return (
                 <div className="flex flex-wrap gap-2">
                   <Link to={`/passport/${r.passport_record_id}`} className="text-sm font-medium text-gov-navy hover:underline">{t('common.view')}</Link>
-                  {next && (
+                  {awaitingSurrender ? (
+                    <>
+                      <button type="button" className="text-sm font-medium text-gov-green hover:underline" onClick={() => transition(r.passport_record_id, 'surrender')}>
+                        {t('passport.surrender.verify')}
+                      </button>
+                      <button type="button" className="text-sm font-medium text-gov-red hover:underline" onClick={() => setModal({ id: r.passport_record_id, kind: 'surrender-failed' })}>
+                        {t('passport.surrender.failed')}
+                      </button>
+                    </>
+                  ) : next && (
                     <button
                       type="button"
                       className="text-sm font-medium text-gov-navy hover:underline"
@@ -507,15 +530,23 @@ export default function Passport() {
       <Modal
         open={!!modal}
         onClose={() => setModal(null)}
-        title={modal?.kind === 'reject' ? t('common.reject') : t('common.requestInformation')}
+        title={modal?.kind === 'reject' ? t('common.reject') : modal?.kind === 'surrender-failed' ? t('passport.surrender.failedModalTitle') : t('common.requestInformation')}
         footer={
           <>
             <button type="button" className="btn-secondary" onClick={() => setModal(null)}>{t('common.cancel')}</button>
-            <button type="button" className={modal?.kind === 'reject' ? 'btn-danger' : 'btn-primary'} disabled={!reason.trim()} onClick={submitModal}>{t('common.confirm')}</button>
+            <button
+              type="button"
+              className={modal?.kind === 'reject' || modal?.kind === 'surrender-failed' ? 'btn-danger' : 'btn-primary'}
+              disabled={modal?.kind !== 'surrender-failed' && !reason.trim()}
+              onClick={submitModal}
+            >
+              {t('common.confirm')}
+            </button>
           </>
         }
       >
-        <label htmlFor="passportReason" className="form-label">{t('common.reason')}</label>
+        {modal?.kind === 'surrender-failed' && <p className="mb-3 text-sm text-slate-600">{t('passport.surrender.failedModalHelp')}</p>}
+        <label htmlFor="passportReason" className="form-label">{t('common.reason')}{modal?.kind === 'surrender-failed' && ` (${t('common.optional')})`}</label>
         <textarea id="passportReason" className="form-input" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
       </Modal>
 
