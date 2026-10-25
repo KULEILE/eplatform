@@ -14,13 +14,18 @@ import ReceiptCapture from '../../components/ReceiptCapture';
 import SignaturePad from '../../components/SignaturePad';
 import { formatDateOnly } from '../../utils/format';
 
+// Batch 13: every pre-production status now collapses onto the single 'confirm' action — the
+// officer reviews the payment reference and proof shown alongside the application (see
+// PassportDocument.jsx), and confirming jumps straight to 'Passport Produced'. The backend
+// enforces a first-submitted-first-confirmed order on this action to prevent favouritism; a
+// blocked attempt comes back as a normal API error, caught below and shown in the error banner.
 const NEXT = {
-  'Submitted': { action: 'start-review', labelKey: 'status.Under Review' },
-  'Under Review': { action: 'verify-identity', labelKey: 'status.Identity Verified' },
-  'Identity Verified': { action: 'check-documents', labelKey: 'status.Documents Checked' },
-  'Documents Checked': { action: 'process', labelKey: 'status.Processing' },
-  'Processing': { action: 'approve', labelKey: 'common.approve' },
-  'Approved': { action: 'produce', labelKey: 'status.Passport Produced' },
+  'Submitted': { action: 'confirm', labelKey: 'passport.confirmProof' },
+  'Under Review': { action: 'confirm', labelKey: 'passport.confirmProof' },
+  'Identity Verified': { action: 'confirm', labelKey: 'passport.confirmProof' },
+  'Documents Checked': { action: 'confirm', labelKey: 'passport.confirmProof' },
+  'Processing': { action: 'confirm', labelKey: 'passport.confirmProof' },
+  'Approved': { action: 'confirm', labelKey: 'passport.confirmProof' },
   'Passport Produced': { action: 'ready-for-collection', labelKey: 'common.readyForCollection' },
   'Ready for Collection': { action: 'collect', labelKey: 'common.collect' },
 };
@@ -190,8 +195,15 @@ export default function Passport() {
   }
 
   async function transition(id, action) {
-    await api.post(`/passport/${id}/${action}`, {});
-    load();
+    try {
+      await api.post(`/passport/${id}/${action}`, {});
+      setError('');
+      load();
+    } catch (err) {
+      // Batch 13: the 'confirm' action can legitimately be blocked (first-submitted-first-
+      // confirmed order) — surface that explanation instead of failing silently.
+      setError(err.message || t('common.somethingWentWrong'));
+    }
   }
 
   // Collection (Feature 3): collecting the passport requires the citizen's signature, captured
@@ -216,11 +228,10 @@ export default function Passport() {
       <h1 className="mb-6 text-2xl font-bold text-slate-900">{t('passport.title')}</h1>
 
       {eligibilityError && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {eligibilityError}</p>}
+      {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}
 
       {!isOfficer && eligibility && (
         <form onSubmit={onSubmit} className="card mb-8">
-          {error && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}
-
           {resubmitTarget ? (
             <div className="mb-3 flex items-center justify-between gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-gov-amber">
               <span>

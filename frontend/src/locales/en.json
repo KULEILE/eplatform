@@ -871,6 +871,7 @@
     "feeNotice": "The passport fee must be paid before you apply — enter your payment reference and attach a photo of your receipt.",
     "passportNumber": "Passport number",
     "expiryDate": "Expiry date",
+    "confirmProof": "Confirm — proof is legitimate",
     "subject": {
       "label": "Who is this passport for?",
       "myself": "Myself",

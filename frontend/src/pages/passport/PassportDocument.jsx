@@ -13,13 +13,19 @@ import { formatDateOnly } from '../../utils/format';
 // Mirrors Passport.jsx's own NEXT map exactly (same actions, same endpoints) — duplicated rather
 // than shared so this page stays a self-contained document view, same pattern as how
 // NationalIdDetail.jsx keeps its own NEXT map independent of any list page.
+//
+// Batch 13: every pre-production status now collapses onto the single 'confirm' action, right
+// below the full-size photo/receipt review this page already shows — the officer looks at the
+// reference and proof above, and confirming jumps straight to 'Passport Produced'. The backend
+// enforces a first-submitted-first-confirmed order on this action; a blocked attempt comes back
+// as a normal API error, shown below the button.
 const NEXT = {
-  'Submitted': { action: 'start-review', labelKey: 'status.Under Review' },
-  'Under Review': { action: 'verify-identity', labelKey: 'status.Identity Verified' },
-  'Identity Verified': { action: 'check-documents', labelKey: 'status.Documents Checked' },
-  'Documents Checked': { action: 'process', labelKey: 'status.Processing' },
-  'Processing': { action: 'approve', labelKey: 'common.approve' },
-  'Approved': { action: 'produce', labelKey: 'status.Passport Produced' },
+  'Submitted': { action: 'confirm', labelKey: 'passport.confirmProof' },
+  'Under Review': { action: 'confirm', labelKey: 'passport.confirmProof' },
+  'Identity Verified': { action: 'confirm', labelKey: 'passport.confirmProof' },
+  'Documents Checked': { action: 'confirm', labelKey: 'passport.confirmProof' },
+  'Processing': { action: 'confirm', labelKey: 'passport.confirmProof' },
+  'Approved': { action: 'confirm', labelKey: 'passport.confirmProof' },
   'Passport Produced': { action: 'ready-for-collection', labelKey: 'common.readyForCollection' },
   'Ready for Collection': { action: 'collect', labelKey: 'common.collect' },
 };
@@ -43,6 +49,7 @@ export default function PassportDocument() {
   const isOfficer = ['passport_officer', 'system_administrator'].includes(user.roleKey);
   const [record, setRecord] = useState(null);
   const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
   const [modal, setModal] = useState(null); // 'reject' | 'request-information' | null
   const [reason, setReason] = useState('');
@@ -59,7 +66,17 @@ export default function PassportDocument() {
 
   async function runAction(action) {
     setBusy(true);
-    try { await api.post(`/passport/${id}/${action}`, {}); load(); } finally { setBusy(false); }
+    setActionError('');
+    try {
+      await api.post(`/passport/${id}/${action}`, {});
+      load();
+    } catch (err) {
+      // Batch 13: 'confirm' can legitimately be blocked (first-submitted-first-confirmed order)
+      // — surface that explanation instead of failing silently.
+      setActionError(err.message || t('common.somethingWentWrong'));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function submitModal() {
@@ -227,6 +244,7 @@ export default function PassportDocument() {
 
         {canAct && (
           <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
+            {actionError && <p className="w-full rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {actionError}</p>}
             {next && (
               <button
                 type="button"

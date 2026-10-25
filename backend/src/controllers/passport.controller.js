@@ -498,13 +498,25 @@ async function getOne(req, res, next) {
   }
 }
 
+// Batch 13: a single 'confirm' action replaces the old multi-click chain (start-review ->
+// verify-identity -> check-documents -> process -> approve -> produce). The officer reviews the
+// application's payment reference and proof (plus, for a lost/stolen replacement, the proof filed
+// with it) and, once satisfied it is legitimate, confirms it in one step; the system then does
+// every remaining step automatically and jumps straight to 'Passport Produced' — the same
+// auto-production pattern already used for the National ID card (see autoProduceNationalId() in
+// homeAffairs.controller.js). 'Ready for Collection' and 'Collected' stay separate manual officer
+// actions, since each corresponds to a real physical event (the passport physically arriving, the
+// citizen physically collecting it with a signature).
+//
+// 'from' may be a list of statuses: a handful of applications may already be sitting mid-way
+// through the old chain (seeded test data, or real applications in progress before this change
+// shipped) and there is no other transition out of those statuses any more — if 'confirm' only
+// accepted 'Submitted', a record already in e.g. 'Documents Checked' would be stranded with no
+// path forward at all.
+const PRE_PRODUCTION_STATUSES = ['Submitted', 'Under Review', 'Identity Verified', 'Documents Checked', 'Processing', 'Approved'];
+
 const TRANSITIONS = {
-  'start-review': { from: 'Submitted', to: 'Under Review' },
-  'verify-identity': { from: 'Under Review', to: 'Identity Verified' },
-  'check-documents': { from: 'Identity Verified', to: 'Documents Checked' },
-  'process': { from: 'Documents Checked', to: 'Processing' },
-  'approve': { from: 'Processing', to: 'Approved' },
-  'produce': { from: 'Approved', to: 'Passport Produced' },
+  'confirm': { from: PRE_PRODUCTION_STATUSES, to: 'Passport Produced' },
   'ready-for-collection': { from: 'Passport Produced', to: 'Ready for Collection' },
   'collect': { from: 'Ready for Collection', to: 'Collected' },
 };
@@ -519,15 +531,39 @@ async function transition(req, res, next) {
     if (t.to === 'Collected' && !req.body.signatureReference) {
       return res.status(400).json({ error: 'The citizen\'s signature is required before the passport can be marked collected.' });
     }
+    const fromStatuses = Array.isArray(t.from) ? t.from : [t.from];
     const client = await db.getClient();
     try {
       await client.query('BEGIN');
       const { rows } = await client.query('SELECT * FROM passport_records WHERE passport_record_id = $1 FOR UPDATE', [req.params.id]);
       if (rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Not found.' }); }
       const record = rows[0];
-      if (record.status !== t.from) { await client.query('ROLLBACK'); return res.status(409).json({ error: `Cannot move from '${record.status}' to '${t.to}'.` }); }
+      if (!fromStatuses.includes(record.status)) { await client.query('ROLLBACK'); return res.status(409).json({ error: `Cannot move from '${record.status}' to '${t.to}'.` }); }
 
-      const passportNumber = t.to === 'Approved' ? 'P' + String(Math.floor(1000000 + Math.random() * 9000000)) : record.passport_number;
+      // Anti-corruption / anti-favouritism: "payment confirmation must force the officer to start
+      // with the first application". Confirming must happen in the order applications were
+      // submitted, so an officer cannot skip past an earlier, legitimate application to approve a
+      // later one (e.g. one tied to a bribe or a favour). This check applies only to 'confirm' —
+      // rejecting or requesting more information (see reject() / requestInformation() below) is
+      // deliberately NOT constrained this way, because either of those only removes a problem
+      // application from the front of the queue (naturally letting the next-oldest become next),
+      // and can't be used to unfairly jump anyone ahead the way approving one out of order could.
+      if (req.params.action === 'confirm') {
+        const { rows: queue } = await client.query(
+          `SELECT passport_record_id, application_reference FROM passport_records
+           WHERE status = ANY($1::varchar[]) ORDER BY created_at ASC, passport_record_id ASC LIMIT 1`,
+          [PRE_PRODUCTION_STATUSES]
+        );
+        if (queue.length > 0 && queue[0].passport_record_id !== record.passport_record_id) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({
+            error: `To prevent favouritism, applications must be confirmed in the order they were submitted. Application ${queue[0].application_reference} was submitted earlier and must be processed first.`,
+            oldestPendingReference: queue[0].application_reference,
+          });
+        }
+      }
+
+      const passportNumber = t.to === 'Passport Produced' ? 'P' + String(Math.floor(1000000 + Math.random() * 9000000)) : record.passport_number;
       const officeId = req.body.officeId || record.collection_office_id;
       await client.query(
         // $1 is cast explicitly everywhere it's used: it both SETs a varchar column and is
@@ -535,8 +571,8 @@ async function transition(req, res, next) {
         // otherwise ("inconsistent types deduced for parameter $1") — the exact bug this same
         // pattern caused in the National ID workflow (see homeAffairs.controller.js).
         `UPDATE passport_records SET status = $1::varchar, passport_number = COALESCE($2, passport_number),
-            issue_date = CASE WHEN $1::varchar = 'Approved' THEN CURRENT_DATE ELSE issue_date END,
-            expiry_date = CASE WHEN $1::varchar = 'Approved' THEN CURRENT_DATE + INTERVAL '10 years' ELSE expiry_date END,
+            issue_date = CASE WHEN $1::varchar = 'Passport Produced' THEN CURRENT_DATE ELSE issue_date END,
+            expiry_date = CASE WHEN $1::varchar = 'Passport Produced' THEN CURRENT_DATE + INTERVAL '10 years' ELSE expiry_date END,
             collection_office_id = CASE WHEN $1::varchar = 'Ready for Collection' THEN $3 ELSE collection_office_id END,
             ready_for_collection_at = CASE WHEN $1::varchar = 'Ready for Collection' THEN NOW() ELSE ready_for_collection_at END,
             collected_at = CASE WHEN $1::varchar = 'Collected' THEN NOW() ELSE collected_at END,
@@ -548,14 +584,24 @@ async function transition(req, res, next) {
       await syncApplicationStatus(client, { sourceTable: 'passport_records', sourceId: record.passport_record_id, status: t.to, completed: t.to === 'Collected' });
       await client.query('COMMIT');
 
+      if (req.params.action === 'confirm') {
+        await recordAudit({
+          userId: req.user.userId, departmentId: await getDepartmentId('passport'), action: 'PASSPORT_PROOF_CONFIRMED',
+          targetType: 'passport_record', targetId: record.passport_record_id,
+          reason: 'Officer confirmed the payment reference and proof are legitimate; passport produced automatically.',
+        });
+      }
+
       const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.applicant_citizen_id || record.citizen_id])).rows[0];
       if (userRow) {
         await createNotification({
           userId: userRow.user_id, title: `Passport application: ${t.to}`,
           message: t.to === 'Ready for Collection'
             ? `Your passport (${record.application_reference}) is ready for collection. Please bring your National ID card.`
-            : `Your passport application (${record.application_reference}) status is now: ${t.to}.`,
-          type: t.to === 'Ready for Collection' ? 'Ready for Collection' : t.to === 'Approved' ? 'Approval' : 'Status Change',
+            : t.to === 'Passport Produced'
+              ? `Your passport application (${record.application_reference}) has been confirmed and your passport has been produced.`
+              : `Your passport application (${record.application_reference}) status is now: ${t.to}.`,
+          type: t.to === 'Ready for Collection' ? 'Ready for Collection' : t.to === 'Passport Produced' ? 'Approval' : 'Status Change',
         });
       }
       res.json({ passportRecordId: record.passport_record_id, status: t.to, passportNumber });
