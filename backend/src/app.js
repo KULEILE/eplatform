@@ -28,6 +28,16 @@ const biometricsRoutes = require('./routes/biometrics.routes');
 
 const app = express();
 
+// Render (and most hosts) put this app behind a reverse proxy, which adds an X-Forwarded-For
+// header on every request. Without telling Express to trust that proxy, express-rate-limit
+// (used below in auth.routes.js) refuses to use req.ip for its rate-limit key and THROWS instead
+// — an uncaught ValidationError (ERR_ERL_UNEXPECTED_X_FORWARDED_FOR) that crashes the whole
+// process on literally any request once a rate limiter runs, which is what was producing random
+// 502s on every endpoint (the process was crash-looping, not a bug in any specific route). "1"
+// means: trust exactly one hop in front of us (Render's own proxy) — this is also what makes
+// rate limiting and audit logging see the citizen's real IP instead of Render's internal one.
+app.set('trust proxy', 1);
+
 app.use(cors({ origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173', credentials: true }));
 app.use(express.json({ limit: '5mb' }));
 
