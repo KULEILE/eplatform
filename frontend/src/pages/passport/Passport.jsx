@@ -327,6 +327,7 @@ export default function Passport() {
                             value={pagesFullProofReference}
                             onChange={setPagesFullProofReference}
                             required
+                            requireLiveCapture
                           />
                         </div>
                       )}

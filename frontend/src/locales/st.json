@@ -195,9 +195,12 @@
   },
   "documentCapture": {
     "hint": "PNG, JPG, WEBP kapa PDF, ho fihla 8MB.",
+    "hintLiveOnly": "Sebedisa khamera ya hao ho nka setshwantsho sa leqephe lena hona jwale — faele e bolokiweng kapa setshwantsho se nkuweng skrineng ha se amoheleha mona. Ho fihla 8MB.",
     "uploaded": "E kentswe",
     "retake": "Kgetha faele e fapaneng",
+    "retakeLiveOnly": "Nka setshwantsho hape",
     "wrongType": "Ka kopo kgetha setshwantsho sa PNG, JPG, WEBP kapa PDF.",
+    "wrongTypeLiveOnly": "Ka kopo nka setshwantsho sa leqephe ka khamera ya hao (PNG, JPG kapa WEBP) — PDF kapa faele e bolokiweng ha e amoheleha mona.",
     "tooLarge": "Faele eo e kgolo haholo — ka kopo kgetha e ka tlase ho 8MB.",
     "pdfSelected": "PDF e kgethwa"
   },
@@ -891,7 +894,7 @@
       "field": {
         "pageCount": "Pasepoto ya hau e na le maqephe a makae?",
         "lastPageProof": "Setshwantsho sa leqephe la ho qetela",
-        "lastPageProofHelp": "Kenya setshwantsho se hlakileng sa leqephe la ho qetela la pasepoto ya hau, se bontshang hore e sebelisitswe ka botlalo."
+        "lastPageProofHelp": "Nka setshwantsho se hlakileng hona jwale sa leqephe la ho qetela la pasepoto ya hau, se bontshang hore e sebelisitswe ka botlalo."
       }
     },
     "replacement": {

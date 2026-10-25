@@ -195,9 +195,12 @@
   },
   "documentCapture": {
     "hint": "PNG, JPG, WEBP or PDF, up to 8MB.",
+    "hintLiveOnly": "Use your camera to photograph this page right now — a saved file or screenshot isn't accepted here. Up to 8MB.",
     "uploaded": "Uploaded",
     "retake": "Choose a different file",
+    "retakeLiveOnly": "Retake photo",
     "wrongType": "Please choose a PNG, JPG, WEBP image or a PDF.",
+    "wrongTypeLiveOnly": "Please photograph the page with your camera (PNG, JPG or WEBP) — a PDF or saved file isn't accepted here.",
     "tooLarge": "That file is too large — please choose one under 8MB.",
     "pdfSelected": "PDF selected"
   },
@@ -891,7 +894,7 @@
       "field": {
         "pageCount": "How many pages does your passport have?",
         "lastPageProof": "Photo of the last page",
-        "lastPageProofHelp": "Upload a clear photo of the last page of your passport, showing it is fully used."
+        "lastPageProofHelp": "Take a clear photo right now of the last page of your passport, showing it is fully used."
       }
     },
     "replacement": {
