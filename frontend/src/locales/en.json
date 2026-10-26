@@ -1242,7 +1242,25 @@
         "C": "C - Minibuses and mini trucks",
         "D": "D - Heavy trucks and buses"
       },
-      "paymentNotice": "The driving licence fee must be paid before applying. Enter the payment reference and upload a photo of your receipt - the officer only needs to confirm this is legitimate before your licence is generated."
+      "paymentNotice": "The driving licence fee must be paid before applying. Enter the payment reference and upload a photo of your receipt - the officer only needs to confirm this is legitimate before your licence is generated.",
+      "document": {
+        "title": "Driving Licence",
+        "demoNotice": "Demo document - not a real Kingdom of Lesotho driving licence.",
+        "cardTitle": "Driving Licence",
+        "cardTitleTranslations": "Carta de Conducao / Permis de Conduire",
+        "field": {
+          "idNo": "I.D. No.",
+          "birthDate": "Birth Date",
+          "validityPeriod": "Validity Period",
+          "issuingCentre": "Issuing Centre",
+          "vehicleRestriction": "Vehicle Restriction",
+          "firstIssue": "First Issue",
+          "signature": "Signature",
+          "trafficCommissioner": "Traffic Commissioner"
+        },
+        "noneValue": "None",
+        "signaturePlaceholder": "Not yet collected"
+      }
     },
     "theorySessions": {
       "title": "Theory Test Sessions",

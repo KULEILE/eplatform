@@ -1242,7 +1242,25 @@
         "C": "C - Libese tse nyane le literaka tse nyane",
         "D": "D - Literaka tse kholo le libese tse kholo"
       },
-      "paymentNotice": "Tefo ea laesense ea ho khanna e lokela ho lefshoa pele ho kopa. Kenya nomoro ea tefo 'me u kenye setšoantšo sa risithi ea hau - ofisiri o hloka ho netefatsa feela hore ena e nnete pele laesense ea hau e hlahisoa."
+      "paymentNotice": "Tefo ea laesense ea ho khanna e lokela ho lefshoa pele ho kopa. Kenya nomoro ea tefo 'me u kenye setšoantšo sa risithi ea hau - ofisiri o hloka ho netefatsa feela hore ena e nnete pele laesense ea hau e hlahisoa.",
+      "document": {
+        "title": "Laesense ea ho Khanna",
+        "demoNotice": "Tokomane ea mohlala - hase laesense ea nnete ea ho khanna ea 'Muso oa Lesotho.",
+        "cardTitle": "Laesense ea ho Khanna",
+        "cardTitleTranslations": "Carta de Conducao / Permis de Conduire",
+        "field": {
+          "idNo": "Nomoro ea I.D.",
+          "birthDate": "Letsatsi la Tsoalo",
+          "validityPeriod": "Nako eo e Sebetsang",
+          "issuingCentre": "Setsi se Fanang",
+          "vehicleRestriction": "Thibelo ea Koloi",
+          "firstIssue": "Phallo ea Pele",
+          "signature": "Saeno",
+          "trafficCommissioner": "Khomishenara oa Sephethe-phethe"
+        },
+        "noneValue": "Ha ho na",
+        "signaturePlaceholder": "Ha e so nkoe"
+      }
     },
     "theorySessions": {
       "title": "Likhoeli tsa Tlhahlobo ea Thiori",

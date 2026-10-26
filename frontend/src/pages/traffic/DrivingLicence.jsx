@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../api/client';
@@ -11,6 +12,7 @@ import PhotoCapture from '../../components/PhotoCapture';
 import BiometricCapture from '../../components/BiometricCapture';
 import DocumentCapture from '../../components/DocumentCapture';
 import ReceiptCapture from '../../components/ReceiptCapture';
+import SignaturePad from '../../components/SignaturePad';
 import { formatDateOnly } from '../../utils/format';
 
 // Driving Licence Application / Renewal / Replacement, consolidated onto one page with an
@@ -60,6 +62,12 @@ export default function DrivingLicence() {
   const [modal, setModal] = useState(null); // { id, kind: 'reject' | 'request-information' | 'surrender-failed' }
   const [reason, setReason] = useState('');
   const [busyId, setBusyId] = useState(null);
+  // Batch 27: collecting now requires the citizen's own signature, captured on a pad at the
+  // counter — same SignaturePad + collect-via-modal pattern Passport.jsx's list page already
+  // uses, and the same migration-035-style convention (here migration 073) other collection
+  // points use. signatureModal holds the traffic_record_id being collected, or null.
+  const [signatureModal, setSignatureModal] = useState(null);
+  const [signatureReference, setSignatureReference] = useState(null);
 
   function load() { api.get('/traffic/driving-licence').then((d) => setRecords(d.records)); }
   function loadEligibility() {
@@ -156,6 +164,23 @@ export default function DrivingLicence() {
     await api.post(`/traffic/driving-licence/${modal.id}/${modal.kind}`, { reason });
     setModal(null); setReason('');
     load();
+  }
+
+  // Collection (Batch 27): collecting the physical licence requires the citizen's signature,
+  // captured on a pad handed to them at the counter — see SignaturePad.jsx and migration 073.
+  async function confirmCollect() {
+    setBusyId(signatureModal);
+    try {
+      await api.post(`/traffic/driving-licence/${signatureModal}/collect`, { signatureReference });
+      setSignatureModal(null);
+      setSignatureReference(null);
+      setError('');
+      load();
+    } catch (err) {
+      setError(err.message || t('common.somethingWentWrong'));
+    } finally {
+      setBusyId(null);
+    }
   }
 
   if (!records || (!isOfficer && !eligibility && !eligibilityError)) return <Loading />;
@@ -362,12 +387,13 @@ export default function DrivingLicence() {
               const busy = busyId === r.traffic_record_id;
               return (
                 <div className="flex flex-wrap gap-2">
+                  <Link to={`/traffic/driving-licence/${r.traffic_record_id}`} className="text-sm font-medium text-gov-navy hover:underline">{t('common.view')}</Link>
                   {next && (
                     <button
                       type="button" disabled={busy}
                       className="btn-primary !whitespace-nowrap !px-3 !py-1.5 !text-xs"
                       title={awaitingSurrender && next.action === 'collect' ? t('traffic.drivingLicence.surrender.confirmBoth') : undefined}
-                      onClick={() => transition(r.traffic_record_id, next.action)}
+                      onClick={() => (next.action === 'collect' ? setSignatureModal(r.traffic_record_id) : transition(r.traffic_record_id, next.action))}
                     >
                       {t(next.labelKey)}
                     </button>
@@ -386,7 +412,10 @@ export default function DrivingLicence() {
                 </div>
               );
             },
-          }] : []),
+          }] : [{
+            key: 'view', header: t('common.actions'),
+            render: (r) => <Link to={`/traffic/driving-licence/${r.traffic_record_id}`} className="text-sm font-medium text-gov-navy hover:underline">{t('common.view')}</Link>,
+          }]),
         ]}
       />
 
@@ -411,6 +440,20 @@ export default function DrivingLicence() {
         {modal?.kind === 'surrender-failed' && <p className="mb-3 text-sm text-slate-600">{t('traffic.drivingLicence.surrender.failedModalHelp')}</p>}
         <label htmlFor="dlReason" className="form-label">{t('common.reason')}{modal?.kind === 'surrender-failed' && ` (${t('common.optional')})`}</label>
         <textarea id="dlReason" className="form-input" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
+      </Modal>
+
+      <Modal
+        open={!!signatureModal}
+        onClose={() => { setSignatureModal(null); setSignatureReference(null); }}
+        title={t('common.collect')}
+        footer={
+          <>
+            <button type="button" className="btn-secondary" onClick={() => { setSignatureModal(null); setSignatureReference(null); }}>{t('common.cancel')}</button>
+            <button type="button" disabled={busyId === signatureModal || !signatureReference} className="btn-primary" onClick={confirmCollect}>{t('common.confirm')}</button>
+          </>
+        }
+      >
+        <SignaturePad value={signatureReference} onChange={setSignatureReference} />
       </Modal>
     </div>
   );

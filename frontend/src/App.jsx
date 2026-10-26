@@ -50,6 +50,7 @@ import CitizenshipNaturalization from './pages/homeAffairs/CitizenshipNaturaliza
 
 import TrafficHub from './pages/traffic/TrafficHub';
 import DrivingLicence from './pages/traffic/DrivingLicence';
+import DrivingLicenceDocument from './pages/traffic/DrivingLicenceDocument';
 // Batch 20: LearnerPermit.jsx (and its /traffic/learner-permit route below) were removed — its
 // read-only status content now lives inside DrivingTestBookings.jsx instead. See TrafficHub.jsx.
 import PublicDrivingPermit from './pages/traffic/PublicDrivingPermit';
@@ -155,6 +156,7 @@ export default function App() {
 
         <Route path="/traffic" element={<ProtectedRoute><TrafficHub /></ProtectedRoute>} />
         <Route path="/traffic/driving-licence" element={<ProtectedRoute><DrivingLicence /></ProtectedRoute>} />
+        <Route path="/traffic/driving-licence/:id" element={<ProtectedRoute><DrivingLicenceDocument /></ProtectedRoute>} />
         <Route path="/traffic/public-driving-permit" element={<ProtectedRoute><PublicDrivingPermit /></ProtectedRoute>} />
         <Route path="/traffic/test-bookings" element={<ProtectedRoute><DrivingTestBookings /></ProtectedRoute>} />
         <Route path="/traffic/vehicle-registration" element={<ProtectedRoute><VehicleRegistration /></ProtectedRoute>} />

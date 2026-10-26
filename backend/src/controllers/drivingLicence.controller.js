@@ -375,8 +375,12 @@ async function list(req, res, next) {
 //     license automatically." Goes straight from 'Submitted' to 'Ready for Collection': there is
 //     no separate "card is being produced" wait modelled here, since nothing about producing it
 //     needs a second officer action once the payment is confirmed.
-//   'collect' — unchanged: the physical hand-over, including the existing Learner's Permit
-//     surrender step for a New licence (see the comment on transition() below).
+//   'collect' — the physical hand-over, including the existing Learner's Permit surrender step
+//     for a New licence (see the comment on transition() below). Batch 27 added one requirement
+//     to this action: the citizen's own signature, captured on a pad at the counter the same way
+//     migration 035 already does for National ID/passport/birth certificate/police clearance —
+//     "the citizen still needs to sign when they collect it and that signature putted on the
+//     license." It's stored and shown on the card the same way (see DrivingLicenceDocument.jsx).
 const STATUS_FLOW = {
   'confirm-payment': { from: 'Submitted', to: 'Ready for Collection' },
   'collect': { from: 'Ready for Collection', to: 'Collected' },
@@ -405,7 +409,13 @@ async function transition(req, res, next) {
         return res.status(409).json({ error: 'There is no payment reference/receipt on file for this application.' });
       }
 
-      const resolvesSurrender = req.params.action === 'collect' && record.surrender_status === 'Awaiting Surrender';
+      const isCollect = req.params.action === 'collect';
+      if (isCollect && !req.body.signatureReference) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: "The citizen's signature is required before the licence can be marked collected." });
+      }
+
+      const resolvesSurrender = isCollect && record.surrender_status === 'Awaiting Surrender';
       const licenceNumber = isConfirmPayment ? genNumber('DL') : record.licence_number;
       const officeId = req.body.officeId || record.collection_office_id;
       await client.query(
@@ -423,9 +433,10 @@ async function transition(req, res, next) {
             surrender_status = CASE WHEN $5 THEN 'Surrendered' ELSE surrender_status END,
             surrender_verified_by_user_id = CASE WHEN $5 THEN $6 ELSE surrender_verified_by_user_id END,
             surrender_verified_at = CASE WHEN $5 THEN NOW() ELSE surrender_verified_at END,
+            signature_reference = CASE WHEN $8 THEN $9 ELSE signature_reference END,
             updated_at = NOW()
          WHERE traffic_record_id = $4`,
-        [t.to, licenceNumber, officeId, record.traffic_record_id, resolvesSurrender, req.user.userId, isConfirmPayment]
+        [t.to, licenceNumber, officeId, record.traffic_record_id, resolvesSurrender, req.user.userId, isConfirmPayment, isCollect, req.body.signatureReference || null]
       );
       await syncApplicationStatus(client, { sourceTable: 'traffic_records', sourceId: record.traffic_record_id, status: t.to, completed: t.to === 'Collected' });
       await client.query('COMMIT');
@@ -491,9 +502,41 @@ async function failSurrender(req, res, next) {
   } catch (err) { next(err); }
 }
 
-// list/transition/apply/getEligibility/failSurrender are bespoke above; getOne, resubmit,
-// requestInformation and reject all act on a single record by id (never scan the whole table),
-// so the generic factory's versions are safe to reuse as-is — same table, same idColumn.
+/** GET /traffic/driving-licence/:id — Batch 27: joins the citizen's own bio-data (name, date of
+ *  birth, permanent ID) and the collection office's district, the same way passport.controller.js's
+ *  getOne does for PassportDocument.jsx, so the card display (DrivingLicenceDocument.jsx) can
+ *  render the actual licence rather than just the workflow status the generic getOne returned.
+ *  Also resolves "First Issue" — the real card always shows the citizen's ORIGINAL first-licence
+ *  date, not this particular record's own issue date, so it stays fixed across renewals/
+ *  replacements: the earliest issue_date among this citizen's own Collected driving licence rows. */
+async function getOne(req, res, next) {
+  try {
+    const { rows } = await db.query(
+      `SELECT tr.*, o.name AS collection_office_name, d.name AS collection_office_district,
+              c.first_name, c.middle_name, c.last_name, c.sex, c.date_of_birth, c.permanent_identity_number,
+              (SELECT MIN(issue_date) FROM traffic_records
+                 WHERE citizen_id = tr.citizen_id AND service_type = ANY($2::varchar[]) AND status = 'Collected'
+                   AND issue_date IS NOT NULL) AS first_issue_date
+       FROM traffic_records tr
+       LEFT JOIN offices o ON o.office_id = tr.collection_office_id
+       LEFT JOIN districts d ON d.district_id = o.district_id
+       JOIN citizens c ON c.citizen_id = tr.citizen_id
+       WHERE tr.traffic_record_id = $1`,
+      [req.params.id, SERVICE_TYPES]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Record not found.' });
+    const record = rows[0];
+    const isOwner = req.user.citizenId === record.citizen_id;
+    const isOfficer = ['traffic_officer', 'system_administrator'].includes(req.user.roleKey);
+    if (!isOwner && !isOfficer) return res.status(403).json({ error: 'You do not have access to this record.' });
+    res.json({ record });
+  } catch (err) { next(err); }
+}
+
+// list/transition/apply/getEligibility/failSurrender/getOne are bespoke; resubmit,
+// requestInformation and reject all act on a single record by id (never scan the whole table)
+// and need none of getOne's extra display fields, so the generic factory's versions of those
+// three are safe to reuse as-is — same table, same idColumn.
 const generic = makeDepartmentController({
   table: 'traffic_records',
   idColumn: 'traffic_record_id',
@@ -513,6 +556,6 @@ const generic = makeDepartmentController({
 });
 
 module.exports = {
-  getEligibility, apply, list, transition, failSurrender,
-  getOne: generic.getOne, resubmit: generic.resubmit, requestInformation: generic.requestInformation, reject: generic.reject,
+  getEligibility, apply, list, transition, failSurrender, getOne,
+  resubmit: generic.resubmit, requestInformation: generic.requestInformation, reject: generic.reject,
 };
