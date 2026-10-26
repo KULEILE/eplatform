@@ -31,6 +31,23 @@
  *     service next to "Driving Theory / Practical Test" read as two services doing the same
  *     work ("we learner permit and driving theory test which make the same work that is
  *     repetition").
+ *
+ *     Migration 070 (Batch 22) added a DURATION to the Theory sitting: "this theory test must
+ *     have duration and it must close automatically when the time is up." Confirmed with the
+ *     user: one shared exam window for everyone booked that day/office, not a personal timer per
+ *     citizen — the officer already sets a single start TIME for the whole sitting, so
+ *     duration_minutes just extends that into a window [test_time, test_time + duration). Access
+ *     is refused before the window opens; once it closes, EVERY still-unsubmitted booking in it
+ *     is auto-scored and finalized, whether or not anyone is around to click Submit — see
+ *     finalizeTheoryBooking() (the one scoring/finalize path used by a manual submit, a
+ *     client-triggered timeout, AND the server-side sweep), scoreTheoryAnswers(), and
+ *     sweepExpiredTheorySittings() (run at the top of listTestBookings so the officer's and a
+ *     citizen's own list both self-heal on every load, with no background job needed). A
+ *     citizen's answer choices are now saved continuously while they work (saveTheoryProgress,
+ *     POST .../save-progress) rather than only at the end, specifically so an auto-close has
+ *     something real to score even if their browser tab died before they hit Submit — and so a
+ *     submission arriving noticeably after the deadline is scored off that saved history instead
+ *     of trusting whatever is in the late request's own body.
  *   - Roadworthiness Test & Certificate of Fitness (vehicle_inspections) — reuses
  *     makeDepartmentController, the same linear "apply -> review -> approve (assigns a number)"
  *     shape as traffic_records. Requires an Approved vehicle registration for the given
@@ -163,19 +180,159 @@ function normalizeQuestions(questions) {
   }));
 }
 
-/** POST /traffic/theory-sessions (officer) body:{testDate, testTime?, questions} — creates the
- *  session for the officer's own office on that date if none exists yet, or updates it (while
- *  still Draft — "officer must set time" and author the shared question set before publishing).
- *  A Published session is locked: citizens may already be relying on exactly these questions. */
+/** Batch 22: "this theory test must have duration and it must close automatically when the time
+ *  is up" — scores a set of answers against a question set the same way everywhere it's needed
+ *  (a manual submit, a timeout, or the lazy sweep), fixing a real bug the old inline version had:
+ *  `Number(null) === 0` is `true` in JavaScript, so an unanswered question would have been
+ *  scored as correct whenever that question's correctIndex happened to be 0. Explicitly
+ *  treating null/undefined as "not answered" avoids that. `answers` may be shorter than
+ *  `questions`, or entirely missing (a citizen who never saved any progress) — both just score
+ *  as unanswered, the same as leaving an exam paper blank. */
+function scoreTheoryAnswers(questions, answers) {
+  const arr = Array.isArray(answers) ? answers : [];
+  let correct = 0;
+  questions.forEach((q, i) => {
+    const a = arr[i];
+    if (a !== null && a !== undefined && Number(a) === q.correctIndex) correct += 1;
+  });
+  const score = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
+  const result = score >= THEORY_PASS_PERCENT ? 'Passed' : 'Failed';
+  const normalizedAnswers = questions.map((_, i) => (arr[i] === null || arr[i] === undefined ? null : Number(arr[i])));
+  return { score, result, normalizedAnswers };
+}
+
+/** The one place a Theory booking's answers become final — used by a citizen's own manual
+ *  submit (submitTheoryAnswers), by the automatic close-out a citizen's own client triggers when
+ *  its countdown reaches zero (also submitTheoryAnswers, just past the deadline), by opening an
+ *  already-expired sitting (getTheoryTest), and by the server-side safety net that finalizes a
+ *  sitting even if nobody is around to trigger either of those (sweepExpiredTheorySittings).
+ *  Every path runs the exact same scoring, status transition, and Practical-auto-create logic,
+ *  so "closes automatically when the time is up" produces an identical result to clicking
+ *  Submit, never a lesser one. Re-checks and locks the booking itself (FOR UPDATE) so two of
+ *  these paths racing each other (e.g. the sweep and the citizen's own timeout, both firing at
+ *  once) can't double-finalize or double-create a Practical booking. */
+async function finalizeTheoryBooking(bookingId, { timedOut = false } = {}) {
+  const client = await db.getClient();
+  try {
+    await client.query('BEGIN');
+    const { rows: bRows } = await client.query(
+      `SELECT b.*, s.questions FROM driving_test_bookings b
+       LEFT JOIN theory_test_sessions s ON s.theory_test_session_id = b.theory_session_id
+       WHERE b.driving_test_booking_id = $1 FOR UPDATE OF b`,
+      [bookingId]
+    );
+    if (bRows.length === 0) { await client.query('ROLLBACK'); return { notFound: true }; }
+    const existing = bRows[0];
+    if (existing.status !== 'Scheduled' || existing.submitted_at) {
+      // Already finalized by a path that won the race (or simply ran first) — nothing left to
+      // do; hand back what's already there instead of erroring.
+      await client.query('ROLLBACK');
+      return { booking: existing, score: existing.marks, passed: existing.result === 'Passed', autoScheduledPractical: null, alreadyFinalized: true };
+    }
+    const questions = existing.questions || [];
+    const { score, result, normalizedAnswers } = scoreTheoryAnswers(questions, existing.answers);
+
+    const { rows } = await client.query(
+      `UPDATE driving_test_bookings SET status = 'Completed', result = $1, marks = $2, answers = $3::jsonb, submitted_at = NOW(), updated_at = NOW()
+       WHERE driving_test_booking_id = $4 RETURNING *`,
+      [result, score, JSON.stringify(normalizedAnswers), bookingId]
+    );
+    const booking = rows[0];
+    await syncApplicationStatus(client, { sourceTable: 'driving_test_bookings', sourceId: booking.driving_test_booking_id, status: 'Completed', completed: true });
+
+    let autoScheduledPractical = null;
+    if (result === 'Passed') {
+      const bookingReference = generateReference('DTB');
+      const { rows: practicalRows } = await client.query(
+        `INSERT INTO driving_test_bookings (citizen_id, booking_reference, test_type, office_id, requested_date, status, theory_booking_id)
+         VALUES ($1,$2,'Practical',$3, (DATE($4) + INTERVAL '1 day'), 'Requested', $5) RETURNING *`,
+        [booking.citizen_id, bookingReference, booking.office_id, booking.confirmed_date, booking.driving_test_booking_id]
+      );
+      autoScheduledPractical = practicalRows[0];
+      await indexApplication(client, {
+        citizenId: booking.citizen_id, departmentKey: 'traffic', serviceType: 'Practical Driving Test',
+        referenceNumber: bookingReference, sourceTable: 'driving_test_bookings', sourceId: autoScheduledPractical.driving_test_booking_id, status: 'Requested',
+      });
+    }
+    await client.query('COMMIT');
+
+    const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [booking.citizen_id])).rows[0];
+    if (userRow) {
+      await createNotification({
+        userId: userRow.user_id, title: `Theory test: ${result}`, type: result === 'Passed' ? 'Approval' : 'Rejection',
+        message: timedOut
+          ? `Your test window closed and was automatically submitted. You scored ${score}%. Reference ${booking.booking_reference}.`
+          : `You scored ${score}%. Reference ${booking.booking_reference}.`,
+      });
+      if (autoScheduledPractical) {
+        await createNotification({
+          userId: userRow.user_id, title: 'Practical driving test requested', type: 'Status Change',
+          message: `Reference ${autoScheduledPractical.booking_reference}. Your office will confirm the exact date, time and location shortly (suggested date: ${String(autoScheduledPractical.requested_date).slice(0, 10)}).`,
+        });
+      }
+    }
+    return { booking, score, passed: result === 'Passed', autoScheduledPractical };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/** Runs before building any Theory/Practical bookings list so "closes automatically when the
+ *  time is up" holds even when nobody ever opens the specific test again to trigger it — any
+ *  Scheduled, unsubmitted Theory booking whose sitting's window has already elapsed gets
+ *  finalized here exactly like a timeout inside getTheoryTest would, scored off whatever answers
+ *  were last saved via saveTheoryProgress (or 0 if the citizen never saved anything — a true
+ *  no-show). There's no real background job/cron in this app, so this lazy-sweep-on-read is the
+ *  lightweight stand-in: every load of the bookings list (officer or citizen) self-heals any
+ *  sitting that's overdue. officeId/citizenId just scope which bookings are eligible to be swept
+ *  by this call — null means no restriction on that column. */
+async function sweepExpiredTheorySittings({ officeId = null, citizenId = null } = {}) {
+  const { rows } = await db.query(
+    `SELECT b.driving_test_booking_id FROM driving_test_bookings b
+     JOIN theory_test_sessions s ON s.theory_test_session_id = b.theory_session_id
+     WHERE b.test_type = 'Theory' AND b.status = 'Scheduled' AND b.submitted_at IS NULL
+       AND s.status = 'Published' AND s.duration_minutes IS NOT NULL AND s.test_time IS NOT NULL
+       AND (s.test_date + s.test_time + (s.duration_minutes || ' minutes')::interval) < NOW()
+       AND ($1::int IS NULL OR b.office_id = $1)
+       AND ($2::int IS NULL OR b.citizen_id = $2)`,
+    [officeId, citizenId]
+  );
+  for (const row of rows) {
+    try {
+      await finalizeTheoryBooking(row.driving_test_booking_id, { timedOut: true });
+    } catch (err) {
+      // Don't let one booking's finalize failure break the whole listing — the next list or
+      // getTheoryTest call simply retries it.
+      // eslint-disable-next-line no-console
+      console.error(`Failed to auto-close theory booking ${row.driving_test_booking_id}:`, err.message);
+    }
+  }
+}
+
+/** POST /traffic/theory-sessions (officer) body:{testDate, testTime?, durationMinutes?,
+ *  questions} — creates the session for the officer's own office on that date if none exists
+ *  yet, or updates it (while still Draft — "officer must set time" and a duration, and author
+ *  the shared question set before publishing). A Published session is locked: citizens may
+ *  already be relying on exactly these questions (and this window). */
 async function upsertTheorySession(req, res, next) {
   try {
     if (!isOfficer(req)) return res.status(403).json({ error: 'Officer only.' });
     if (!req.user.officeId) return res.status(400).json({ error: 'Your account has no office assigned — cannot manage theory sessions.' });
-    const { testDate, testTime, questions } = req.body;
+    const { testDate, testTime, durationMinutes, questions } = req.body;
     if (!testDate) return res.status(400).json({ error: 'testDate is required.' });
     if (questions !== undefined) {
       const err = validateQuestions(questions);
       if (err) return res.status(400).json({ error: err });
+    }
+    let durationValue;
+    if (durationMinutes !== undefined && durationMinutes !== null && durationMinutes !== '') {
+      durationValue = Number(durationMinutes);
+      if (!Number.isInteger(durationValue) || durationValue <= 0 || durationValue > 240) {
+        return res.status(400).json({ error: 'durationMinutes must be a whole number of minutes between 1 and 240.' });
+      }
     }
 
     const { rows: existingRows } = await db.query(
@@ -189,15 +346,16 @@ async function upsertTheorySession(req, res, next) {
     let rows;
     if (existingRows.length > 0) {
       ({ rows } = await db.query(
-        `UPDATE theory_test_sessions SET test_time = COALESCE($1, test_time), questions = COALESCE($2::jsonb, questions), updated_at = NOW()
-         WHERE theory_test_session_id = $3 RETURNING *`,
-        [testTime || null, questions ? JSON.stringify(normalizeQuestions(questions)) : null, existingRows[0].theory_test_session_id]
+        `UPDATE theory_test_sessions SET test_time = COALESCE($1, test_time), duration_minutes = COALESCE($2, duration_minutes),
+                questions = COALESCE($3::jsonb, questions), updated_at = NOW()
+         WHERE theory_test_session_id = $4 RETURNING *`,
+        [testTime || null, durationValue ?? null, questions ? JSON.stringify(normalizeQuestions(questions)) : null, existingRows[0].theory_test_session_id]
       ));
     } else {
       ({ rows } = await db.query(
-        `INSERT INTO theory_test_sessions (office_id, test_date, test_time, questions, created_by_user_id)
-         VALUES ($1,$2,$3,$4::jsonb,$5) RETURNING *`,
-        [req.user.officeId, testDate, testTime || null, questions ? JSON.stringify(normalizeQuestions(questions)) : null, req.user.userId]
+        `INSERT INTO theory_test_sessions (office_id, test_date, test_time, duration_minutes, questions, created_by_user_id)
+         VALUES ($1,$2,$3,$4,$5::jsonb,$6) RETURNING *`,
+        [req.user.officeId, testDate, testTime || null, durationValue ?? null, questions ? JSON.stringify(normalizeQuestions(questions)) : null, req.user.userId]
       ));
     }
     res.status(201).json({ session: rows[0] });
@@ -205,13 +363,18 @@ async function upsertTheorySession(req, res, next) {
 }
 
 /** GET /traffic/theory-sessions (officer) — every session for the officer's own office, newest
- *  date first, with a count of how many Theory bookings are waiting on each one. */
+ *  date first, with a count of how many Theory bookings are waiting on each one, plus the
+ *  computed close time (test_time + duration_minutes) so the officer can see the full window at
+ *  a glance without doing the arithmetic themselves. */
 async function listTheorySessions(req, res, next) {
   try {
     if (!isOfficer(req)) return res.status(403).json({ error: 'Officer only.' });
     if (!req.user.officeId) return res.json({ sessions: [] });
     const { rows } = await db.query(
       `SELECT s.*,
+              CASE WHEN s.test_time IS NOT NULL AND s.duration_minutes IS NOT NULL
+                   THEN (s.test_time + (s.duration_minutes || ' minutes')::interval)::time
+                   ELSE NULL END AS window_closes_time,
               (SELECT COUNT(*) FROM driving_test_bookings b
                 WHERE b.test_type = 'Theory' AND b.office_id = s.office_id AND b.confirmed_date = s.test_date
                   AND b.status IN ('Scheduled', 'Completed')) AS booking_count
@@ -240,11 +403,13 @@ async function publishTheorySession(req, res, next) {
       }
       if (existing.status === 'Published') { await client.query('ROLLBACK'); return res.status(409).json({ error: 'Already published.' }); }
       if (!existing.test_time) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Set a test time before publishing.' }); }
+      if (!existing.duration_minutes) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Set a duration before publishing.' }); }
       if (!existing.questions || existing.questions.length === 0) { await client.query('ROLLBACK'); return res.status(400).json({ error: 'Add at least one question before publishing.' }); }
 
       const { rows: sessRows } = await client.query(
         `UPDATE theory_test_sessions SET status = 'Published', published_by_user_id = $1, published_at = NOW(), updated_at = NOW()
-         WHERE theory_test_session_id = $2 RETURNING *`,
+         WHERE theory_test_session_id = $2
+         RETURNING *, (test_time + (duration_minutes || ' minutes')::interval)::time AS window_closes_time`,
         [req.user.userId, req.params.id]
       );
       const session = sessRows[0];
@@ -262,7 +427,7 @@ async function publishTheorySession(req, res, next) {
         if (userRow) {
           await createNotification({
             userId: userRow.user_id, title: 'Theory test open', type: 'Status Change',
-            message: `Your theory test on ${String(session.test_date).slice(0, 10)} at ${String(session.test_time).slice(0, 5)} is open — you can take it now.`,
+            message: `Your theory test on ${String(session.test_date).slice(0, 10)} is open from ${String(session.test_time).slice(0, 5)} to ${String(session.window_closes_time).slice(0, 5)} — you can take it any time during that window, and it will close automatically at the end.`,
           });
         }
       }
@@ -339,12 +504,26 @@ async function postponeTheorySession(req, res, next) {
 
 /** GET /traffic/test-bookings/:id/theory-test (citizen) — the questions for the citizen's own
  *  Theory booking, WITHOUT correctIndex (never sent to the citizen — see scoring below). Only
- *  available once the session it belongs to is published and the citizen has not already
- *  submitted their answers. */
+ *  available once the session it belongs to is published, the shared window has actually
+ *  opened, and the citizen has not already submitted their answers. If the window has already
+ *  CLOSED by the time the citizen opens this (they never got around to it, or their last visit
+ *  was before the deadline and this is a fresh page load after), it auto-finalizes the booking
+ *  right here — via the same finalizeTheoryBooking() every other close path uses — and hands
+ *  back the result directly instead of a bare error. windowOpensAt/windowClosesAt/serverNow are
+ *  all computed by Postgres in this one query so the countdown the citizen's browser renders is
+ *  anchored to the server's clock, not its own. A legacy session with no duration_minutes set
+ *  (shouldn't happen for anything published after this batch, since publish now requires it) is
+ *  treated as having no window at all — open indefinitely once published. */
 async function getTheoryTest(req, res, next) {
   try {
     const { rows } = await db.query(
-      `SELECT b.*, s.test_time, s.questions, s.status AS session_status FROM driving_test_bookings b
+      `SELECT b.*, s.test_time, s.duration_minutes, s.questions, s.status AS session_status,
+              (s.test_date + s.test_time) AS window_opens_at,
+              CASE WHEN s.duration_minutes IS NOT NULL AND s.test_time IS NOT NULL
+                   THEN (s.test_date + s.test_time + (s.duration_minutes || ' minutes')::interval)
+                   ELSE NULL END AS window_closes_at,
+              NOW() AS server_now
+       FROM driving_test_bookings b
        LEFT JOIN theory_test_sessions s ON s.theory_test_session_id = b.theory_session_id
        WHERE b.driving_test_booking_id = $1`,
       [req.params.id]
@@ -357,98 +536,144 @@ async function getTheoryTest(req, res, next) {
       return res.status(409).json({ error: 'Your theory test has not been published yet.' });
     }
     if (booking.submitted_at) return res.status(409).json({ error: 'You have already submitted this test.' });
+
+    const now = booking.server_now;
+    if (booking.window_opens_at && now < booking.window_opens_at) {
+      return res.status(409).json({
+        error: `Your theory test opens at ${String(booking.test_time).slice(0, 5)} on ${String(booking.confirmed_date).slice(0, 10)} — it isn't open yet.`,
+        windowOpensAt: booking.window_opens_at, serverNow: now,
+      });
+    }
+    if (booking.window_closes_at && now >= booking.window_closes_at) {
+      const outcome = await finalizeTheoryBooking(booking.driving_test_booking_id, { timedOut: true });
+      if (outcome.notFound) return res.status(404).json({ error: 'Booking not found.' });
+      return res.json({
+        timedOut: true, booking: outcome.booking, score: outcome.score, passed: outcome.passed,
+        autoScheduledPractical: outcome.autoScheduledPractical,
+      });
+    }
+
     res.json({
       testDate: booking.confirmed_date, testTime: booking.test_time,
       questions: (booking.questions || []).map((q) => ({ question: q.question, options: q.options })),
+      answers: booking.answers || null,
+      windowOpensAt: booking.window_opens_at, windowClosesAt: booking.window_closes_at, serverNow: now,
     });
+  } catch (err) { next(err); }
+}
+
+/** POST /traffic/test-bookings/:id/save-progress (citizen) body:{answers:[index|null,...]} —
+ *  "it must close automatically when the time is up" only produces a meaningful score if there's
+ *  something real to score, so the frontend calls this every time the citizen picks or changes
+ *  an answer, not just once at the end. Refused once the window has closed, same reasoning as
+ *  the late-submit guard in submitTheoryAnswers below: once the deadline passes, nothing new can
+ *  be written into `answers` by the citizen, from either endpoint, so a late submit can only be
+ *  scored off what was already saved before the buzzer. */
+async function saveTheoryProgress(req, res, next) {
+  try {
+    const { answers } = req.body;
+    if (!Array.isArray(answers)) return res.status(400).json({ error: 'answers must be a list.' });
+    const { rows } = await db.query(
+      `SELECT b.*, s.questions, s.status AS session_status,
+              CASE WHEN s.duration_minutes IS NOT NULL AND s.test_time IS NOT NULL
+                   THEN (s.test_date + s.test_time + (s.duration_minutes || ' minutes')::interval)
+                   ELSE NULL END AS window_closes_at,
+              NOW() AS server_now
+       FROM driving_test_bookings b
+       LEFT JOIN theory_test_sessions s ON s.theory_test_session_id = b.theory_session_id
+       WHERE b.driving_test_booking_id = $1`,
+      [req.params.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Booking not found.' });
+    const existing = rows[0];
+    if (existing.citizen_id !== req.user.citizenId) return res.status(403).json({ error: 'Not your booking.' });
+    if (existing.test_type !== 'Theory' || existing.status !== 'Scheduled' || existing.submitted_at) {
+      return res.status(409).json({ error: 'Cannot save progress for this booking in its current state.' });
+    }
+    if (!existing.theory_session_id || existing.session_status !== 'Published') {
+      return res.status(409).json({ error: 'Your theory test has not been published yet.' });
+    }
+    if (existing.window_closes_at && existing.server_now >= existing.window_closes_at) {
+      return res.status(409).json({ error: 'The test window has closed.' });
+    }
+    const questions = existing.questions || [];
+    const normalized = questions.map((_, i) => (answers[i] === null || answers[i] === undefined ? null : Number(answers[i])));
+    await db.query(
+      `UPDATE driving_test_bookings SET answers = $1::jsonb, updated_at = NOW()
+       WHERE driving_test_booking_id = $2 AND status = 'Scheduled' AND submitted_at IS NULL`,
+      [JSON.stringify(normalized), req.params.id]
+    );
+    res.json({ saved: true });
   } catch (err) { next(err); }
 }
 
 /** POST /traffic/test-bookings/:id/submit-answers (citizen) body:{answers:[index,...]} — the
  *  system marks the test itself: "so that system can mark and automated the process ... system
- *  must record the result and tell if citizen pass or fail". Scores correctCount/total*100
- *  (THEORY_PASS_PERCENT decides pass/fail), records it as both the result and the marks, and —
- *  same as before — a Pass auto-creates the Practical booking in the same transaction, now as
- *  'Requested' with only a suggested date (the following day) — see schedulePracticalTest(). */
+ *  must record the result and tell if citizen pass or fail". Scoring itself, the status
+ *  transition, and the Practical-auto-create all live in the shared finalizeTheoryBooking() (see
+ *  above), so a manual submit and an automatic close produce identical results.
+ *
+ *  Batch 22's window check here is a deliberate anti-cheat measure, not just validation: a
+ *  submit arriving within GRACE_MS of the deadline is trusted normally (this covers the common
+ *  case — the citizen's own browser countdown hits zero and fires this same endpoint, with
+ *  whatever network delay that involves). A submit arriving LATER than that is NOT trusted —
+ *  its answers are discarded and finalizeTheoryBooking() instead scores off whatever was already
+ *  saved via save-progress before the window closed, same as a true timeout. Otherwise a citizen
+ *  could just leave the exam open indefinitely and submit whenever they finally finished,
+ *  answering at leisure well past everyone else's deadline. */
 async function submitTheoryAnswers(req, res, next) {
   try {
     const { answers } = req.body;
     if (!Array.isArray(answers) || answers.length === 0) return res.status(400).json({ error: 'answers must be a non-empty list.' });
-    const client = await db.getClient();
-    try {
-      await client.query('BEGIN');
-      const { rows: bRows } = await client.query(
-        `SELECT b.*, s.questions, s.status AS session_status FROM driving_test_bookings b
-         LEFT JOIN theory_test_sessions s ON s.theory_test_session_id = b.theory_session_id
-         WHERE b.driving_test_booking_id = $1 FOR UPDATE OF b`,
-        [req.params.id]
-      );
-      if (bRows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Booking not found.' }); }
-      const existing = bRows[0];
-      if (existing.citizen_id !== req.user.citizenId) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Not your booking.' }); }
-      if (existing.test_type !== 'Theory' || existing.status !== 'Scheduled') {
-        await client.query('ROLLBACK'); return res.status(409).json({ error: 'Cannot submit answers for this booking in its current state.' });
-      }
-      if (!existing.theory_session_id || existing.session_status !== 'Published') {
-        await client.query('ROLLBACK'); return res.status(409).json({ error: 'Your theory test has not been published yet.' });
-      }
-      if (existing.submitted_at) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'You have already submitted this test.' }); }
-      const questions = existing.questions || [];
-      if (answers.length !== questions.length) {
-        await client.query('ROLLBACK'); return res.status(400).json({ error: `answers must have exactly ${questions.length} entries.` });
-      }
-
-      let correct = 0;
-      questions.forEach((q, i) => { if (Number(answers[i]) === q.correctIndex) correct += 1; });
-      const score = Math.round((correct / questions.length) * 100);
-      const result = score >= THEORY_PASS_PERCENT ? 'Passed' : 'Failed';
-
-      const { rows } = await client.query(
-        `UPDATE driving_test_bookings SET status = 'Completed', result = $1, marks = $2, answers = $3::jsonb, submitted_at = NOW(), updated_at = NOW()
-         WHERE driving_test_booking_id = $4 RETURNING *`,
-        [result, score, JSON.stringify(answers.map(Number)), req.params.id]
-      );
-      const booking = rows[0];
-      await syncApplicationStatus(client, { sourceTable: 'driving_test_bookings', sourceId: booking.driving_test_booking_id, status: 'Completed', completed: true });
-
-      // Migration 069: the suggested Practical date is now the day right after the theory
-      // sitting ("it should be following day after theory test" — reduced from the three days
-      // used before this batch), and the booking lands as 'Requested' with no venue, no start
-      // time, and no confirmed_date yet — an officer must supply both before it becomes
-      // 'Scheduled' (schedulePracticalTest() below), per "the system before it schedule it
-      // should aske officer the location ... and the time they will start."
-      let autoScheduledPractical = null;
-      if (result === 'Passed') {
-        const bookingReference = generateReference('DTB');
-        const { rows: practicalRows } = await client.query(
-          `INSERT INTO driving_test_bookings (citizen_id, booking_reference, test_type, office_id, requested_date, status, theory_booking_id)
-           VALUES ($1,$2,'Practical',$3, (DATE($4) + INTERVAL '1 day'), 'Requested', $5) RETURNING *`,
-          [booking.citizen_id, bookingReference, booking.office_id, booking.confirmed_date, booking.driving_test_booking_id]
-        );
-        autoScheduledPractical = practicalRows[0];
-        await indexApplication(client, {
-          citizenId: booking.citizen_id, departmentKey: 'traffic', serviceType: 'Practical Driving Test',
-          referenceNumber: bookingReference, sourceTable: 'driving_test_bookings', sourceId: autoScheduledPractical.driving_test_booking_id, status: 'Requested',
-        });
-      }
-      await client.query('COMMIT');
-
-      await createNotification({
-        userId: req.user.userId, title: `Theory test: ${result}`, type: result === 'Passed' ? 'Approval' : 'Rejection',
-        message: `You scored ${score}%. Reference ${booking.booking_reference}.`,
-      });
-      if (autoScheduledPractical) {
-        await createNotification({
-          userId: req.user.userId, title: 'Practical driving test requested', type: 'Status Change',
-          message: `Reference ${autoScheduledPractical.booking_reference}. Your office will confirm the exact date, time and location shortly (suggested date: ${String(autoScheduledPractical.requested_date).slice(0, 10)}).`,
-        });
-      }
-      res.json({ booking, score, passed: result === 'Passed', autoScheduledPractical });
-    } catch (err) {
-      await client.query('ROLLBACK'); throw err;
-    } finally {
-      client.release();
+    const { rows: bRows } = await db.query(
+      `SELECT b.*, s.questions, s.status AS session_status,
+              CASE WHEN s.duration_minutes IS NOT NULL AND s.test_time IS NOT NULL
+                   THEN (s.test_date + s.test_time + (s.duration_minutes || ' minutes')::interval)
+                   ELSE NULL END AS window_closes_at,
+              NOW() AS server_now
+       FROM driving_test_bookings b
+       LEFT JOIN theory_test_sessions s ON s.theory_test_session_id = b.theory_session_id
+       WHERE b.driving_test_booking_id = $1`,
+      [req.params.id]
+    );
+    if (bRows.length === 0) return res.status(404).json({ error: 'Booking not found.' });
+    const existing = bRows[0];
+    if (existing.citizen_id !== req.user.citizenId) return res.status(403).json({ error: 'Not your booking.' });
+    if (existing.test_type !== 'Theory' || existing.status !== 'Scheduled') {
+      return res.status(409).json({ error: 'Cannot submit answers for this booking in its current state.' });
     }
+    if (!existing.theory_session_id || existing.session_status !== 'Published') {
+      return res.status(409).json({ error: 'Your theory test has not been published yet.' });
+    }
+    if (existing.submitted_at) return res.status(409).json({ error: 'You have already submitted this test.' });
+    const questions = existing.questions || [];
+    if (answers.length !== questions.length) {
+      return res.status(400).json({ error: `answers must have exactly ${questions.length} entries.` });
+    }
+
+    const GRACE_MS = 15000;
+    const pastDeadline = Boolean(
+      existing.window_closes_at
+      && (new Date(existing.server_now).getTime() - new Date(existing.window_closes_at).getTime()) > GRACE_MS
+    );
+
+    if (!pastDeadline) {
+      await db.query(
+        `UPDATE driving_test_bookings SET answers = $1::jsonb, updated_at = NOW()
+         WHERE driving_test_booking_id = $2 AND status = 'Scheduled' AND submitted_at IS NULL`,
+        [JSON.stringify(answers.map((a) => (a === null || a === undefined ? null : Number(a)))), req.params.id]
+      );
+    }
+
+    const outcome = await finalizeTheoryBooking(req.params.id, { timedOut: pastDeadline });
+    if (outcome.notFound) return res.status(404).json({ error: 'Booking not found.' });
+    if (outcome.alreadyFinalized) {
+      return res.status(409).json({ error: 'You have already submitted this test.' });
+    }
+    res.json({
+      booking: outcome.booking, score: outcome.score, passed: outcome.passed,
+      autoScheduledPractical: outcome.autoScheduledPractical, timedOut: pastDeadline,
+    });
   } catch (err) { next(err); }
 }
 
@@ -566,8 +791,14 @@ async function autoGenerateLearnerPermit(client, citizenId, practicalBookingId) 
 async function listTestBookings(req, res, next) {
   try {
     if (isOfficer(req)) {
+      // The officer listing below is global (no office filter — every officer sees every
+      // booking, matching how it already worked before this batch), so the sweep ahead of it is
+      // unscoped too: it needs to catch an overdue sitting at ANY office, not just the calling
+      // officer's own.
+      await sweepExpiredTheorySittings({});
       const { rows } = await db.query(
-        `SELECT b.*, c.first_name, c.last_name, s.test_time AS theory_test_time FROM driving_test_bookings b
+        `SELECT b.*, c.first_name, c.last_name, s.test_time AS theory_test_time, s.duration_minutes AS theory_duration_minutes
+         FROM driving_test_bookings b
          JOIN citizens c ON c.citizen_id = b.citizen_id
          LEFT JOIN theory_test_sessions s ON s.theory_test_session_id = b.theory_session_id
          ORDER BY b.requested_at DESC`
@@ -575,8 +806,10 @@ async function listTestBookings(req, res, next) {
       return res.json({ bookings: rows });
     }
     if (!req.user.citizenId) return res.json({ bookings: [] });
+    await sweepExpiredTheorySittings({ citizenId: req.user.citizenId });
     const { rows } = await db.query(
-      `SELECT b.*, s.test_time AS theory_test_time FROM driving_test_bookings b
+      `SELECT b.*, s.test_time AS theory_test_time, s.duration_minutes AS theory_duration_minutes
+       FROM driving_test_bookings b
        LEFT JOIN theory_test_sessions s ON s.theory_test_session_id = b.theory_session_id
        WHERE b.citizen_id = $1 ORDER BY b.requested_at DESC`,
       [req.user.citizenId]
@@ -858,7 +1091,7 @@ async function updateDrivingInstructorStatus(req, res, next) {
 module.exports = {
   requestTestBooking, listTestBookings, getTestBooking, schedulePracticalTest, postponeTestBooking,
   recordTestResult, cancelTestBooking, rejectTestBooking,
-  upsertTheorySession, listTheorySessions, publishTheorySession, postponeTheorySession, getTheoryTest, submitTheoryAnswers,
+  upsertTheorySession, listTheorySessions, publishTheorySession, postponeTheorySession, getTheoryTest, saveTheoryProgress, submitTheoryAnswers,
   vehicleInspectionsController,
   transportPermitsController,
   createDrivingInstructor, listDrivingInstructors, getDrivingInstructor, updateDrivingInstructorStatus,

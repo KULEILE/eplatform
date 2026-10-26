@@ -1250,7 +1250,10 @@
       "addQuestion": "Add question",
       "editSession": "Edit session",
       "postpone": "Postpone",
-      "postponeSessionIntro": "Move this published sitting to a new date and/or time — for example because of bad weather. Every citizen already linked to it is carried over automatically and notified; the question set stays locked and unchanged."
+      "postponeSessionIntro": "Move this published sitting to a new date and/or time — for example because of bad weather. Every citizen already linked to it is carried over automatically and notified; the question set stays locked and unchanged.",
+      "duration": "Duration",
+      "durationMinutes": "{{n}} min",
+      "durationHelp": "How long the shared window stays open once published — e.g. 60 minutes."
     },
     "theoryTest": {
       "takeTest": "Take test",
@@ -1259,7 +1262,9 @@
       "instructions": "Select one answer for each question, then submit. Your result is automatic.",
       "submit": "Submit answers",
       "resultPassed": "You passed with a score of {{score}}%.",
-      "resultFailed": "You scored {{score}}% — the pass mark is {{passMark}}%."
+      "resultFailed": "You scored {{score}}% — the pass mark is {{passMark}}%.",
+      "timeRemaining": "Time remaining: {{time}}",
+      "autoClosed": "The test window closed and your answers were submitted automatically."
     }
   },
   "finance": {

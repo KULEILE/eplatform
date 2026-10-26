@@ -1250,7 +1250,10 @@
       "addQuestion": "Eketsa potso",
       "editSession": "Fetola khoeli",
       "postpone": "Emisa nakong e tla",
-      "postponeSessionIntro": "Fetola khoeli ena e phatlalalitsoeng ho ea letsatsi le/kapa nako e ncha — mohlala ka lebaka la boemo bo bobe ba leholimo. Baahi bohle ba hokahantsoeng le eona ba tla isoa letsatsing le lecha ka boeona 'me ba tsebisoe; sete ea lipotso e ntse e koetsoe 'me ha e fetoha."
+      "postponeSessionIntro": "Fetola khoeli ena e phatlalalitsoeng ho ea letsatsi le/kapa nako e ncha — mohlala ka lebaka la boemo bo bobe ba leholimo. Baahi bohle ba hokahantsoeng le eona ba tla isoa letsatsing le lecha ka boeona 'me ba tsebisoe; sete ea lipotso e ntse e koetsoe 'me ha e fetoha.",
+      "duration": "Nako e tsamaisehang",
+      "durationMinutes": "metsotso e {{n}}",
+      "durationHelp": "Nako eo sete e lula e butsoe ka nako e tšoanang ha e se e phatlalalitsoe — mohlala metsotso e 60."
     },
     "theoryTest": {
       "takeTest": "Nka tlhahlobo",
@@ -1259,7 +1262,9 @@
       "instructions": "Khetha karabo e le 'ngoe bakeng sa potso ka 'ngoe, eaba u romella. Sephetho sa hau se tla tsoa ka boeona.",
       "submit": "Romella likarabo",
       "resultPassed": "U phasitse ka lintlha tse {{score}}%.",
-      "resultFailed": "U fumane {{score}}% — boemo bo tlamehang ke {{passMark}}%."
+      "resultFailed": "U fumane {{score}}% — boemo bo tlamehang ke {{passMark}}%.",
+      "timeRemaining": "Nako e setseng: {{time}}",
+      "autoClosed": "Nako ea tlhahlobo e koetsoe 'me likarabo tsa hau li romelitsoe ka boeona."
     }
   },
   "finance": {

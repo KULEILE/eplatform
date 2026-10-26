@@ -18,6 +18,7 @@ router.post('/test-bookings/:id/record-result', c2.recordTestResult);
 router.post('/test-bookings/:id/cancel', c2.cancelTestBooking);
 router.post('/test-bookings/:id/reject', c2.rejectTestBooking);
 router.get('/test-bookings/:id/theory-test', c2.getTheoryTest);
+router.post('/test-bookings/:id/save-progress', c2.saveTheoryProgress);
 router.post('/test-bookings/:id/submit-answers', c2.submitTheoryAnswers);
 
 // Theory test sessions (migration 068) — the shared, officer-published, multiple-choice question

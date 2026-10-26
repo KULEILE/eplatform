@@ -17,6 +17,26 @@ const emptyQuestion = () => ({ question: '', options: ['', '', ''], correctIndex
 
 function timeLabel(t) { return t ? String(t).slice(0, 5) : '—'; }
 
+/** Batch 22: a citizen's booking row only carries the open time (theory_test_time) and the
+ *  duration (theory_duration_minutes) separately — this is a display-only convenience to show
+ *  the close time too, without needing another round trip. Deliberately simple (no date-rollover
+ *  handling) since a sitting's whole window is expected to fall on one day. */
+function addMinutesToTimeLabel(time, minutes) {
+  if (!time || !minutes) return null;
+  const [h, m] = String(time).slice(0, 5).split(':').map(Number);
+  const total = h * 60 + m + Number(minutes);
+  const hh = String(Math.floor((total % 1440) / 60)).padStart(2, '0');
+  const mm = String(total % 60).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function formatCountdown(ms) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 /**
  * Driving theory test booking.
  *
@@ -194,7 +214,10 @@ function CitizenView({ t }) {
             {
               key: 'timeOrLocation', header: t('traffic.testBookingsForm.field.location'),
               render: (r) => {
-                if (r.test_type !== 'Practical') return timeLabel(r.theory_test_time);
+                if (r.test_type !== 'Practical') {
+                  const closes = addMinutesToTimeLabel(r.theory_test_time, r.theory_duration_minutes);
+                  return closes ? `${timeLabel(r.theory_test_time)}–${closes}` : timeLabel(r.theory_test_time);
+                }
                 if (!r.test_location) return <span className="text-slate-500">{t('traffic.testBookingsForm.awaitingSchedule')}</span>;
                 return `${r.test_location}${r.scheduled_time ? ` @ ${timeLabel(r.scheduled_time)}` : ''}`;
               },
@@ -227,23 +250,61 @@ function CitizenView({ t }) {
   );
 }
 
+/** Batch 22: "this theory test must have duration and it must close automatically when the time
+ *  is up." The GET .../theory-test call anchors a countdown to the SERVER's own clock
+ *  (windowClosesAt / serverNow, both computed by Postgres in the same query — see
+ *  getTheoryTest() on the backend) rather than trusting the citizen's own device clock: the
+ *  remaining time at fetch is calculated once from those two values, then ticked down locally
+ *  from that anchor every second. Every answer change is saved to the server immediately
+ *  (save-progress) so an automatic close — whether triggered here or by the backend's own lazy
+ *  sweep if the citizen's tab isn't even open any more — always has something real to score. */
 function TakeTestModal({ booking, onClose, onDone, t }) {
   const [test, setTest] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState(null);
+  const [notYetOpen, setNotYetOpen] = useState(null);
+  const [remainingMs, setRemainingMs] = useState(null);
+  const autoSubmitFired = React.useRef(false);
 
   useEffect(() => {
-    setTest(null); setAnswers([]); setError(''); setOutcome(null);
+    setTest(null); setAnswers([]); setError(''); setOutcome(null); setNotYetOpen(null); setRemainingMs(null);
+    autoSubmitFired.current = false;
     if (!booking) return;
     api.get(`${API_BASE}/${booking.driving_test_booking_id}/theory-test`)
-      .then((d) => { setTest(d); setAnswers(new Array(d.questions.length).fill(null)); })
-      .catch((err) => setError(err.message || t('common.somethingWentWrong')));
+      .then((d) => {
+        if (d.timedOut) { setOutcome(d); return; }
+        setTest(d);
+        setAnswers(d.answers && d.answers.length === d.questions.length ? d.answers : new Array(d.questions.length).fill(null));
+        if (d.windowClosesAt) {
+          setRemainingMs(new Date(d.windowClosesAt).getTime() - new Date(d.serverNow).getTime());
+        }
+      })
+      .catch((err) => {
+        if (err.data && err.data.windowOpensAt) { setNotYetOpen(err.data); return; }
+        setError(err.message || t('common.somethingWentWrong'));
+      });
   }, [booking]);
 
-  async function onSubmit(e) {
-    e.preventDefault();
+  // Local 1-second ticking of the remaining time, anchored once above to the server's own
+  // clock — this interval only subtracts elapsed local time from that anchor, so a skewed
+  // device clock never matters, only how fast time is actually passing.
+  useEffect(() => {
+    if (remainingMs === null || outcome) return;
+    const id = setInterval(() => { setRemainingMs((ms) => (ms === null ? null : ms - 1000)); }, 1000);
+    return () => clearInterval(id);
+  }, [remainingMs === null, outcome]);
+
+  // Save progress to the server every time an answer changes, so a crash or a lost connection
+  // never loses what's already been picked.
+  useEffect(() => {
+    if (!booking || !test || !answers.length) return;
+    api.post(`${API_BASE}/${booking.driving_test_booking_id}/save-progress`, { answers }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answers]);
+
+  async function doSubmit() {
     if (!booking) return;
     setError(''); setBusy(true);
     try {
@@ -252,30 +313,56 @@ function TakeTestModal({ booking, onClose, onDone, t }) {
     } catch (err) { setError(err.message || t('common.somethingWentWrong')); } finally { setBusy(false); }
   }
 
+  function onSubmit(e) { e.preventDefault(); doSubmit(); }
+
+  // The window closed while this modal was open — auto-submit exactly once, bypassing the
+  // "all answered" gate a voluntary submit requires, since whatever's there is what gets scored.
+  useEffect(() => {
+    if (remainingMs !== null && remainingMs <= 0 && !outcome && !busy && !autoSubmitFired.current) {
+      autoSubmitFired.current = true;
+      doSubmit();
+    }
+  }, [remainingMs, outcome, busy]);
+
   const allAnswered = test && answers.length === test.questions.length && answers.every((a) => a !== null);
+  const timeIsUp = remainingMs !== null && remainingMs <= 0;
 
   return (
     <Modal
       open={!!booking} onClose={outcome ? onDone : onClose} title={t('traffic.theoryTest.title')}
-      footer={outcome ? (
-        <button type="button" className="btn-primary" onClick={onDone}>{t('common.close')}</button>
+      footer={outcome || notYetOpen ? (
+        <button type="button" className="btn-primary" onClick={outcome ? onDone : onClose}>{t('common.close')}</button>
       ) : (
         <>
           <button type="button" className="btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
-          <button type="submit" form="theory-test-form" disabled={busy || !allAnswered} className="btn-primary">{busy ? t('common.loading') : t('traffic.theoryTest.submit')}</button>
+          <button type="submit" form="theory-test-form" disabled={busy || !allAnswered || timeIsUp} className="btn-primary">{busy ? t('common.loading') : t('traffic.theoryTest.submit')}</button>
         </>
       )}
     >
       {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}
-      {outcome ? (
-        <p className={`rounded-md px-3 py-3 text-sm font-medium ${outcome.passed ? 'bg-green-50 text-gov-green' : 'bg-red-50 text-gov-red'}`}>
-          {outcome.passed
-            ? t('traffic.theoryTest.resultPassed', { score: outcome.score })
-            : t('traffic.theoryTest.resultFailed', { score: outcome.score, passMark: 50 })}
-        </p>
+      {notYetOpen ? (
+        <p className="rounded-md bg-slate-50 px-3 py-3 text-sm text-slate-700">{notYetOpen.error}</p>
+      ) : outcome ? (
+        <>
+          {outcome.timedOut && (
+            <p className="mb-3 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">{t('traffic.theoryTest.autoClosed')}</p>
+          )}
+          <p className={`rounded-md px-3 py-3 text-sm font-medium ${outcome.passed ? 'bg-green-50 text-gov-green' : 'bg-red-50 text-gov-red'}`}>
+            {outcome.passed
+              ? t('traffic.theoryTest.resultPassed', { score: outcome.score })
+              : t('traffic.theoryTest.resultFailed', { score: outcome.score, passMark: 50 })}
+          </p>
+        </>
       ) : !test ? <Loading /> : (
         <form id="theory-test-form" onSubmit={onSubmit} noValidate>
-          <p className="mb-4 text-sm text-slate-600">{t('traffic.theoryTest.instructions')}</p>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-slate-600">{t('traffic.theoryTest.instructions')}</p>
+            {remainingMs !== null && (
+              <span className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${remainingMs <= 60000 ? 'bg-red-50 text-gov-red' : 'bg-slate-100 text-slate-700'}`}>
+                {t('traffic.theoryTest.timeRemaining', { time: formatCountdown(remainingMs) })}
+              </span>
+            )}
+          </div>
           {test.questions.map((q, qi) => (
             <fieldset key={qi} className="mb-5 border-t border-slate-100 pt-4 first:border-t-0 first:pt-0">
               <legend className="mb-2 text-sm font-semibold text-slate-900">{qi + 1}. {q.question}</legend>
@@ -541,6 +628,7 @@ function TheorySessionsPanel({ t, onChanged }) {
   const [editorIsNew, setEditorIsNew] = useState(true);
   const [testDate, setTestDate] = useState('');
   const [testTime, setTestTime] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState('');
   const [questions, setQuestions] = useState([emptyQuestion()]);
   const [postponeTarget, setPostponeTarget] = useState(null);
   const [postponeDate, setPostponeDate] = useState('');
@@ -571,11 +659,12 @@ function TheorySessionsPanel({ t, onChanged }) {
   }
 
   function openNew() {
-    setTestDate(''); setTestTime(''); setQuestions([emptyQuestion()]); setError(''); setEditorIsNew(true); setEditorOpen(true);
+    setTestDate(''); setTestTime(''); setDurationMinutes(''); setQuestions([emptyQuestion()]); setError(''); setEditorIsNew(true); setEditorOpen(true);
   }
   function openEdit(s) {
     setTestDate(String(s.test_date).slice(0, 10));
     setTestTime(s.test_time ? String(s.test_time).slice(0, 5) : '');
+    setDurationMinutes(s.duration_minutes ?? '');
     setQuestions(s.questions && s.questions.length ? s.questions.map((q) => ({ ...q, options: [...q.options] })) : [emptyQuestion()]);
     setError(''); setEditorIsNew(false); setEditorOpen(true);
   }
@@ -605,7 +694,7 @@ function TheorySessionsPanel({ t, onChanged }) {
     setError(''); setSuccess(''); setBusy(true);
     try {
       await api.post(SESSIONS_BASE, {
-        testDate, testTime: testTime || undefined,
+        testDate, testTime: testTime || undefined, durationMinutes: durationMinutes === '' ? undefined : Number(durationMinutes),
         questions: questions.map((q) => ({ question: q.question.trim(), options: q.options.map((o) => o.trim()), correctIndex: q.correctIndex })),
       });
       setSuccess(t('common.saved'));
@@ -644,7 +733,11 @@ function TheorySessionsPanel({ t, onChanged }) {
           emptyTitle={t('traffic.theorySessions.noneYet')}
           columns={[
             { key: 'date', header: t('traffic.theorySessions.date'), render: (s) => formatDateOnly(s.test_date) },
-            { key: 'time', header: t('traffic.theorySessions.time'), render: (s) => timeLabel(s.test_time) },
+            {
+              key: 'time', header: t('traffic.theorySessions.time'),
+              render: (s) => s.window_closes_time ? `${timeLabel(s.test_time)}–${timeLabel(s.window_closes_time)}` : timeLabel(s.test_time),
+            },
+            { key: 'duration', header: t('traffic.theorySessions.duration'), render: (s) => s.duration_minutes ? t('traffic.theorySessions.durationMinutes', { n: s.duration_minutes }) : '—' },
             { key: 'questionsCount', header: t('traffic.theorySessions.questionsCount'), render: (s) => (s.questions || []).length },
             { key: 'bookings', header: t('traffic.theorySessions.bookings'), render: (s) => s.booking_count },
             { key: 'status', header: t('traffic.theorySessions.status'), render: (s) => <StatusBadge status={s.status} kind={s.status === 'Published' ? 'positive' : undefined} /> },
@@ -666,7 +759,7 @@ function TheorySessionsPanel({ t, onChanged }) {
       <Modal open={editorOpen} onClose={() => setEditorOpen(false)} title={editorIsNew ? t('traffic.theorySessions.newSession') : t('traffic.theorySessions.editSession')}
         footer={<>
           <button type="button" className="btn-secondary" onClick={() => setEditorOpen(false)}>{t('common.cancel')}</button>
-          <button type="submit" form="session-form" disabled={busy || !testDate || !testTime || !questionsValid} className="btn-primary">{busy ? t('common.loading') : t('traffic.theorySessions.save')}</button>
+          <button type="submit" form="session-form" disabled={busy || !testDate || !testTime || !durationMinutes || !questionsValid} className="btn-primary">{busy ? t('common.loading') : t('traffic.theorySessions.save')}</button>
         </>}
       >
         <form id="session-form" onSubmit={onSave} noValidate>
@@ -675,6 +768,12 @@ function TheorySessionsPanel({ t, onChanged }) {
           </FormField>
           <FormField label={t('traffic.theorySessions.time')} htmlFor="sessionTime" required>
             <input id="sessionTime" type="time" required className="form-input" value={testTime} onChange={(e) => setTestTime(e.target.value)} />
+          </FormField>
+          <FormField label={t('traffic.theorySessions.duration')} htmlFor="sessionDuration" required help={t('traffic.theorySessions.durationHelp')}>
+            <input
+              id="sessionDuration" type="number" min={1} max={240} required className="form-input"
+              value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)}
+            />
           </FormField>
 
           {questions.map((q, qi) => (
