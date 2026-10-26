@@ -508,7 +508,15 @@ async function failSurrender(req, res, next) {
  *  render the actual licence rather than just the workflow status the generic getOne returned.
  *  Also resolves "First Issue" — the real card always shows the citizen's ORIGINAL first-licence
  *  date, not this particular record's own issue date, so it stays fixed across renewals/
- *  replacements: the earliest issue_date among this citizen's own Collected driving licence rows. */
+ *  replacements: the earliest issue_date among this citizen's own Collected driving licence rows.
+ *
+ *  Batch 28: "the citizen must be the one who see his or her license" — a traffic_officer is
+ *  deliberately NOT allowed through this endpoint any more, even for a record at their own
+ *  office. The officer's whole workflow (reviewing the payment receipt, confirm-payment, collect,
+ *  reject, request-information) already lives entirely on the list page (DrivingLicence.jsx) and
+ *  never needed this endpoint's richer joined data — only the card display did, and that's now
+ *  citizen-only. system_administrator is kept for genuine support/admin access, same as every
+ *  other getOne in this codebase; it is not a counter role a citizen would see using this system. */
 async function getOne(req, res, next) {
   try {
     const { rows } = await db.query(
@@ -527,8 +535,7 @@ async function getOne(req, res, next) {
     if (rows.length === 0) return res.status(404).json({ error: 'Record not found.' });
     const record = rows[0];
     const isOwner = req.user.citizenId === record.citizen_id;
-    const isOfficer = ['traffic_officer', 'system_administrator'].includes(req.user.roleKey);
-    if (!isOwner && !isOfficer) return res.status(403).json({ error: 'You do not have access to this record.' });
+    if (!isOwner && req.user.roleKey !== 'system_administrator') return res.status(403).json({ error: 'You do not have access to this record.' });
     res.json({ record });
   } catch (err) { next(err); }
 }

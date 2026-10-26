@@ -1,22 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { api } from '../../api/client';
 import Loading from '../../components/ui/Loading';
 import StatusBadge from '../../components/ui/StatusBadge';
 import EmptyState from '../../components/ui/EmptyState';
-import Modal from '../../components/ui/Modal';
-import SignaturePad from '../../components/SignaturePad';
 import { formatDateOnly } from '../../utils/format';
-
-// Mirrors DrivingLicence.jsx's own NEXT map exactly (same actions, same endpoints) — duplicated
-// rather than shared so this page stays a self-contained document view, same pattern
-// PassportDocument.jsx / NationalIdDetail.jsx already use for their own list pages.
-const NEXT = {
-  'Submitted': { action: 'confirm-payment', labelKey: 'traffic.drivingLicence.confirmPayment' },
-  'Ready for Collection': { action: 'collect', labelKey: 'common.collect' },
-};
 
 /**
  * Batch 27 — "the system must generate the card like this one and then display it like id
@@ -27,79 +16,41 @@ const NEXT = {
  * plain key-value list — same approach NationalIdDetail.jsx and PassportDocument.jsx already
  * take for their own cards/bio-data pages.
  *
+ * Batch 28 — "the citizen must be the one who see his or her license": unlike
+ * PassportDocument.jsx/NationalIdDetail.jsx, this page is deliberately CITIZEN-ONLY. There is no
+ * officer branch at all any more — no NEXT map, no action buttons, no payment-proof review. The
+ * officer's full workflow (receipt review, confirm-payment, collect-with-signature, reject,
+ * request information) lives entirely on DrivingLicence.jsx's list, which never links here; the
+ * backend's getOne() refuses any role but the owning citizen and system_administrator, so this
+ * is enforced on both ends, not just by hiding a link.
+ *
  * "Code" is the vehicle category chosen at apply time (migration 072, Batch 26) — A/B/C/D, not
  * the numeric code the real sample card happened to show, per the citizen's own four-category
  * wording. "Vehicle Restriction" isn't a concept this system tracks anywhere, so it's always
  * shown as "None" — a demo placeholder, same spirit as the DEMO watermark already stamped across
  * the card. "First Issue" is NOT this record's own issue date: a real licence keeps that date
- * fixed across every later renewal/replacement, so it's resolved server-side (getOne, Batch 27)
- * as the earliest issue date among this citizen's own Collected driving licence records.
+ * fixed across every later renewal/replacement, so it's resolved server-side (getOne) as the
+ * earliest issue date among this citizen's own Collected driving licence records.
  *
- * The citizen's signature (captured at 'collect' — see the SignaturePad modal below and migration
- * 073) fills the "Signature" line once collected, the same signature-at-collection convention
- * migration 035 already established for National ID/passport/birth certificate/police clearance.
- * The "Traffic Commissioner" line on the real card is printed as a label only — this demo system
- * has no real traffic commissioner to sign it, so no signature graphic is fabricated there.
+ * The citizen's own signature (captured at 'collect' on the list page — see SignaturePad.jsx and
+ * migration 073) fills the "Signature" line once collected, the same signature-at-collection
+ * convention migration 035 already established for National ID/passport/birth certificate/police
+ * clearance. The "Traffic Commissioner" line on the real card is printed as a label only — this
+ * demo system has no real traffic commissioner to sign it, so no signature graphic is fabricated
+ * there.
  */
 export default function DrivingLicenceDocument() {
   const { id } = useParams();
-  const { user } = useAuth();
   const { t } = useLanguage();
-  const isOfficer = ['traffic_officer', 'system_administrator'].includes(user.roleKey);
   const [record, setRecord] = useState(null);
   const [loadError, setLoadError] = useState('');
-  const [actionError, setActionError] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [modal, setModal] = useState(null); // 'reject' | 'request-information' | 'surrender-failed' | null
-  const [reason, setReason] = useState('');
-  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
-  const [signatureReference, setSignatureReference] = useState(null);
 
-  function load() {
+  useEffect(() => {
     setLoadError('');
     api.get(`/traffic/driving-licence/${id}`)
       .then((d) => setRecord(d.record))
       .catch((err) => setLoadError(err.message || t('common.somethingWentWrong')));
-  }
-  useEffect(() => { load(); }, [id]);
-
-  async function runAction(action) {
-    setBusy(true);
-    setActionError('');
-    try {
-      await api.post(`/traffic/driving-licence/${id}/${action}`, {});
-      load();
-    } catch (err) {
-      setActionError(err.message || t('common.somethingWentWrong'));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function submitModal() {
-    setBusy(true);
-    try {
-      await api.post(`/traffic/driving-licence/${id}/${modal}`, { reason });
-      setModal(null); setReason('');
-      load();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function confirmCollect() {
-    setBusy(true);
-    try {
-      await api.post(`/traffic/driving-licence/${id}/collect`, { signatureReference });
-      setSignatureModalOpen(false);
-      setSignatureReference(null);
-      load();
-    } catch (err) {
-      setActionError(err.message || t('common.somethingWentWrong'));
-    } finally {
-      setBusy(false);
-    }
-  }
+  }, [id]);
 
   if (loadError) {
     return (
@@ -115,9 +66,7 @@ export default function DrivingLicenceDocument() {
   }
   if (!record) return <Loading />;
 
-  const next = isOfficer ? NEXT[record.status] : null;
   const isIssued = !!record.licence_number && !!record.issue_date;
-  const canAct = isOfficer && !['Rejected', 'Collected'].includes(record.status);
   const awaitingSurrender = record.surrender_status === 'Awaiting Surrender';
 
   return (
@@ -205,89 +154,13 @@ export default function DrivingLicenceDocument() {
         {record.rejection_reason && (
           <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red">⚠ {record.rejection_reason}</p>
         )}
-
+        {record.status === 'Ready for Collection' && (
+          <p className="text-sm text-gov-amber">⚠ {t('homeAffairs.birthCertificateView.notCollectedWarning')}</p>
+        )}
         {awaitingSurrender && (
-          <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-gov-amber">⚠ {t('traffic.drivingLicence.learnerPermitBox.surrenderNotice')}</p>
-        )}
-
-        {/* Officer-only: full-size payment proof review — the thing the whole 'confirm-payment'
-            action is actually based on. */}
-        {isOfficer && (
-          <div className="mb-4 grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
-            <div>
-              <p className="mb-1 text-xs font-semibold uppercase text-slate-500">{t('receiptCapture.label')}</p>
-              {record.receipt_image_reference ? (
-                <a href={`/uploads/${record.receipt_image_reference}`} target="_blank" rel="noreferrer">
-                  <img src={`/uploads/${record.receipt_image_reference}`} alt={t('receiptCapture.previewAlt')} className="h-48 w-full rounded border border-slate-200 object-contain bg-slate-50" />
-                  <span className="mt-1 block text-xs text-gov-navy underline">{t('passport.document.openFullSize')}</span>
-                  <span className="mt-1 block font-mono text-xs text-slate-500">{record.payment_reference}</span>
-                </a>
-              ) : <p className="text-sm text-slate-400">—</p>}
-            </div>
-          </div>
-        )}
-
-        {canAct && (
-          <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
-            {actionError && <p className="w-full rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {actionError}</p>}
-            {next && (
-              <button
-                type="button"
-                disabled={busy}
-                className="btn-primary"
-                title={awaitingSurrender && next.action === 'collect' ? t('traffic.drivingLicence.surrender.confirmBoth') : undefined}
-                onClick={() => (next.action === 'collect' ? setSignatureModalOpen(true) : runAction(next.action))}
-              >
-                {t(next.labelKey)}
-              </button>
-            )}
-            {awaitingSurrender && record.status === 'Ready for Collection' && (
-              <button type="button" disabled={busy} className="btn-danger" onClick={() => setModal('surrender-failed')}>
-                {t('traffic.drivingLicence.surrender.failed')}
-              </button>
-            )}
-            <button type="button" disabled={busy} className="text-sm font-medium text-slate-500 hover:underline" onClick={() => setModal('request-information')}>{t('common.requestInformation')}</button>
-            <button type="button" disabled={busy} className="text-sm font-medium text-gov-red hover:underline" onClick={() => setModal('reject')}>{t('common.reject')}</button>
-          </div>
+          <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-gov-amber">⚠ {t('traffic.drivingLicence.learnerPermitBox.surrenderNotice')}</p>
         )}
       </div>
-
-      <Modal
-        open={!!modal}
-        onClose={() => { setModal(null); setReason(''); }}
-        title={modal === 'reject' ? t('common.reject') : modal === 'surrender-failed' ? t('traffic.drivingLicence.surrender.failedModalTitle') : t('common.requestInformation')}
-        footer={
-          <>
-            <button type="button" className="btn-secondary" onClick={() => { setModal(null); setReason(''); }}>{t('common.cancel')}</button>
-            <button
-              type="button"
-              disabled={busy || (modal !== 'surrender-failed' && !reason.trim())}
-              className={modal === 'reject' || modal === 'surrender-failed' ? 'btn-danger' : 'btn-primary'}
-              onClick={submitModal}
-            >
-              {t('common.confirm')}
-            </button>
-          </>
-        }
-      >
-        {modal === 'surrender-failed' && <p className="mb-3 text-sm text-slate-600">{t('traffic.drivingLicence.surrender.failedModalHelp')}</p>}
-        <label htmlFor="dlDocReason" className="form-label">{t('common.reason')}{modal === 'surrender-failed' && ` (${t('common.optional')})`}</label>
-        <textarea id="dlDocReason" className="form-input" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
-      </Modal>
-
-      <Modal
-        open={signatureModalOpen}
-        onClose={() => { setSignatureModalOpen(false); setSignatureReference(null); }}
-        title={t('common.collect')}
-        footer={
-          <>
-            <button type="button" className="btn-secondary" onClick={() => { setSignatureModalOpen(false); setSignatureReference(null); }}>{t('common.cancel')}</button>
-            <button type="button" disabled={busy || !signatureReference} className="btn-primary" onClick={confirmCollect}>{t('common.confirm')}</button>
-          </>
-        }
-      >
-        <SignaturePad value={signatureReference} onChange={setSignatureReference} />
-      </Modal>
     </div>
   );
 }

@@ -28,8 +28,15 @@ import { formatDateOnly } from '../../utils/format';
 // header comment for the full reasoning.
 //
 // Every officer "next step" button here is a real, professional button (btn-primary, compact),
-// not a text link — matching the convention the Passport module moved to. View / Request
-// Information / Reject stay as the plain text-link secondary actions used throughout the app.
+// not a text link — matching the convention the Passport module moved to. Request Information /
+// Reject stay as the plain text-link secondary actions used throughout the app.
+//
+// Batch 28: "the citizen must be the one who see his or her license" — unlike Passport/National
+// ID, the officer here gets NO "View" link into the styled card (DrivingLicenceDocument.jsx).
+// Everything the officer needs (the receipt thumbnail, confirm-payment, collect, reject, request
+// information) already lives right on this row; the card itself — photo, signature, full bio-data
+// — is citizen-only, enforced both here (no link) and on the backend (getOne rejects any role but
+// the owning citizen and system_administrator).
 const NEXT = {
   'Submitted': { action: 'confirm-payment', labelKey: 'traffic.drivingLicence.confirmPayment' },
   'Ready for Collection': { action: 'collect', labelKey: 'common.collect' },
@@ -386,8 +393,13 @@ export default function DrivingLicence() {
               const awaitingSurrender = r.surrender_status === 'Awaiting Surrender';
               const busy = busyId === r.traffic_record_id;
               return (
+                // Batch 28: deliberately no "View" link here — "the citizen must be the one who
+                // see his or her license". The officer's whole workflow (reviewing the receipt
+                // thumbnail above, confirming payment, collecting with the citizen's signature,
+                // rejecting, requesting information) stays entirely on this row; the styled card
+                // itself (DrivingLicenceDocument.jsx) is citizen-only now, both here and in the
+                // backend (getOne no longer admits traffic_officer — see that controller).
                 <div className="flex flex-wrap gap-2">
-                  <Link to={`/traffic/driving-licence/${r.traffic_record_id}`} className="text-sm font-medium text-gov-navy hover:underline">{t('common.view')}</Link>
                   {next && (
                     <button
                       type="button" disabled={busy}
