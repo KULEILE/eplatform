@@ -58,7 +58,7 @@ const isOfficer = (req) => TRAFFIC_OFFICER_ROLES.includes(req.user.roleKey);
 // citizen's score is correctCount / totalQuestions * 100, rounded; this is the line between
 // Passed and Failed. Not specified by the request, so a reasonable real-world figure is used —
 // called out here, once, rather than buried in the scoring code below.
-const THEORY_PASS_PERCENT = 70;
+const THEORY_PASS_PERCENT = 50;
 
 function genNumber(prefix) {
   return `${prefix}-${String(Math.floor(100000 + Math.random() * 900000))}`;
