@@ -17,8 +17,23 @@
  *     start" — it now lands as 'Requested' with only a SUGGESTED date (the very next day after
  *     the theory sitting, reduced from three days — "it should be following day after theory
  *     test") rather than jumping straight to 'Scheduled'. An officer must call
- *     schedulePracticalTest() with a venue AND a start time before it becomes 'Scheduled'; an
- *     already-scheduled Practical booking, or an already-published Theory session, can also be
+ *     schedulePracticalBulk() with a venue, date AND a start time before it becomes 'Scheduled'.
+ *
+ *     Batch 25 changed HOW that scheduling happens: the original version of this let an officer
+ *     open any one 'Requested' Practical booking and set ITS OWN date/time/venue, one citizen at
+ *     a time — "on the practical schedule lets avoid individual schedule officer must schedule
+ *     for once and that apply to all citizens passed test." That per-citizen shape was exactly
+ *     the same fairness risk already called out for the Theory test (migration 071/Batch 23): an
+ *     officer could see a name they don't like and quietly give that one person a worse date,
+ *     time, or venue than everyone else, or simply never get around to scheduling them. There is
+ *     no legitimate reason for two citizens who both passed their Theory test at the same office
+ *     to need different Practical-test logistics, so schedulePracticalBulk() replaces the old
+ *     per-booking endpoint entirely: an officer sets ONE date, ONE start time, and ONE venue, and
+ *     it is applied identically to EVERY 'Requested' Practical booking at their own office in a
+ *     single action — there is no way to schedule just one citizen, or to give one a different
+ *     time than the rest.
+ *
+ *     An already-scheduled Practical booking, or an already-published Theory session, can also be
  *     postponed afterwards by an officer (postponeTestBooking() / postponeTheorySession()) —
  *     "the system must allow officer to postpone test because someday weather may be bad or
  *     move." A Practical Pass still automatically produces a Learner's Permit (2-year validity)
@@ -744,46 +759,48 @@ async function submitTheoryAnswers(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST /traffic/test-bookings/:id/schedule-practical (officer) body:{testLocation,
- *  scheduledTime, confirmedDate?} — "the system before it schedule it should aske officer the
- *  location where practical will take place and the time they will start." A Practical booking
- *  auto-created on a Theory pass lands in 'Requested' with only a suggested date (the day after
- *  the theory sitting); it only becomes 'Scheduled' once an officer supplies BOTH a venue and a
- *  start time here. confirmedDate defaults to that suggested date, but an officer may move it
- *  (e.g. if the following day doesn't suit the office) as part of the same step. */
-async function schedulePracticalTest(req, res, next) {
+/** POST /traffic/test-bookings/schedule-practical (officer) body:{confirmedDate, scheduledTime,
+ *  testLocation} — "on the practical schedule lets avoid individual schedule officer must
+ *  schedule for once and that apply to all citizens passed test." Deliberately NOT scoped to one
+ *  booking id: it sweeps up EVERY 'Requested' Practical booking at the officer's own office in
+ *  one shot and gives all of them the exact same date, start time, and venue — the only way an
+ *  officer can schedule a Practical test at all, so there is no path left that lets one citizen
+ *  be singled out with a different (or no) date than everyone else, same reasoning that already
+ *  shaped the Theory session's cancel/postpone actions. Returns how many bookings were affected;
+ *  0 just means nobody was waiting to be scheduled right now, not an error. */
+async function schedulePracticalBulk(req, res, next) {
   try {
     if (!isOfficer(req)) return res.status(403).json({ error: 'Officer only.' });
-    const { testLocation, scheduledTime, confirmedDate } = req.body;
-    if (!testLocation || !String(testLocation).trim()) return res.status(400).json({ error: 'testLocation is required.' });
+    if (!req.user.officeId) return res.status(400).json({ error: 'Your account has no office assigned.' });
+    const { confirmedDate, scheduledTime, testLocation } = req.body;
+    if (!confirmedDate) return res.status(400).json({ error: 'confirmedDate is required.' });
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (confirmedDate < todayStr) return res.status(400).json({ error: 'confirmedDate must be today or a future date.' });
     if (!scheduledTime) return res.status(400).json({ error: 'scheduledTime is required.' });
-    const { rows: existingRows } = await db.query(`SELECT * FROM driving_test_bookings WHERE driving_test_booking_id = $1`, [req.params.id]);
-    if (existingRows.length === 0) return res.status(404).json({ error: 'Booking not found.' });
-    const existing = existingRows[0];
-    if (existing.test_type !== 'Practical' || existing.status !== 'Requested') {
-      return res.status(409).json({ error: 'Cannot schedule this booking in its current state.' });
-    }
-    let dateToUse = existing.requested_date;
-    if (confirmedDate) {
-      const todayStr = new Date().toISOString().slice(0, 10);
-      if (confirmedDate < todayStr) return res.status(400).json({ error: 'confirmedDate must be today or a future date.' });
-      dateToUse = confirmedDate;
-    }
+    if (!testLocation || !String(testLocation).trim()) return res.status(400).json({ error: 'testLocation is required.' });
+
     const { rows } = await db.query(
-      `UPDATE driving_test_bookings SET status = 'Scheduled', confirmed_date = $1, test_location = $2, scheduled_time = $3, updated_at = NOW()
-       WHERE driving_test_booking_id = $4 RETURNING *`,
-      [dateToUse, String(testLocation).trim(), scheduledTime, req.params.id]
+      `UPDATE driving_test_bookings
+       SET status = 'Scheduled', confirmed_date = $1, scheduled_time = $2, test_location = $3, updated_at = NOW()
+       WHERE test_type = 'Practical' AND status = 'Requested' AND office_id = $4
+       RETURNING *`,
+      [confirmedDate, scheduledTime, String(testLocation).trim(), req.user.officeId]
     );
-    const bk = rows[0];
-    await syncApplicationStatus(db, { sourceTable: 'driving_test_bookings', sourceId: bk.driving_test_booking_id, status: 'Scheduled' });
-    const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [bk.citizen_id])).rows[0];
-    if (userRow) {
-      await createNotification({
-        userId: userRow.user_id, title: 'Practical driving test scheduled', type: 'Status Change',
-        message: `Reference ${bk.booking_reference}: ${String(bk.confirmed_date).slice(0, 10)} at ${String(bk.scheduled_time).slice(0, 5)}, ${bk.test_location}.`,
-      });
+    if (rows.length === 0) {
+      return res.status(409).json({ error: 'There are no practical tests waiting to be scheduled at your office right now.' });
     }
-    res.json({ booking: bk });
+
+    for (const bk of rows) {
+      await syncApplicationStatus(db, { sourceTable: 'driving_test_bookings', sourceId: bk.driving_test_booking_id, status: 'Scheduled' });
+      const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [bk.citizen_id])).rows[0];
+      if (userRow) {
+        await createNotification({
+          userId: userRow.user_id, title: 'Practical driving test scheduled', type: 'Status Change',
+          message: `Reference ${bk.booking_reference}: ${String(bk.confirmed_date).slice(0, 10)} at ${String(bk.scheduled_time).slice(0, 5)}, ${bk.test_location}.`,
+        });
+      }
+    }
+    res.json({ bookingsScheduled: rows.length, confirmedDate, scheduledTime, testLocation: String(testLocation).trim() });
   } catch (err) { next(err); }
 }
 
@@ -900,7 +917,7 @@ async function getTestBooking(req, res, next) {
  *  authoritative gate. Refuses to run on a Theory booking (self-marked automatically instead —
  *  see submitTheoryAnswers) or a Practical booking with no location set — though by the time a
  *  Practical booking reaches 'Scheduled' at all it was scheduled with a location in the same
- *  step (schedulePracticalTest), so this check is now just defense-in-depth. A Practical Pass
+ *  step (schedulePracticalBulk), so this check is now just defense-in-depth. A Practical Pass
  *  auto-generates the Learner's Permit, in the same transaction as the result itself, so the
  *  officer's one click produces the result and whatever follows from it together. */
 async function recordTestResult(req, res, next) {
@@ -1156,7 +1173,7 @@ async function updateDrivingInstructorStatus(req, res, next) {
 }
 
 module.exports = {
-  requestTestBooking, listTestBookings, getTestBooking, schedulePracticalTest, postponeTestBooking,
+  requestTestBooking, listTestBookings, getTestBooking, schedulePracticalBulk, postponeTestBooking,
   recordTestResult, cancelTestBooking, rejectTestBooking,
   upsertTheorySession, listTheorySessions, publishTheorySession, postponeTheorySession, cancelTheorySession, getTheoryTest, saveTheoryProgress, submitTheoryAnswers,
   vehicleInspectionsController,

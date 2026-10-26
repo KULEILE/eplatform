@@ -12,7 +12,7 @@ router.use(requireAuth);
 router.post('/test-bookings', c2.requestTestBooking);
 router.get('/test-bookings', c2.listTestBookings);
 router.get('/test-bookings/:id', c2.getTestBooking);
-router.post('/test-bookings/:id/schedule-practical', c2.schedulePracticalTest);
+router.post('/test-bookings/schedule-practical', c2.schedulePracticalBulk);
 router.post('/test-bookings/:id/postpone', c2.postponeTestBooking);
 router.post('/test-bookings/:id/record-result', c2.recordTestResult);
 router.post('/test-bookings/:id/cancel', c2.cancelTestBooking);

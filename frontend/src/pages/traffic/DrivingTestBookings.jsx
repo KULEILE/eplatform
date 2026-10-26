@@ -392,10 +392,11 @@ function OfficerQueue({ t }) {
   const [busy, setBusy] = useState(null);
   const [reasonTarget, setReasonTarget] = useState(null);
   const [reason, setReason] = useState('');
-  const [scheduleTarget, setScheduleTarget] = useState(null);
-  const [scheduleLocation, setScheduleLocation] = useState('');
-  const [scheduleTime, setScheduleTime] = useState('');
-  const [scheduleDate, setScheduleDate] = useState('');
+  const [bulkScheduleOpen, setBulkScheduleOpen] = useState(false);
+  const [bulkDate, setBulkDate] = useState('');
+  const [bulkTime, setBulkTime] = useState('');
+  const [bulkLocation, setBulkLocation] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [postponeTarget, setPostponeTarget] = useState(null);
   const [postponeDate, setPostponeDate] = useState('');
   const [postponeTime, setPostponeTime] = useState('');
@@ -406,6 +407,8 @@ function OfficerQueue({ t }) {
 
   function load() { api.get(API_BASE).then((d) => setRows(d.bookings)).catch(() => setRows([])); }
   useEffect(() => { load(); }, []);
+
+  const pendingPracticalCount = (rows || []).filter((r) => r.test_type === 'Practical' && r.status === 'Requested').length;
 
   async function act(id, action, body) {
     setError(''); setSuccess(''); setBusy(id);
@@ -423,17 +426,28 @@ function OfficerQueue({ t }) {
     setReasonTarget(null); setReason('');
   }
 
-  function openSchedule(r) {
-    setScheduleTarget(r.driving_test_booking_id);
-    setScheduleLocation(''); setScheduleTime('');
-    setScheduleDate(String(r.requested_date).slice(0, 10));
+  /** "on the practical schedule lets avoid individual schedule officer must schedule for once
+   *  and that apply to all citizens passed test" — one date/time/venue, applied in a single call
+   *  to EVERY citizen at this office still waiting on their practical test, never to just one of
+   *  them. See schedulePracticalBulk() on the backend for why the old per-booking version of
+   *  this was replaced rather than kept alongside this. */
+  function openBulkSchedule() {
+    setBulkDate(''); setBulkTime(''); setBulkLocation('');
+    setBulkScheduleOpen(true);
   }
 
-  async function onScheduleSubmit(e) {
+  async function onBulkScheduleSubmit(e) {
     e.preventDefault();
-    if (!scheduleTarget || !scheduleLocation.trim() || !scheduleTime) return;
-    await act(scheduleTarget, 'schedule-practical', { testLocation: scheduleLocation.trim(), scheduledTime: scheduleTime, confirmedDate: scheduleDate || undefined });
-    setScheduleTarget(null); setScheduleLocation(''); setScheduleTime(''); setScheduleDate('');
+    if (!bulkDate || !bulkTime || !bulkLocation.trim()) return;
+    setError(''); setSuccess(''); setBulkBusy(true);
+    try {
+      const result = await api.post(`${API_BASE}/schedule-practical`, {
+        confirmedDate: bulkDate, scheduledTime: bulkTime, testLocation: bulkLocation.trim(),
+      });
+      setSuccess(t('traffic.testBookingsForm.schedulePracticalDone', { count: result.bookingsScheduled }));
+      setBulkScheduleOpen(false); setBulkDate(''); setBulkTime(''); setBulkLocation('');
+      load();
+    } catch (err) { setError(err.message || t('common.somethingWentWrong')); } finally { setBulkBusy(false); }
   }
 
   function openPostpone(r) {
@@ -467,6 +481,24 @@ function OfficerQueue({ t }) {
 
       <TheorySessionsPanel t={t} onChanged={load} />
 
+      <div className="card mb-8 mt-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">{t('traffic.testBookingsForm.schedulePractical')}</h2>
+            <p className="text-sm text-slate-600">
+              {pendingPracticalCount > 0
+                ? t('traffic.testBookingsForm.schedulePracticalCount', { count: pendingPracticalCount })
+                : t('traffic.testBookingsForm.schedulePracticalNone')}
+            </p>
+          </div>
+          {pendingPracticalCount > 0 && (
+            <button type="button" className="btn-primary !whitespace-nowrap" onClick={openBulkSchedule}>
+              {t('traffic.testBookingsForm.schedulePractical')}
+            </button>
+          )}
+        </div>
+      </div>
+
       <h2 className="mb-3 mt-8 text-lg font-semibold text-slate-900">{t('traffic.testBookings')}</h2>
       {!rows ? <Loading /> : (
         <DataTable
@@ -489,15 +521,14 @@ function OfficerQueue({ t }) {
                 const rowBusy = busy === r.driving_test_booking_id;
                 if (r.status === 'Requested') {
                   // Theory always auto-schedules at creation, so 'Requested' only happens for an
-                  // auto-created Practical booking still awaiting an officer's date/time/venue —
-                  // "the system before it schedule it should aske officer the location ... and
-                  // the time they will start."
+                  // auto-created Practical booking still awaiting scheduling. There is
+                  // deliberately no per-row "schedule" action any more — see the "Schedule
+                  // practical tests" panel above the table, which schedules every such booking
+                  // at this office at once, never just one of them.
                   return (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {r.test_type === 'Practical' && (
-                        <button type="button" disabled={rowBusy} className="btn-primary !whitespace-nowrap !px-3 !py-1.5 !text-xs" onClick={() => openSchedule(r)}>
-                          {t('traffic.testBookingsForm.schedulePractical')}
-                        </button>
+                        <span className="text-xs text-slate-500">{t('traffic.testBookingsForm.awaitingBulkSchedule')}</span>
                       )}
                       <button type="button" disabled={rowBusy} className="text-xs font-semibold text-gov-red underline" onClick={() => setReasonTarget(r.driving_test_booking_id)}>{t('common.reject')}</button>
                     </div>
@@ -553,22 +584,22 @@ function OfficerQueue({ t }) {
         </form>
       </Modal>
 
-      <Modal open={!!scheduleTarget} onClose={() => setScheduleTarget(null)} title={t('traffic.testBookingsForm.schedulePractical')}
+      <Modal open={bulkScheduleOpen} onClose={() => setBulkScheduleOpen(false)} title={t('traffic.testBookingsForm.schedulePractical')}
         footer={<>
-          <button type="button" className="btn-secondary" onClick={() => setScheduleTarget(null)}>{t('common.cancel')}</button>
-          <button type="submit" form="schedule-form" disabled={!scheduleLocation.trim() || !scheduleTime || !scheduleDate} className="btn-primary">{t('common.confirm')}</button>
+          <button type="button" className="btn-secondary" onClick={() => setBulkScheduleOpen(false)}>{t('common.cancel')}</button>
+          <button type="submit" form="bulk-schedule-form" disabled={!bulkLocation.trim() || !bulkTime || !bulkDate || bulkBusy} className="btn-primary">{t('common.confirm')}</button>
         </>}
       >
-        <form id="schedule-form" onSubmit={onScheduleSubmit} noValidate>
-          <p className="mb-4 text-sm text-slate-600">{t('traffic.testBookingsForm.schedulePracticalIntro')}</p>
-          <FormField label={t('traffic.testBookingsForm.field.confirmedDate')} htmlFor="scheduleDate" required>
-            <input id="scheduleDate" type="date" min={new Date().toISOString().slice(0, 10)} required className="form-input" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} />
+        <form id="bulk-schedule-form" onSubmit={onBulkScheduleSubmit} noValidate>
+          <p className="mb-4 text-sm text-slate-600">{t('traffic.testBookingsForm.schedulePracticalIntro', { count: pendingPracticalCount })}</p>
+          <FormField label={t('traffic.testBookingsForm.field.confirmedDate')} htmlFor="bulkDate" required>
+            <input id="bulkDate" type="date" min={new Date().toISOString().slice(0, 10)} required className="form-input" value={bulkDate} onChange={(e) => setBulkDate(e.target.value)} />
           </FormField>
-          <FormField label={t('traffic.testBookingsForm.field.time')} htmlFor="scheduleTime" required>
-            <input id="scheduleTime" type="time" required className="form-input" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} />
+          <FormField label={t('traffic.testBookingsForm.field.time')} htmlFor="bulkTime" required>
+            <input id="bulkTime" type="time" required className="form-input" value={bulkTime} onChange={(e) => setBulkTime(e.target.value)} />
           </FormField>
-          <FormField label={t('traffic.testBookingsForm.field.location')} htmlFor="scheduleLocation" required>
-            <input id="scheduleLocation" type="text" required className="form-input" value={scheduleLocation} onChange={(e) => setScheduleLocation(e.target.value)} />
+          <FormField label={t('traffic.testBookingsForm.field.location')} htmlFor="bulkLocation" required>
+            <input id="bulkLocation" type="text" required className="form-input" value={bulkLocation} onChange={(e) => setBulkLocation(e.target.value)} />
           </FormField>
         </form>
       </Modal>
