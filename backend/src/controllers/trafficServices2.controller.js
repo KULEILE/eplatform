@@ -295,7 +295,7 @@ async function sweepExpiredTheorySittings({ officeId = null, citizenId = null } 
      JOIN theory_test_sessions s ON s.theory_test_session_id = b.theory_session_id
      WHERE b.test_type = 'Theory' AND b.status = 'Scheduled' AND b.submitted_at IS NULL
        AND s.status = 'Published' AND s.duration_minutes IS NOT NULL AND s.test_time IS NOT NULL
-       AND (s.test_date + s.test_time + (s.duration_minutes || ' minutes')::interval) < NOW()
+       AND (((s.test_date + s.test_time) AT TIME ZONE 'Africa/Maseru') + (s.duration_minutes || ' minutes')::interval) < NOW()
        AND ($1::int IS NULL OR b.office_id = $1)
        AND ($2::int IS NULL OR b.citizen_id = $2)`,
     [officeId, citizenId]
@@ -585,9 +585,9 @@ async function getTheoryTest(req, res, next) {
   try {
     const { rows } = await db.query(
       `SELECT b.*, s.test_time, s.duration_minutes, s.questions, s.status AS session_status,
-              (s.test_date + s.test_time) AS window_opens_at,
+              ((s.test_date + s.test_time) AT TIME ZONE 'Africa/Maseru') AS window_opens_at,
               CASE WHEN s.duration_minutes IS NOT NULL AND s.test_time IS NOT NULL
-                   THEN (s.test_date + s.test_time + (s.duration_minutes || ' minutes')::interval)
+                   THEN (((s.test_date + s.test_time) AT TIME ZONE 'Africa/Maseru') + (s.duration_minutes || ' minutes')::interval)
                    ELSE NULL END AS window_closes_at,
               NOW() AS server_now
        FROM driving_test_bookings b
@@ -643,7 +643,7 @@ async function saveTheoryProgress(req, res, next) {
     const { rows } = await db.query(
       `SELECT b.*, s.questions, s.status AS session_status,
               CASE WHEN s.duration_minutes IS NOT NULL AND s.test_time IS NOT NULL
-                   THEN (s.test_date + s.test_time + (s.duration_minutes || ' minutes')::interval)
+                   THEN (((s.test_date + s.test_time) AT TIME ZONE 'Africa/Maseru') + (s.duration_minutes || ' minutes')::interval)
                    ELSE NULL END AS window_closes_at,
               NOW() AS server_now
        FROM driving_test_bookings b
@@ -695,7 +695,7 @@ async function submitTheoryAnswers(req, res, next) {
     const { rows: bRows } = await db.query(
       `SELECT b.*, s.questions, s.status AS session_status,
               CASE WHEN s.duration_minutes IS NOT NULL AND s.test_time IS NOT NULL
-                   THEN (s.test_date + s.test_time + (s.duration_minutes || ' minutes')::interval)
+                   THEN (((s.test_date + s.test_time) AT TIME ZONE 'Africa/Maseru') + (s.duration_minutes || ' minutes')::interval)
                    ELSE NULL END AS window_closes_at,
               NOW() AS server_now
        FROM driving_test_bookings b
