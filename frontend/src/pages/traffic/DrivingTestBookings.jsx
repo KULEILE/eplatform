@@ -271,7 +271,7 @@ function TakeTestModal({ booking, onClose, onDone, t }) {
         <p className={`rounded-md px-3 py-3 text-sm font-medium ${outcome.passed ? 'bg-green-50 text-gov-green' : 'bg-red-50 text-gov-red'}`}>
           {outcome.passed
             ? t('traffic.theoryTest.resultPassed', { score: outcome.score })
-            : t('traffic.theoryTest.resultFailed', { score: outcome.score, passMark: 70 })}
+            : t('traffic.theoryTest.resultFailed', { score: outcome.score, passMark: 50 })}
         </p>
       ) : !test ? <Loading /> : (
         <form id="theory-test-form" onSubmit={onSubmit} noValidate>

@@ -56,8 +56,8 @@ const isOfficer = (req) => TRAFFIC_OFFICER_ROLES.includes(req.user.roleKey);
 
 // Migration 068: the Theory test is now a multiple-choice exam the system marks itself. A
 // citizen's score is correctCount / totalQuestions * 100, rounded; this is the line between
-// Passed and Failed. Not specified by the request, so a reasonable real-world figure is used —
-// called out here, once, rather than buried in the scoring code below.
+// Passed and Failed. Originally defaulted to 70 (not specified in the original request); changed
+// to 50 per explicit instruction.
 const THEORY_PASS_PERCENT = 50;
 
 function genNumber(prefix) {
