@@ -8,7 +8,10 @@ const SERVICES = [
   // DrivingLicence.jsx — instead of three separate tiles/pages, per the explicit request to stop
   // duplicating "renew" and "replace" as their own services.
   { key: 'drivingLicence', to: '/traffic/driving-licence', icon: '🪪', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
-  { key: 'learnerPermit', to: '/traffic/learner-permit', icon: '📘', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
+  // Batch 20: the separate "Learner Permit" tile was removed — "we learner permit and driving
+  // theory test which make the same work that is repetition." A Learner's Permit is produced
+  // entirely by passing the Theory then Practical test below, so its read-only status view now
+  // lives as a section of the "testBookings" page instead — see DrivingTestBookings.jsx.
   { key: 'publicDrivingPermit', to: '/traffic/public-driving-permit', icon: '🚐', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
   { key: 'testBookings', to: '/traffic/test-bookings', icon: '📝', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
   { key: 'vehicleRegistration', to: '/traffic/vehicle-registration', icon: '🚗', roles: ['citizen', 'traffic_officer', 'system_administrator'] },

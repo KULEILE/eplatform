@@ -1125,23 +1125,30 @@
         "requestedDate": "Letsatsi le khethoang",
         "confirmedDate": "Letsatsi la tlhahlobo le netefatsitsoeng",
         "location": "Sebaka sa tlhahlobo",
-        "marks": "Matsha"
+        "marks": "Matsha",
+        "time": "Nako",
+        "newDate": "Letsatsi le lecha",
+        "newTime": "Nako e ncha"
       },
       "cancelled": "Peeletso e hlakotsoe.",
       "schedule": "Beha nako",
       "recordPass": "Ngola o phasitse",
       "recordFail": "Ngola o hlolehile",
       "result": "Sephetho",
-      "introNew": "Beha nako ea tlhahlobo ea hau ea thiori. E behoa nako ka boeona bakeng sa letsatsi leo u le khethang - ha ho eme molaoli ho e netefatsa. Ha u phasitse, tlhahlobo ea ketso e boetse e behoa nako ka boeona, nako e telele ea matsatsi a mararo kamora moo.",
-      "introOfficer": "Phatlalatsa sete e le 'ngoe ea lipotso tsa khetho e mengata bakeng sa tlhahlobo ea thiori ea letsatsi ka leng ofising ea hau — baahi ba tsebisoa 'me tlhahlobo ea bona e lekoa ka boeona. Tlhahlobo ea ketso e ntse e hloka hore sebaka se beoe le hore sephetho se ngoloe ka letsoho.",
+      "introNew": "Beha nako ea tlhahlobo ea hau ea thiori. E behoa nako ka boeona bakeng sa letsatsi leo u le khethang - ha ho eme molaoli ho e netefatsa. Ha u phasitse, tlhahlobo ea ketso e kopoa ka boeona bakeng sa letsatsi le hlahlamang; molaoli o tla netefatsa letsatsi, nako le sebaka sa eona.",
+      "introOfficer": "Phatlalatsa sete e le 'ngoe ea lipotso tsa khetho e mengata bakeng sa tlhahlobo ea thiori ea letsatsi ka leng ofising ea hau — baahi ba tsebisoa 'me tlhahlobo ea bona e lekoa ka boeona. Tlhahlobo ea ketso e ntse e hloka hore molaoli a netefatse letsatsi, nako le sebaka pele e beoa nako, le hore sephetho se ngoloe ka letsoho. Mofuta o mong le o mong oa tlhahlobo o ka emisoa nakong e tla joalo ka ha ho hlokahala.",
       "autoScheduleHelp": "Tlhahlobo ea hau e netefatsoa bakeng sa letsatsi lena hang ha u e romella - ha ho tlhoka ho ema.",
       "bookTheory": "Beha nako ea tlhahlobo ea thiori",
       "theoryAlreadyBooked": "U se u na le tlhahlobo ea thiori e behiloeng nako. E tla bonahala tafoleng e ka tlase.",
       "autoScheduled": "Tlhahlobo ea hau ea thiori e netefatsitsoe bakeng sa {{date}}.",
-      "setLocation": "Beha sebaka",
       "recordResult": "Ngola sephetho",
       "questionPlaceholder": "Potso {{n}}",
-      "addQuestion": "Eketsa potso"
+      "addQuestion": "Eketsa potso",
+      "schedulePractical": "Beha nako ea tlhahlobo ea ketso",
+      "schedulePracticalIntro": "Netefatsa letsatsi, nako le sebaka sa tlhahlobo ea ketso ea seithuti sena. Moahi o tla tsebisoa hang ha e behoa nako.",
+      "awaitingSchedule": "E ntse e emetse molaoli ho netefatsa letsatsi, nako le sebaka",
+      "postpone": "Emisa nakong e tla",
+      "postponeIntro": "Fetola tlhahlobo ena ho ea letsatsi le lecha (le nako, haeba e hlokahala) — mohlala ka lebaka la boemo bo bobe ba leholimo. Moahi o tla tsebisoa."
     },
     "testType": {
       "theory": "Thiori",
@@ -1173,7 +1180,9 @@
       "noneYet": "Ha u na Laesense ea Seithuti haesale. Beha nako le ho phasa tlhahlobo ea hau ea thiori, ebe tlhahlobo ea ketso, ho e fumana.",
       "bookTheoryLink": "Beha nako ea tlhahlobo ea thiori",
       "approvedBadge": "E Sebetsa",
-      "expiredBadge": "E Felile"
+      "expiredBadge": "E Felile",
+      "sectionTitle": "Laesense ea Hau ea Seithuti",
+      "officerSectionTitle": "Laesense tsa Seithuti tse Fanoeng"
     },
     "drivingLicence": {
       "title": "Laesense ea ho Khanna",
@@ -1239,7 +1248,9 @@
       "bookingOpen": "E buletsoe — moahi a ka e nka hona joale",
       "bookingGraded": "E lekoe ka boeona",
       "addQuestion": "Eketsa potso",
-      "editSession": "Fetola khoeli"
+      "editSession": "Fetola khoeli",
+      "postpone": "Emisa nakong e tla",
+      "postponeSessionIntro": "Fetola khoeli ena e phatlalalitsoeng ho ea letsatsi le/kapa nako e ncha — mohlala ka lebaka la boemo bo bobe ba leholimo. Baahi bohle ba hokahantsoeng le eona ba tla isoa letsatsing le lecha ka boeona 'me ba tsebisoe; sete ea lipotso e ntse e koetsoe 'me ha e fetoha."
     },
     "theoryTest": {
       "takeTest": "Nka tlhahlobo",

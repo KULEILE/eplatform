@@ -30,18 +30,98 @@ function timeLabel(t) { return t ? String(t).slice(0, 5) : '—'; }
  * all citizen who supposed to write must receive notification and open for them to take test").
  * The citizen then answers the questions in this same page and the system grades it instantly.
  *
- * This lives entirely inside the one existing "Driving Theory / Practical Test" service/page —
- * no new hub tile or separate service was added for session management, per the explicit
- * instruction not to duplicate the theory test service.
+ * Migration 069 (Batch 20) made three further changes, all from the same follow-up message:
+ *   - "we learner permit and driving theory test which make the same work that is repetition" —
+ *     the separate "Learner Permit" hub tile/page is gone; its read-only status view now lives
+ *     as a section of THIS page instead (LearnerPermitCard / IssuedPermitsPanel below), since a
+ *     Learner's Permit is produced entirely by passing these two tests and was never something a
+ *     citizen applied for on its own.
+ *   - "it should be following day after theory test" — the auto-created Practical booking's
+ *     suggested date is now the very next day (was three days).
+ *   - "the system before it schedule it should aske officer the location ... and the time they
+ *     will start" — that Practical booking lands as 'Requested' (see the "Schedule practical
+ *     test" action below) rather than jumping straight to 'Scheduled'.
+ *   - "the system must allow officer to postpone test" — a Postpone action was added for a
+ *     Scheduled Practical booking and, inside TheorySessionsPanel, for a Published Theory
+ *     session.
  *
- * The Practical test is unaffected: still a real in-person evaluation, so an officer still enters
- * its location and its Pass/Fail result + marks by hand.
+ * This all still lives entirely inside the one existing "Driving Theory / Practical Test"
+ * service/page — no new hub tile or separate service — per the original instruction not to
+ * duplicate the theory test service, now extended to the Learner Permit tile too.
  */
 export default function DrivingTestBookings() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const isOfficer = ['traffic_officer', 'system_administrator'].includes(user.roleKey);
   return isOfficer ? <OfficerQueue t={t} /> : <CitizenView t={t} />;
+}
+
+/** The citizen-facing half of what used to be the separate "Learner Permit" page (see the
+ *  header comment above) — read-only, since a permit is never applied for directly. */
+function LearnerPermitCard({ t }) {
+  const [records, setRecords] = useState(null);
+  useEffect(() => {
+    api.get('/traffic/').then((d) => setRecords((d.records || []).filter((r) => r.service_type === 'Learner Permit'))).catch(() => setRecords([]));
+  }, []);
+  if (!records) return null;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const current = [...records].sort((a, b) => new Date(b.expiry_date || 0) - new Date(a.expiry_date || 0))[0] || null;
+  const isExpired = current && current.expiry_date && String(current.expiry_date).slice(0, 10) < today;
+
+  return (
+    <div className="card mb-8">
+      <h2 className="mb-1 text-lg font-semibold text-slate-900">{t('traffic.learnerPermitStatus.sectionTitle')}</h2>
+      {!current ? (
+        <p className="text-sm text-slate-600">{t('traffic.learnerPermitStatus.noneYet')}</p>
+      ) : (
+        <>
+          <p className="mb-3 text-xs uppercase tracking-wide text-slate-500">
+            {isExpired ? t('traffic.learnerPermitStatus.expiredBadge') : t('traffic.learnerPermitStatus.approvedBadge')}
+          </p>
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div><dt className="text-xs text-slate-500">{t('traffic.licenceNumber')}</dt><dd className="font-mono font-medium">{current.licence_number}</dd></div>
+            <div><dt className="text-xs text-slate-500">{t('traffic.drivingLicence.learnerPermitBox.issued')}</dt><dd className="font-medium">{formatDateOnly(current.issue_date)}</dd></div>
+            <div>
+              <dt className="text-xs text-slate-500">{t('traffic.drivingLicence.learnerPermitBox.expiry')}</dt>
+              <dd className={`font-medium ${isExpired ? 'text-gov-red' : 'text-gov-green'}`}>{formatDateOnly(current.expiry_date)}</dd>
+            </div>
+          </dl>
+          {!isExpired && (
+            <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-gov-amber">⚠ {t('traffic.drivingLicence.learnerPermitBox.surrenderNotice')}</p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/** The officer-facing half of what used to be the separate "Learner Permit" page — every permit
+ *  issued, read-only, with nothing to action (see LearnerPermitCard above for the citizen side
+ *  and the header comment for why this moved here). */
+function IssuedPermitsPanel({ t }) {
+  const [records, setRecords] = useState(null);
+  useEffect(() => {
+    api.get('/traffic/').then((d) => setRecords((d.records || []).filter((r) => r.service_type === 'Learner Permit'))).catch(() => setRecords([]));
+  }, []);
+  if (!records) return null;
+  return (
+    <div className="card mt-8">
+      <h2 className="mb-3 text-lg font-semibold text-slate-900">{t('traffic.learnerPermitStatus.officerSectionTitle')}</h2>
+      <DataTable
+        rowKey="traffic_record_id"
+        rows={records}
+        emptyTitle={t('common.noResults')}
+        columns={[
+          { key: 'reference', header: t('applications.reference'), render: (r) => <span className="font-mono text-xs">{r.application_reference}</span> },
+          { key: 'citizen', header: t('common.citizen'), render: (r) => `${r.first_name} ${r.last_name}` },
+          { key: 'licenceNumber', header: t('traffic.licenceNumber'), render: (r) => <span className="font-mono text-xs">{r.licence_number}</span> },
+          { key: 'issueDate', header: t('traffic.drivingLicence.learnerPermitBox.issued'), render: (r) => formatDateOnly(r.issue_date) },
+          { key: 'expiryDate', header: t('traffic.drivingLicence.learnerPermitBox.expiry'), render: (r) => formatDateOnly(r.expiry_date) },
+        ]}
+      />
+    </div>
+  );
 }
 
 function CitizenView({ t }) {
@@ -84,6 +164,8 @@ function CitizenView({ t }) {
       <h1 className="mb-2 text-2xl font-bold text-slate-900">{t('traffic.testBookings')}</h1>
       <p className="mb-6 text-sm text-slate-600">{t('traffic.testBookingsForm.introNew')}</p>
 
+      <LearnerPermitCard t={t} />
+
       {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}
       {success && <p className="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-gov-green" role="status">✓ {success}</p>}
 
@@ -111,7 +193,11 @@ function CitizenView({ t }) {
             { key: 'date', header: t('traffic.testBookingsForm.field.requestedDate'), render: (r) => formatDateOnly(r.confirmed_date || r.requested_date) },
             {
               key: 'timeOrLocation', header: t('traffic.testBookingsForm.field.location'),
-              render: (r) => r.test_type === 'Practical' ? (r.test_location || '—') : timeLabel(r.theory_test_time),
+              render: (r) => {
+                if (r.test_type !== 'Practical') return timeLabel(r.theory_test_time);
+                if (!r.test_location) return <span className="text-slate-500">{t('traffic.testBookingsForm.awaitingSchedule')}</span>;
+                return `${r.test_location}${r.scheduled_time ? ` @ ${timeLabel(r.scheduled_time)}` : ''}`;
+              },
             },
             { key: 'marks', header: t('traffic.testBookingsForm.field.marks'), render: (r) => r.marks ?? '—' },
             { key: 'result', header: t('traffic.testBookingsForm.result'), render: (r) => r.result === 'Pending' ? '—' : <StatusBadge status={r.result} kind={r.result === 'Passed' ? 'positive' : 'negative'} /> },
@@ -219,8 +305,14 @@ function OfficerQueue({ t }) {
   const [busy, setBusy] = useState(null);
   const [reasonTarget, setReasonTarget] = useState(null);
   const [reason, setReason] = useState('');
-  const [locationTarget, setLocationTarget] = useState(null);
-  const [testLocation, setTestLocation] = useState('');
+  const [scheduleTarget, setScheduleTarget] = useState(null);
+  const [scheduleLocation, setScheduleLocation] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [postponeTarget, setPostponeTarget] = useState(null);
+  const [postponeDate, setPostponeDate] = useState('');
+  const [postponeTime, setPostponeTime] = useState('');
+  const [postponeReason, setPostponeReason] = useState('');
   const [resultTarget, setResultTarget] = useState(null);
   const [resultValue, setResultValue] = useState('Passed');
   const [marksValue, setMarksValue] = useState('');
@@ -244,11 +336,31 @@ function OfficerQueue({ t }) {
     setReasonTarget(null); setReason('');
   }
 
-  async function onLocationSubmit(e) {
+  function openSchedule(r) {
+    setScheduleTarget(r.driving_test_booking_id);
+    setScheduleLocation(''); setScheduleTime('');
+    setScheduleDate(String(r.requested_date).slice(0, 10));
+  }
+
+  async function onScheduleSubmit(e) {
     e.preventDefault();
-    if (!locationTarget || !testLocation.trim()) return;
-    await act(locationTarget, 'set-location', { testLocation: testLocation.trim() });
-    setLocationTarget(null); setTestLocation('');
+    if (!scheduleTarget || !scheduleLocation.trim() || !scheduleTime) return;
+    await act(scheduleTarget, 'schedule-practical', { testLocation: scheduleLocation.trim(), scheduledTime: scheduleTime, confirmedDate: scheduleDate || undefined });
+    setScheduleTarget(null); setScheduleLocation(''); setScheduleTime(''); setScheduleDate('');
+  }
+
+  function openPostpone(r) {
+    setPostponeTarget(r.driving_test_booking_id);
+    setPostponeDate(String(r.confirmed_date || r.requested_date).slice(0, 10));
+    setPostponeTime(r.scheduled_time ? String(r.scheduled_time).slice(0, 5) : '');
+    setPostponeReason('');
+  }
+
+  async function onPostponeSubmit(e) {
+    e.preventDefault();
+    if (!postponeTarget || !postponeDate || !postponeReason.trim()) return;
+    await act(postponeTarget, 'postpone', { newDate: postponeDate, newTime: postponeTime || undefined, reason: postponeReason.trim() });
+    setPostponeTarget(null); setPostponeDate(''); setPostponeTime(''); setPostponeReason('');
   }
 
   async function onResultSubmit(e) {
@@ -279,19 +391,36 @@ function OfficerQueue({ t }) {
             { key: 'citizen', header: t('common.citizen'), render: (r) => `${r.first_name} ${r.last_name}` },
             { key: 'testType', header: t('traffic.testBookingsForm.field.testType'), render: (r) => t(`traffic.testType.${r.test_type.toLowerCase()}`) },
             { key: 'date', header: t('traffic.testBookingsForm.field.requestedDate'), render: (r) => formatDateOnly(r.confirmed_date || r.requested_date) },
-            { key: 'location', header: t('traffic.testBookingsForm.field.location'), render: (r) => r.test_location || '—' },
+            {
+              key: 'location', header: t('traffic.testBookingsForm.field.location'),
+              render: (r) => r.test_location ? `${r.test_location}${r.scheduled_time ? ` @ ${timeLabel(r.scheduled_time)}` : ''}` : '—',
+            },
             { key: 'status', header: t('common.status'), render: (r) => <StatusBadge status={r.status} /> },
             {
               key: 'actions', header: t('common.actions'),
               render: (r) => {
                 const rowBusy = busy === r.driving_test_booking_id;
                 if (r.status === 'Requested') {
-                  return <button type="button" disabled={rowBusy} className="text-xs font-semibold text-gov-red underline" onClick={() => setReasonTarget(r.driving_test_booking_id)}>{t('common.reject')}</button>;
+                  // Theory always auto-schedules at creation, so 'Requested' only happens for an
+                  // auto-created Practical booking still awaiting an officer's date/time/venue —
+                  // "the system before it schedule it should aske officer the location ... and
+                  // the time they will start."
+                  return (
+                    <div className="flex flex-wrap gap-2">
+                      {r.test_type === 'Practical' && (
+                        <button type="button" disabled={rowBusy} className="btn-primary !whitespace-nowrap !px-3 !py-1.5 !text-xs" onClick={() => openSchedule(r)}>
+                          {t('traffic.testBookingsForm.schedulePractical')}
+                        </button>
+                      )}
+                      <button type="button" disabled={rowBusy} className="text-xs font-semibold text-gov-red underline" onClick={() => setReasonTarget(r.driving_test_booking_id)}>{t('common.reject')}</button>
+                    </div>
+                  );
                 }
                 if (r.status !== 'Scheduled') return null;
                 if (r.test_type === 'Theory') {
-                  // Self-service — see the Theory Test Sessions panel above. Nothing for an
-                  // officer to do per-booking any more, other than reject it if needed.
+                  // Self-service — see the Theory Test Sessions panel above, which also carries
+                  // its own Postpone action. Nothing for an officer to do per-booking any more,
+                  // other than reject it if needed.
                   const info = !r.theory_session_id
                     ? t('traffic.theorySessions.bookingAwaitingSession')
                     : r.submitted_at
@@ -304,18 +433,15 @@ function OfficerQueue({ t }) {
                     </div>
                   );
                 }
-                const needsLocation = !r.test_location;
+                // Practical, Scheduled: by now a venue + time were already set at the
+                // scheduling step above, so there's nothing left to fill in — just record the
+                // result, postpone it (bad weather, etc.), or reject it.
                 return (
-                  <div className="flex flex-wrap gap-2">
-                    {needsLocation ? (
-                      <button type="button" disabled={rowBusy} className="btn-primary !whitespace-nowrap !px-3 !py-1.5 !text-xs" onClick={() => { setLocationTarget(r.driving_test_booking_id); setTestLocation(''); }}>
-                        {t('traffic.testBookingsForm.setLocation')}
-                      </button>
-                    ) : (
-                      <button type="button" disabled={rowBusy} className="btn-primary !whitespace-nowrap !px-3 !py-1.5 !text-xs" onClick={() => { setResultTarget(r.driving_test_booking_id); setResultValue('Passed'); setMarksValue(''); }}>
-                        {t('traffic.testBookingsForm.recordResult')}
-                      </button>
-                    )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" disabled={rowBusy} className="btn-primary !whitespace-nowrap !px-3 !py-1.5 !text-xs" onClick={() => { setResultTarget(r.driving_test_booking_id); setResultValue('Passed'); setMarksValue(''); }}>
+                      {t('traffic.testBookingsForm.recordResult')}
+                    </button>
+                    <button type="button" disabled={rowBusy} className="text-xs font-semibold text-gov-navy underline" onClick={() => openPostpone(r)}>{t('traffic.testBookingsForm.postpone')}</button>
                     <button type="button" disabled={rowBusy} className="text-xs font-semibold text-gov-red underline" onClick={() => setReasonTarget(r.driving_test_booking_id)}>{t('common.reject')}</button>
                   </div>
                 );
@@ -324,6 +450,8 @@ function OfficerQueue({ t }) {
           ]}
         />
       )}
+
+      <IssuedPermitsPanel t={t} />
 
       <Modal open={!!reasonTarget} onClose={() => setReasonTarget(null)} title={t('common.reject')}
         footer={<>
@@ -338,15 +466,42 @@ function OfficerQueue({ t }) {
         </form>
       </Modal>
 
-      <Modal open={!!locationTarget} onClose={() => setLocationTarget(null)} title={t('traffic.testBookingsForm.setLocation')}
+      <Modal open={!!scheduleTarget} onClose={() => setScheduleTarget(null)} title={t('traffic.testBookingsForm.schedulePractical')}
         footer={<>
-          <button type="button" className="btn-secondary" onClick={() => setLocationTarget(null)}>{t('common.cancel')}</button>
-          <button type="submit" form="location-form" disabled={!testLocation.trim()} className="btn-primary">{t('common.confirm')}</button>
+          <button type="button" className="btn-secondary" onClick={() => setScheduleTarget(null)}>{t('common.cancel')}</button>
+          <button type="submit" form="schedule-form" disabled={!scheduleLocation.trim() || !scheduleTime || !scheduleDate} className="btn-primary">{t('common.confirm')}</button>
         </>}
       >
-        <form id="location-form" onSubmit={onLocationSubmit} noValidate>
-          <FormField label={t('traffic.testBookingsForm.field.location')} htmlFor="testLocation" required>
-            <input id="testLocation" type="text" required className="form-input" value={testLocation} onChange={(e) => setTestLocation(e.target.value)} />
+        <form id="schedule-form" onSubmit={onScheduleSubmit} noValidate>
+          <p className="mb-4 text-sm text-slate-600">{t('traffic.testBookingsForm.schedulePracticalIntro')}</p>
+          <FormField label={t('traffic.testBookingsForm.field.confirmedDate')} htmlFor="scheduleDate" required>
+            <input id="scheduleDate" type="date" min={new Date().toISOString().slice(0, 10)} required className="form-input" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} />
+          </FormField>
+          <FormField label={t('traffic.testBookingsForm.field.time')} htmlFor="scheduleTime" required>
+            <input id="scheduleTime" type="time" required className="form-input" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} />
+          </FormField>
+          <FormField label={t('traffic.testBookingsForm.field.location')} htmlFor="scheduleLocation" required>
+            <input id="scheduleLocation" type="text" required className="form-input" value={scheduleLocation} onChange={(e) => setScheduleLocation(e.target.value)} />
+          </FormField>
+        </form>
+      </Modal>
+
+      <Modal open={!!postponeTarget} onClose={() => setPostponeTarget(null)} title={t('traffic.testBookingsForm.postpone')}
+        footer={<>
+          <button type="button" className="btn-secondary" onClick={() => setPostponeTarget(null)}>{t('common.cancel')}</button>
+          <button type="submit" form="postpone-form" disabled={!postponeDate || !postponeReason.trim()} className="btn-primary">{t('common.confirm')}</button>
+        </>}
+      >
+        <form id="postpone-form" onSubmit={onPostponeSubmit} noValidate>
+          <p className="mb-4 text-sm text-slate-600">{t('traffic.testBookingsForm.postponeIntro')}</p>
+          <FormField label={t('traffic.testBookingsForm.field.newDate')} htmlFor="postponeDate" required>
+            <input id="postponeDate" type="date" min={new Date().toISOString().slice(0, 10)} required className="form-input" value={postponeDate} onChange={(e) => setPostponeDate(e.target.value)} />
+          </FormField>
+          <FormField label={t('traffic.testBookingsForm.field.newTime')} htmlFor="postponeTime" help={t('common.optional')}>
+            <input id="postponeTime" type="time" className="form-input" value={postponeTime} onChange={(e) => setPostponeTime(e.target.value)} />
+          </FormField>
+          <FormField label={t('services.reason')} htmlFor="postponeReason" required>
+            <textarea id="postponeReason" required rows={2} className="form-input" value={postponeReason} onChange={(e) => setPostponeReason(e.target.value)} />
           </FormField>
         </form>
       </Modal>
@@ -387,9 +542,33 @@ function TheorySessionsPanel({ t, onChanged }) {
   const [testDate, setTestDate] = useState('');
   const [testTime, setTestTime] = useState('');
   const [questions, setQuestions] = useState([emptyQuestion()]);
+  const [postponeTarget, setPostponeTarget] = useState(null);
+  const [postponeDate, setPostponeDate] = useState('');
+  const [postponeTime, setPostponeTime] = useState('');
+  const [postponeReason, setPostponeReason] = useState('');
 
   function load() { api.get(SESSIONS_BASE).then((d) => setSessions(d.sessions)).catch(() => setSessions([])); }
   useEffect(() => { load(); }, []);
+
+  function openPostpone(s) {
+    setPostponeTarget(s.theory_test_session_id);
+    setPostponeDate(String(s.test_date).slice(0, 10));
+    setPostponeTime(s.test_time ? String(s.test_time).slice(0, 5) : '');
+    setPostponeReason('');
+  }
+
+  async function onPostponeSubmit(e) {
+    e.preventDefault();
+    if (!postponeTarget || !postponeDate || !postponeReason.trim()) return;
+    setError(''); setSuccess(''); setBusy(true);
+    try {
+      await api.post(`${SESSIONS_BASE}/${postponeTarget}/postpone`, { newDate: postponeDate, newTime: postponeTime || undefined, reason: postponeReason.trim() });
+      setSuccess(t('common.saved'));
+      setPostponeTarget(null); setPostponeDate(''); setPostponeTime(''); setPostponeReason('');
+      load();
+      onChanged?.();
+    } catch (err) { setError(err.message || t('common.somethingWentWrong')); } finally { setBusy(false); }
+  }
 
   function openNew() {
     setTestDate(''); setTestTime(''); setQuestions([emptyQuestion()]); setError(''); setEditorIsNew(true); setEditorOpen(true);
@@ -476,7 +655,9 @@ function TheorySessionsPanel({ t, onChanged }) {
                   <button type="button" disabled={busy} className="text-xs font-semibold text-gov-navy underline" onClick={() => openEdit(s)}>{t('common.edit')}</button>
                   <button type="button" disabled={busy} className="btn-primary !whitespace-nowrap !px-3 !py-1.5 !text-xs" onClick={() => onPublish(s.theory_test_session_id)}>{t('traffic.theorySessions.publish')}</button>
                 </div>
-              ) : null,
+              ) : (
+                <button type="button" disabled={busy} className="text-xs font-semibold text-gov-navy underline" onClick={() => openPostpone(s)}>{t('traffic.theorySessions.postpone')}</button>
+              ),
             },
           ]}
         />
@@ -526,6 +707,26 @@ function TheorySessionsPanel({ t, onChanged }) {
             </fieldset>
           ))}
           <button type="button" className="text-sm font-medium text-gov-navy hover:underline" onClick={addQuestion}>+ {t('traffic.theorySessions.addQuestion')}</button>
+        </form>
+      </Modal>
+
+      <Modal open={!!postponeTarget} onClose={() => setPostponeTarget(null)} title={t('traffic.theorySessions.postpone')}
+        footer={<>
+          <button type="button" className="btn-secondary" onClick={() => setPostponeTarget(null)}>{t('common.cancel')}</button>
+          <button type="submit" form="session-postpone-form" disabled={busy || !postponeDate || !postponeReason.trim()} className="btn-primary">{t('common.confirm')}</button>
+        </>}
+      >
+        <form id="session-postpone-form" onSubmit={onPostponeSubmit} noValidate>
+          <p className="mb-4 text-sm text-slate-600">{t('traffic.theorySessions.postponeSessionIntro')}</p>
+          <FormField label={t('traffic.testBookingsForm.field.newDate')} htmlFor="sessionPostponeDate" required>
+            <input id="sessionPostponeDate" type="date" min={new Date().toISOString().slice(0, 10)} required className="form-input" value={postponeDate} onChange={(e) => setPostponeDate(e.target.value)} />
+          </FormField>
+          <FormField label={t('traffic.testBookingsForm.field.newTime')} htmlFor="sessionPostponeTime" help={t('common.optional')}>
+            <input id="sessionPostponeTime" type="time" className="form-input" value={postponeTime} onChange={(e) => setPostponeTime(e.target.value)} />
+          </FormField>
+          <FormField label={t('services.reason')} htmlFor="sessionPostponeReason" required>
+            <textarea id="sessionPostponeReason" required rows={2} className="form-input" value={postponeReason} onChange={(e) => setPostponeReason(e.target.value)} />
+          </FormField>
         </form>
       </Modal>
     </div>

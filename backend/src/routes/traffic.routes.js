@@ -12,8 +12,8 @@ router.use(requireAuth);
 router.post('/test-bookings', c2.requestTestBooking);
 router.get('/test-bookings', c2.listTestBookings);
 router.get('/test-bookings/:id', c2.getTestBooking);
-router.post('/test-bookings/:id/schedule', c2.scheduleTestBooking);
-router.post('/test-bookings/:id/set-location', c2.setTestLocation);
+router.post('/test-bookings/:id/schedule-practical', c2.schedulePracticalTest);
+router.post('/test-bookings/:id/postpone', c2.postponeTestBooking);
 router.post('/test-bookings/:id/record-result', c2.recordTestResult);
 router.post('/test-bookings/:id/cancel', c2.cancelTestBooking);
 router.post('/test-bookings/:id/reject', c2.rejectTestBooking);
@@ -27,6 +27,7 @@ router.post('/test-bookings/:id/submit-answers', c2.submitTheoryAnswers);
 router.post('/theory-sessions', c2.upsertTheorySession);
 router.get('/theory-sessions', c2.listTheorySessions);
 router.post('/theory-sessions/:id/publish', c2.publishTheorySession);
+router.post('/theory-sessions/:id/postpone', c2.postponeTheorySession);
 
 // Driving Licence — Application/Renewal/Replacement, consolidated onto one bespoke controller
 // (migration 067). Registered BEFORE the generic '/:id/:action' catch-all below, for the same

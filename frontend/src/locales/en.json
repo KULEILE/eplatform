@@ -1125,23 +1125,30 @@
         "requestedDate": "Preferred date",
         "confirmedDate": "Confirmed test date",
         "location": "Test location",
-        "marks": "Marks"
+        "marks": "Marks",
+        "time": "Time",
+        "newDate": "New date",
+        "newTime": "New time"
       },
       "cancelled": "Booking cancelled.",
       "schedule": "Schedule",
       "recordPass": "Record pass",
       "recordFail": "Record fail",
       "result": "Result",
-      "introNew": "Book your theory test. It is scheduled automatically for the date you choose - there is no waiting for an officer to confirm it. Once you pass, your practical test is scheduled automatically too, at least three days later.",
-      "introOfficer": "Publish one shared set of multiple-choice questions for each day's theory sitting at your office — citizens are notified and mark their own test automatically. A practical sitting still needs its location entered and its result recorded by hand.",
+      "introNew": "Book your theory test. It is scheduled automatically for the date you choose - there is no waiting for an officer to confirm it. Once you pass, your practical test is auto-requested for the following day; an officer will then confirm its exact date, time and location.",
+      "introOfficer": "Publish one shared set of multiple-choice questions for each day's theory sitting at your office — citizens are notified and mark their own test automatically. A practical sitting still needs an officer to confirm its date, time and location before it's scheduled, and its result recorded by hand. Either kind of sitting can be postponed if needed.",
       "autoScheduleHelp": "Your test is confirmed for this date as soon as you submit - no further waiting.",
       "bookTheory": "Book theory test",
       "theoryAlreadyBooked": "You already have a theory test booked. It will show in the table below.",
       "autoScheduled": "Your theory test is confirmed for {{date}}.",
-      "setLocation": "Set location",
       "recordResult": "Record result",
       "questionPlaceholder": "Question {{n}}",
-      "addQuestion": "Add question"
+      "addQuestion": "Add question",
+      "schedulePractical": "Schedule practical test",
+      "schedulePracticalIntro": "Confirm the date, time and location for this learner's practical driving test. The citizen will be notified once it's scheduled.",
+      "awaitingSchedule": "Awaiting officer to confirm date, time & location",
+      "postpone": "Postpone",
+      "postponeIntro": "Move this test to a new date (and time, if needed) — for example because of bad weather. The citizen will be notified."
     },
     "testType": {
       "theory": "Theory",
@@ -1173,7 +1180,9 @@
       "noneYet": "You don't hold a Learner's Permit yet. Book and pass your theory test, then your practical test, to earn one.",
       "bookTheoryLink": "Book theory test",
       "approvedBadge": "Valid",
-      "expiredBadge": "Expired"
+      "expiredBadge": "Expired",
+      "sectionTitle": "Your Learner's Permit",
+      "officerSectionTitle": "Issued Learner's Permits"
     },
     "drivingLicence": {
       "title": "Driving Licence",
@@ -1239,7 +1248,9 @@
       "bookingOpen": "Open — citizen can take it now",
       "bookingGraded": "Graded automatically",
       "addQuestion": "Add question",
-      "editSession": "Edit session"
+      "editSession": "Edit session",
+      "postpone": "Postpone",
+      "postponeSessionIntro": "Move this published sitting to a new date and/or time — for example because of bad weather. Every citizen already linked to it is carried over automatically and notified; the question set stays locked and unchanged."
     },
     "theoryTest": {
       "takeTest": "Take test",
