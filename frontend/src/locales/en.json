@@ -1229,7 +1229,20 @@
         "failed": "Cannot surrender",
         "failedModalTitle": "Learner's Permit not surrendered",
         "failedModalHelp": "The citizen could not produce their Learner's Permit. This rejects the application - a canned reason is used if you leave this blank."
-      }
+      },
+      "confirmPayment": "Confirm payment & generate licence",
+      "categoryLabel": "Licence category (code)",
+      "categoryHelp": "Choose the class of vehicle this licence will cover. This cannot be changed later without applying for a new licence.",
+      "categoryRequired": "No category is on file for your previous licence - please select one.",
+      "categoryReplacementHelp": "Optional - if left blank, the category on your previous licence will be used automatically.",
+      "categoryCarriedForward": "Category {{category}}, carried forward from your current licence.",
+      "category": {
+        "A": "A - Motorcycles and bikes",
+        "B": "B - Cars and light vehicles",
+        "C": "C - Minibuses and mini trucks",
+        "D": "D - Heavy trucks and buses"
+      },
+      "paymentNotice": "The driving licence fee must be paid before applying. Enter the payment reference and upload a photo of your receipt - the officer only needs to confirm this is legitimate before your licence is generated."
     },
     "theorySessions": {
       "title": "Theory Test Sessions",

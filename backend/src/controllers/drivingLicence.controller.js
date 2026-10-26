@@ -27,11 +27,31 @@ const { makeDepartmentController } = require('../utils/simpleDepartmentControlle
 // Application/Renewal/Replacement are one service with an applicationType the citizen chooses —
 // not three separate pages/routes — removing the duplicate-service pattern the previous
 // DrivingLicenceApply/Renew/Replace.jsx pages had.
+//
+// Migration 072 (Batch 26) changed two things, both from the same message:
+//   5. The citizen now chooses a vehicle CATEGORY (Lesotho's four classes: A motorcycles, B light
+//      vehicles/cars, C minibuses/light trucks, D heavy trucks/buses) on a New application — "in
+//      Lesotho we have four categories of license ... citizen must select which code is applying
+//      for." A Renewal or Replacement carries the category forward from the citizen's existing
+//      licence automatically rather than asking again (see resolveLicenceCategory below).
+//   6. The old 7-step generic officer review chain (start-review/verify-identity/check-documents/
+//      process/approve/ready-for-collection) is GONE for this service — "the only steps should
+//      require officer is to check the payment is legit because license is not free ... after
+//      officer confirm that payment is legit the system generate license automatically." A New
+//      applicant was already identity-verified to earn the Learner's Permit this depends on, and
+//      a Renewal/Replacement applicant already holds a previously-issued licence, so re-running
+//      that whole chain here was pure redundancy. The only two officer actions left are
+//      'confirm-payment' (reviews the payment reference + receipt photo the citizen supplied at
+//      apply — same proof pattern migration 033 already uses for the Passport fee — and, in that
+//      same click, both records who verified it and generates the licence number/issue/expiry
+//      dates) and 'collect' (the physical hand-over, unchanged, including the existing Learner's
+//      Permit surrender step for a New licence).
 // ============================================================================================
 
 const REPLACEMENT_WAIT_MONTHS = 3;
 const LICENCE_VALID_YEARS = 5;
 const SERVICE_TYPES = ['Driving Licence Application', 'Driving Licence Renewal', 'Driving Licence Replacement'];
+const VEHICLE_CATEGORIES = ['A', 'B', 'C', 'D'];
 
 function genNumber(prefix) {
   return `${prefix}-${String(Math.floor(100000 + Math.random() * 900000))}`;
@@ -109,6 +129,41 @@ async function getCurrentDrivingLicence(citizenId) {
   return { ...rec, isExpired: !!(rec.expiry_date && String(rec.expiry_date).slice(0, 10) < today) };
 }
 
+/** Looks up one of THIS citizen's own past driving-licence records by its licence number — used
+ *  on a Replacement application to find what vehicle category the licence being replaced was, so
+ *  the citizen is never asked to re-select it. Scoped to citizen_id so nobody can pull someone
+ *  else's licence category by guessing a licence number. */
+async function getRecordByLicenceNumber(citizenId, licenceNumber) {
+  const { rows } = await db.query(
+    `SELECT * FROM traffic_records WHERE citizen_id = $1 AND service_type = ANY($2::varchar[]) AND licence_number = $3 LIMIT 1`,
+    [citizenId, SERVICE_TYPES, licenceNumber]
+  );
+  return rows[0] || null;
+}
+
+/** Resolves the vehicle category (A/B/C/D) for an application — "citizen must select which code
+ *  is applying for" only really applies to a brand-new licence; a Renewal or Replacement is for
+ *  the SAME class of licence the citizen already holds, so it's carried forward automatically
+ *  rather than asked again. Falls back to requiring the citizen supply one directly only when
+ *  there's genuinely no category on file to carry forward (e.g. a legacy record from before this
+ *  batch, or a replacement for a licence number this system has no record of at all). Returns
+ *  { ok: true, category } or { ok: false, error }. */
+function resolveLicenceCategory(applicationType, bodyCategory, carryForwardRecord) {
+  if (applicationType === 'New') {
+    if (!VEHICLE_CATEGORIES.includes(bodyCategory)) {
+      return { ok: false, error: `licenceCategory is required and must be one of: ${VEHICLE_CATEGORIES.join(', ')}.` };
+    }
+    return { ok: true, category: bodyCategory };
+  }
+  if (carryForwardRecord && VEHICLE_CATEGORIES.includes(carryForwardRecord.licence_category)) {
+    return { ok: true, category: carryForwardRecord.licence_category };
+  }
+  if (VEHICLE_CATEGORIES.includes(bodyCategory)) {
+    return { ok: true, category: bodyCategory };
+  }
+  return { ok: false, error: `We don't have a vehicle category on file for your existing licence — please select one (${VEHICLE_CATEGORIES.join(', ')}).` };
+}
+
 /** GET /traffic/driving-licence/eligibility — everything DrivingLicence.jsx needs up front: the
  *  citizen's National ID/capture situation, their Learner's Permit (to display on a first
  *  application), their current licence (to decide whether renewal is blocked), and whether an
@@ -137,18 +192,23 @@ async function getEligibility(req, res, next) {
       currentLicence: currentLicence ? {
         trafficRecordId: currentLicence.traffic_record_id, licenceNumber: currentLicence.licence_number, serviceType: currentLicence.service_type,
         issueDate: currentLicence.issue_date, expiryDate: currentLicence.expiry_date, isExpired: currentLicence.isExpired,
+        licenceCategory: currentLicence.licence_category,
       } : null,
       hasInProgressApplication: inProgressRows.length > 0,
       inProgressApplication: inProgressRows[0] || null,
       replacementWaitMonths: REPLACEMENT_WAIT_MONTHS,
+      vehicleCategories: VEHICLE_CATEGORIES,
     });
   } catch (err) { next(err); }
 }
 
 /** POST /traffic/driving-licence/apply — body: { applicationType: 'New'|'Renewal'|'Replacement',
  *  preferredOfficeId, biometricsSource: 'id'|'new', photoReference?, biometricReferenceLeft?,
- *  biometricReferenceRight?, renewalDamaged?, damageProofReference?, replacementReason?,
- *  previousLicenceNumber?, reportedLostAt? }. */
+ *  biometricReferenceRight?, licenceCategory? ('A'|'B'|'C'|'D' — required for New, carried
+ *  forward automatically for Renewal/Replacement, see resolveLicenceCategory above),
+ *  paymentReference, receiptImageReference (the licence fee — required on all three, same proof
+ *  shape migration 033 already uses for the Passport fee), renewalDamaged?, damageProofReference?,
+ *  replacementReason?, previousLicenceNumber?, reportedLostAt? }. */
 async function apply(req, res, next) {
   try {
     if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required to apply for a driving licence.' });
@@ -159,6 +219,9 @@ async function apply(req, res, next) {
       return res.status(400).json({ error: "applicationType must be 'New', 'Renewal', or 'Replacement'." });
     }
     if (!preferredOfficeId) return res.status(400).json({ error: 'preferredOfficeId is required — choose the branch where you will collect it.' });
+    if (!b.paymentReference || !b.receiptImageReference) {
+      return res.status(400).json({ error: 'paymentReference and receiptImageReference are required — the licence fee must be paid before applying.' });
+    }
 
     const { rows: inProgress } = await db.query(
       `SELECT 1 FROM traffic_records WHERE citizen_id = $1 AND service_type = ANY($2::varchar[]) AND status NOT IN ('Rejected', 'Collected')`,
@@ -169,6 +232,7 @@ async function apply(req, res, next) {
     let serviceType, linkedLearnerPermitId = null, surrenderStatus = null;
     let replacementReason = null, previousLicenceNumber = null, reportedLostAt = null;
     let renewalDamaged = false, renewalDamageProofReference = null;
+    let carryForwardRecord = null;
 
     if (applicationType === 'New') {
       serviceType = 'Driving Licence Application';
@@ -191,6 +255,7 @@ async function apply(req, res, next) {
       serviceType = 'Driving Licence Renewal';
       const current = await getCurrentDrivingLicence(citizenId);
       if (!current) return res.status(409).json({ error: 'No current driving licence found to renew.' });
+      carryForwardRecord = current;
       renewalDamaged = !!b.renewalDamaged;
       renewalDamageProofReference = b.damageProofReference || null;
       if (!current.isExpired) {
@@ -211,6 +276,7 @@ async function apply(req, res, next) {
         return res.status(400).json({ error: 'replacementReason is required (Lost, Stolen, Damaged, or Other).' });
       }
       if (!previousLicenceNumber) return res.status(400).json({ error: 'previousLicenceNumber is required.' });
+      carryForwardRecord = await getRecordByLicenceNumber(citizenId, previousLicenceNumber);
       if (['Lost', 'Stolen'].includes(replacementReason)) {
         reportedLostAt = b.reportedLostAt;
         if (!reportedLostAt) return res.status(400).json({ error: replacementReason === 'Stolen' ? 'The date your licence was stolen is required.' : 'The date you lost the licence is required.' });
@@ -228,6 +294,10 @@ async function apply(req, res, next) {
       }
     }
 
+    const categoryResolution = resolveLicenceCategory(applicationType, b.licenceCategory, carryForwardRecord);
+    if (!categoryResolution.ok) return res.status(400).json({ error: categoryResolution.error });
+    const licenceCategory = categoryResolution.category;
+
     const capture = await resolveIdentityCapture(citizenId, biometricsSource, b);
     if (!capture.ok) return res.status(400).json({ error: capture.error });
 
@@ -240,13 +310,15 @@ async function apply(req, res, next) {
             (citizen_id, application_reference, service_type, status, preferred_office_id, collection_office_id,
              photo_reference, biometric_reference_left, biometric_reference_right, photo_source,
              linked_learner_permit_id, surrender_status, renewal_damaged, renewal_damage_proof_reference,
-             replacement_reason, previous_licence_number, reported_lost_at)
-         VALUES ($1,$2,$3,'Submitted',$4,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+             replacement_reason, previous_licence_number, reported_lost_at,
+             licence_category, payment_reference, receipt_image_reference)
+         VALUES ($1,$2,$3,'Submitted',$4,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
          RETURNING traffic_record_id`,
         [citizenId, referenceNumber, serviceType, preferredOfficeId,
           capture.photoReference, capture.biometricReferenceLeft, capture.biometricReferenceRight, biometricsSource,
           linkedLearnerPermitId, surrenderStatus, renewalDamaged, renewalDamageProofReference,
-          replacementReason, previousLicenceNumber, reportedLostAt]
+          replacementReason, previousLicenceNumber, reportedLostAt,
+          licenceCategory, b.paymentReference, b.receiptImageReference]
       );
       const recordId = rows[0].traffic_record_id;
       await indexApplication(client, {
@@ -293,20 +365,26 @@ async function list(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// Batch 26: the old 7-step generic review chain (start-review/verify-identity/check-documents/
+// process/approve/ready-for-collection) is gone for this service — see the header comment at the
+// top of this file for why. Two officer actions remain:
+//   'confirm-payment' — the officer's only real review step. Reviews the payment_reference +
+//     receipt_image_reference the citizen supplied at apply (see the frontend's receipt display)
+//     and, in that same click, both records who verified it and generates the licence number and
+//     issue/expiry dates — "after officer confirm that payment is legit the system generate
+//     license automatically." Goes straight from 'Submitted' to 'Ready for Collection': there is
+//     no separate "card is being produced" wait modelled here, since nothing about producing it
+//     needs a second officer action once the payment is confirmed.
+//   'collect' — unchanged: the physical hand-over, including the existing Learner's Permit
+//     surrender step for a New licence (see the comment on transition() below).
 const STATUS_FLOW = {
-  'start-review': { from: 'Submitted', to: 'Under Review' },
-  'verify-identity': { from: 'Under Review', to: 'Identity Verified' },
-  'check-documents': { from: 'Identity Verified', to: 'Documents Checked' },
-  'process': { from: 'Documents Checked', to: 'Processing' },
-  'approve': { from: 'Processing', to: 'Approved' },
-  'ready-for-collection': { from: 'Approved', to: 'Ready for Collection' },
+  'confirm-payment': { from: 'Submitted', to: 'Ready for Collection' },
   'collect': { from: 'Ready for Collection', to: 'Collected' },
 };
 
-/** The same 7-step officer workflow every other Traffic service already uses — nothing about
- *  that chain changes. The only new behaviour is at 'collect': when the record is a first
- *  licence relying on a Learner's Permit (surrender_status = 'Awaiting Surrender'), the SAME
- *  click that collects the licence also marks that permit surrendered — one officer action
+/** The only new behaviour at 'collect' (unchanged from before this batch): when the record is a
+ *  first licence relying on a Learner's Permit (surrender_status = 'Awaiting Surrender'), the
+ *  SAME click that collects the licence also marks that permit surrendered — one officer action
  *  resolving both the physical hand-over and the collection, exactly like passport batch 15. */
 async function transition(req, res, next) {
   try {
@@ -321,25 +399,33 @@ async function transition(req, res, next) {
       const record = rows[0];
       if (record.status !== t.from) { await client.query('ROLLBACK'); return res.status(409).json({ error: `Cannot move from '${record.status}' to '${t.to}'.` }); }
 
+      const isConfirmPayment = req.params.action === 'confirm-payment';
+      if (isConfirmPayment && (!record.payment_reference || !record.receipt_image_reference)) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'There is no payment reference/receipt on file for this application.' });
+      }
+
       const resolvesSurrender = req.params.action === 'collect' && record.surrender_status === 'Awaiting Surrender';
-      const licenceNumber = t.to === 'Approved' ? genNumber('DL') : record.licence_number;
+      const licenceNumber = isConfirmPayment ? genNumber('DL') : record.licence_number;
       const officeId = req.body.officeId || record.collection_office_id;
       await client.query(
         // $1 explicitly cast everywhere — same "inconsistent types deduced for parameter $1" fix
         // documented in passport.controller.js's transition().
         `UPDATE traffic_records SET status = $1::varchar,
-            licence_number = CASE WHEN $1::varchar = 'Approved' THEN $2 ELSE licence_number END,
-            issue_date = CASE WHEN $1::varchar = 'Approved' THEN CURRENT_DATE ELSE issue_date END,
-            expiry_date = CASE WHEN $1::varchar = 'Approved' THEN CURRENT_DATE + INTERVAL '${LICENCE_VALID_YEARS} years' ELSE expiry_date END,
-            collection_office_id = CASE WHEN $1::varchar = 'Ready for Collection' THEN $3 ELSE collection_office_id END,
-            ready_for_collection_at = CASE WHEN $1::varchar = 'Ready for Collection' THEN NOW() ELSE ready_for_collection_at END,
-            collected_at = CASE WHEN $1::varchar = 'Collected' THEN NOW() ELSE collected_at END,
+            licence_number = CASE WHEN $7 THEN $2 ELSE licence_number END,
+            issue_date = CASE WHEN $7 THEN CURRENT_DATE ELSE issue_date END,
+            expiry_date = CASE WHEN $7 THEN CURRENT_DATE + INTERVAL '${LICENCE_VALID_YEARS} years' ELSE expiry_date END,
+            collection_office_id = CASE WHEN $7 THEN $3 ELSE collection_office_id END,
+            ready_for_collection_at = CASE WHEN $7 THEN NOW() ELSE ready_for_collection_at END,
+            payment_verified_by_user_id = CASE WHEN $7 THEN $6 ELSE payment_verified_by_user_id END,
+            payment_verified_at = CASE WHEN $7 THEN NOW() ELSE payment_verified_at END,
+            collected_at = CASE WHEN $5 THEN NOW() ELSE collected_at END,
             surrender_status = CASE WHEN $5 THEN 'Surrendered' ELSE surrender_status END,
             surrender_verified_by_user_id = CASE WHEN $5 THEN $6 ELSE surrender_verified_by_user_id END,
             surrender_verified_at = CASE WHEN $5 THEN NOW() ELSE surrender_verified_at END,
             updated_at = NOW()
          WHERE traffic_record_id = $4`,
-        [t.to, licenceNumber, officeId, record.traffic_record_id, resolvesSurrender, req.user.userId]
+        [t.to, licenceNumber, officeId, record.traffic_record_id, resolvesSurrender, req.user.userId, isConfirmPayment]
       );
       await syncApplicationStatus(client, { sourceTable: 'traffic_records', sourceId: record.traffic_record_id, status: t.to, completed: t.to === 'Collected' });
       await client.query('COMMIT');
@@ -351,15 +437,22 @@ async function transition(req, res, next) {
           reason: "Officer verified the citizen's Learner's Permit in hand as part of the single collect action.",
         });
       }
+      if (isConfirmPayment) {
+        await recordAudit({
+          userId: req.user.userId, departmentId: await getDepartmentId('traffic'), action: 'DRIVING_LICENCE_PAYMENT_CONFIRMED',
+          targetType: 'traffic_record', targetId: record.traffic_record_id,
+          reason: `Officer confirmed payment reference ${record.payment_reference} against the uploaded receipt and the licence (${licenceNumber}) was generated automatically.`,
+        });
+      }
 
       const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [record.citizen_id])).rows[0];
       if (userRow) {
         await createNotification({
           userId: userRow.user_id, title: `${record.service_type}: ${t.to}`,
           message: t.to === 'Ready for Collection'
-            ? `Your driving licence (${record.application_reference}) is ready for collection.${resolvesSurrender === false && record.surrender_status === 'Awaiting Surrender' ? " Please bring your Learner's Permit to surrender it." : ''}`
+            ? `Your driving licence (${licenceNumber}) has been generated and is ready for collection.${resolvesSurrender === false && record.surrender_status === 'Awaiting Surrender' ? " Please bring your Learner's Permit to surrender it." : ''}`
             : `Reference ${record.application_reference} is now: ${t.to}.`,
-          type: t.to === 'Ready for Collection' ? 'Ready for Collection' : t.to === 'Approved' ? 'Approval' : 'Status Change',
+          type: t.to === 'Ready for Collection' ? 'Ready for Collection' : 'Status Change',
         });
       }
       res.json({ recordId: record.traffic_record_id, status: t.to, licenceNumber });
@@ -413,6 +506,8 @@ const generic = makeDepartmentController({
     { column: 'biometric_reference_left', fromBody: 'biometricReferenceLeft' },
     { column: 'biometric_reference_right', fromBody: 'biometricReferenceRight' },
     { column: 'renewal_damage_proof_reference', fromBody: 'damageProofReference' },
+    { column: 'payment_reference', fromBody: 'paymentReference' },
+    { column: 'receipt_image_reference', fromBody: 'receiptImageReference' },
   ],
   statusFlow: STATUS_FLOW,
 });

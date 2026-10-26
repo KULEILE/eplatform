@@ -1229,7 +1229,20 @@
         "failed": "Ha e khone ho neheloa",
         "failedModalTitle": "Laesense ea Seithuti ha e neheloe",
         "failedModalHelp": "Moahi o ne a sitoa ho hlahisa Laesense ea hae ea Seithuti. Sena se hana kopo - lebaka le lokelang le sebelisoa haeba u sa tlatse mona."
-      }
+      },
+      "confirmPayment": "Netefatsa tefo & hlahisa laesense",
+      "categoryLabel": "Mofuta oa laesense (khoutu)",
+      "categoryHelp": "Khetha mofuta oa koloi laesense ena e tla e akaretsa. Sena se ke se fetoloe hamorao ntle le ho kopa laesense e ncha.",
+      "categoryRequired": "Ha ho na mofuta o ngolisitsoeng bakeng sa laesense ea hau ea pele - ka kopo khetha e 'ngoe.",
+      "categoryReplacementHelp": "Ha ho hlokahale - haeba u e siea e se na letho, mofuta o laesense ea hau ea pele o tla sebelisoa ka bo oona.",
+      "categoryCarriedForward": "Mofuta {{category}}, o tsoang laesense ea hau ea hona joale.",
+      "category": {
+        "A": "A - Lithuela le libaesekele tse nang le enjini",
+        "B": "B - Likoloi le makoloi a manyane",
+        "C": "C - Libese tse nyane le literaka tse nyane",
+        "D": "D - Literaka tse kholo le libese tse kholo"
+      },
+      "paymentNotice": "Tefo ea laesense ea ho khanna e lokela ho lefshoa pele ho kopa. Kenya nomoro ea tefo 'me u kenye setšoantšo sa risithi ea hau - ofisiri o hloka ho netefatsa feela hore ena e nnete pele laesense ea hau e hlahisoa."
     },
     "theorySessions": {
       "title": "Likhoeli tsa Tlhahlobo ea Thiori",

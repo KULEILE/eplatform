@@ -10,6 +10,7 @@ import DistrictOfficeSelect from '../../components/DistrictOfficeSelect';
 import PhotoCapture from '../../components/PhotoCapture';
 import BiometricCapture from '../../components/BiometricCapture';
 import DocumentCapture from '../../components/DocumentCapture';
+import ReceiptCapture from '../../components/ReceiptCapture';
 import { formatDateOnly } from '../../utils/format';
 
 // Driving Licence Application / Renewal / Replacement, consolidated onto one page with an
@@ -17,18 +18,21 @@ import { formatDateOnly } from '../../utils/format';
 // DrivingLicenceApply/Renew/Replace.jsx pages this replaces. See migration 067 and
 // backend/src/controllers/drivingLicence.controller.js.
 //
+// Batch 26: "the only steps should require officer is to check the payment is legit ... after
+// officer confirm that payment is legit the system generate license automatically" — the old
+// 7-step officer review chain collapsed to two actions, 'confirm-payment' (reviews the receipt
+// shown in the table below and generates the licence number/dates in the same click) and
+// 'collect' (unchanged physical hand-over). See migration 072 and drivingLicence.controller.js's
+// header comment for the full reasoning.
+//
 // Every officer "next step" button here is a real, professional button (btn-primary, compact),
 // not a text link — matching the convention the Passport module moved to. View / Request
 // Information / Reject stay as the plain text-link secondary actions used throughout the app.
 const NEXT = {
-  'Submitted': { action: 'start-review', labelKey: 'status.Under Review' },
-  'Under Review': { action: 'verify-identity', labelKey: 'status.Identity Verified' },
-  'Identity Verified': { action: 'check-documents', labelKey: 'status.Documents Checked' },
-  'Documents Checked': { action: 'process', labelKey: 'status.Processing' },
-  'Processing': { action: 'approve', labelKey: 'common.approve' },
-  'Approved': { action: 'ready-for-collection', labelKey: 'common.readyForCollection' },
+  'Submitted': { action: 'confirm-payment', labelKey: 'traffic.drivingLicence.confirmPayment' },
   'Ready for Collection': { action: 'collect', labelKey: 'common.collect' },
 };
+const VEHICLE_CATEGORIES = ['A', 'B', 'C', 'D'];
 
 export default function DrivingLicence() {
   const { user } = useAuth();
@@ -49,6 +53,8 @@ export default function DrivingLicence() {
   const [replacementReason, setReplacementReason] = useState('');
   const [previousLicenceNumber, setPreviousLicenceNumber] = useState('');
   const [reportedLostAt, setReportedLostAt] = useState('');
+  const [licenceCategory, setLicenceCategory] = useState('');
+  const [receipt, setReceipt] = useState({ paymentReference: '', receiptImageReference: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [modal, setModal] = useState(null); // { id, kind: 'reject' | 'request-information' | 'surrender-failed' }
@@ -78,6 +84,8 @@ export default function DrivingLicence() {
     setReplacementReason('');
     setPreviousLicenceNumber('');
     setReportedLostAt('');
+    setLicenceCategory('');
+    setReceipt({ paymentReference: '', receiptImageReference: '' });
     setError('');
   }
 
@@ -87,6 +95,14 @@ export default function DrivingLicence() {
   const stillWaiting = waitEligibleFrom && waitEligibleFrom > new Date();
   const currentLicenceNotExpired = applicationType === 'Renewal' && eligibility?.currentLicence && !eligibility.currentLicence.isExpired;
   const canApplyNew = applicationType === 'New' && eligibility?.learnerPermit && !eligibility.learnerPermit.isExpired && !eligibility?.currentLicence;
+  // A Renewal/Replacement carries the vehicle category forward from the citizen's existing
+  // licence automatically — "citizen must select which code is applying for" only really applies
+  // to a brand-new licence. A select only appears here for the rare case there's nothing to carry
+  // forward (a legacy record from before this feature, or a Replacement licence number the system
+  // doesn't recognize) — see resolveLicenceCategory() on the backend, which is the actual source
+  // of truth for whether a category needs to be asked at all.
+  const renewalCategoryKnown = applicationType === 'Renewal' && !!eligibility?.currentLicence?.licenceCategory;
+  const categorySelectRequired = applicationType === 'New' || (applicationType === 'Renewal' && !renewalCategoryKnown);
 
   const submitDisabled =
     !preferredOfficeId ||
@@ -95,7 +111,9 @@ export default function DrivingLicence() {
     (applicationType === 'New' && !canApplyNew) ||
     (applicationType === 'Renewal' && currentLicenceNotExpired && (!renewalDamaged || !damageProofReference)) ||
     (applicationType === 'Replacement' && (!replacementReason || !previousLicenceNumber.trim() ||
-      (['Lost', 'Stolen'].includes(replacementReason) && (!reportedLostAt || stillWaiting))));
+      (['Lost', 'Stolen'].includes(replacementReason) && (!reportedLostAt || stillWaiting)))) ||
+    (categorySelectRequired && !licenceCategory) ||
+    !receipt.paymentReference.trim() || !receipt.receiptImageReference;
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -108,6 +126,9 @@ export default function DrivingLicence() {
         photoReference: biometricsSource === 'id' ? undefined : photoReference,
         biometricReferenceLeft: biometricsSource === 'id' ? undefined : biometricReferenceLeft,
         biometricReferenceRight: biometricsSource === 'id' ? undefined : biometricReferenceRight,
+        licenceCategory: licenceCategory || undefined,
+        paymentReference: receipt.paymentReference.trim(),
+        receiptImageReference: receipt.receiptImageReference,
         renewalDamaged: applicationType === 'Renewal' ? renewalDamaged : undefined,
         damageProofReference: applicationType === 'Renewal' ? damageProofReference || undefined : undefined,
         replacementReason: applicationType === 'Replacement' ? replacementReason : undefined,
@@ -177,6 +198,15 @@ export default function DrivingLicence() {
                 )
               )}
 
+              {applicationType === 'New' && (
+                <FormFieldLike label={t('traffic.drivingLicence.categoryLabel')} help={t('traffic.drivingLicence.categoryHelp')} required>
+                  <select className="form-input" value={licenceCategory} onChange={(e) => setLicenceCategory(e.target.value)}>
+                    <option value="">—</option>
+                    {VEHICLE_CATEGORIES.map((c) => <option key={c} value={c}>{t(`traffic.drivingLicence.category.${c}`)}</option>)}
+                  </select>
+                </FormFieldLike>
+              )}
+
               {applicationType === 'Renewal' && eligibility.currentLicence && (
                 <div className="mb-4 rounded-md border border-slate-200 p-4">
                   <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -188,6 +218,20 @@ export default function DrivingLicence() {
                       </dd>
                     </div>
                   </dl>
+                  {renewalCategoryKnown ? (
+                    <p className="mt-3 text-sm text-slate-600">
+                      {t('traffic.drivingLicence.categoryCarriedForward', { category: t(`traffic.drivingLicence.category.${eligibility.currentLicence.licenceCategory}`) })}
+                    </p>
+                  ) : (
+                    <div className="mt-3">
+                      <FormFieldLike label={t('traffic.drivingLicence.categoryLabel')} help={t('traffic.drivingLicence.categoryRequired')} required>
+                        <select className="form-input" value={licenceCategory} onChange={(e) => setLicenceCategory(e.target.value)}>
+                          <option value="">—</option>
+                          {VEHICLE_CATEGORIES.map((c) => <option key={c} value={c}>{t(`traffic.drivingLicence.category.${c}`)}</option>)}
+                        </select>
+                      </FormFieldLike>
+                    </div>
+                  )}
                   {currentLicenceNotExpired && (
                     <div className="mt-3">
                       <p className="mb-2 text-sm text-gov-amber">⚠ {t('traffic.drivingLicence.renewal.notYetExpiredNotice', { expiryDate: formatDateOnly(eligibility.currentLicence.expiryDate) })}</p>
@@ -218,6 +262,12 @@ export default function DrivingLicence() {
                   </FormFieldLike>
                   <FormFieldLike label={t('traffic.drivingLicenceReplaceForm.field.previousLicenceNumber')} required>
                     <input type="text" className="form-input" value={previousLicenceNumber} onChange={(e) => setPreviousLicenceNumber(e.target.value)} />
+                  </FormFieldLike>
+                  <FormFieldLike label={t('traffic.drivingLicence.categoryLabel')} help={t('traffic.drivingLicence.categoryReplacementHelp')}>
+                    <select className="form-input" value={licenceCategory} onChange={(e) => setLicenceCategory(e.target.value)}>
+                      <option value="">—</option>
+                      {VEHICLE_CATEGORIES.map((c) => <option key={c} value={c}>{t(`traffic.drivingLicence.category.${c}`)}</option>)}
+                    </select>
                   </FormFieldLike>
                   {['Lost', 'Stolen'].includes(replacementReason) && (
                     <>
@@ -269,6 +319,8 @@ export default function DrivingLicence() {
                     </>
                   )}
 
+                  <ReceiptCapture value={receipt} onChange={setReceipt} help={t('traffic.drivingLicence.paymentNotice')} />
+
                   <DistrictOfficeSelect departmentKey="traffic" value={preferredOfficeId} onChange={setPreferredOfficeId} />
                   <button type="submit" disabled={submitDisabled} className="btn-primary">
                     {applicationType === 'Renewal' ? t('traffic.drivingLicence.renew') : applicationType === 'Replacement' ? t('traffic.drivingLicence.replace') : t('traffic.drivingLicence.apply')}
@@ -289,7 +341,19 @@ export default function DrivingLicence() {
           { key: 'service_type', header: t('traffic.drivingLicence.applicationTypeLabel'), render: (r) => t(`traffic.${r.service_type}`) },
           ...(isOfficer ? [{ key: 'name', header: t('common.citizen'), render: (r) => `${r.first_name} ${r.last_name}` }] : []),
           { key: 'status', header: t('common.status'), render: (r) => <StatusBadge status={r.status} /> },
+          { key: 'licence_category', header: t('traffic.drivingLicence.categoryLabel'), render: (r) => r.licence_category ? <span className="font-medium">{r.licence_category}</span> : '—' },
           { key: 'licence_number', header: t('traffic.licenceNumber'), render: (r) => r.licence_number ? <span className="font-mono text-xs">{r.licence_number}</span> : '—' },
+          ...(isOfficer ? [{
+            key: 'receipt', header: t('receiptCapture.label'),
+            render: (r) => (r.receipt_image_reference
+              ? (
+                <a href={`/uploads/${r.receipt_image_reference}`} target="_blank" rel="noreferrer" className="block">
+                  <img src={`/uploads/${r.receipt_image_reference}`} alt={t('receiptCapture.previewAlt')} className="h-10 w-8 rounded border border-slate-200 object-cover" />
+                  <span className="block font-mono text-[10px] text-slate-400">{r.payment_reference}</span>
+                </a>
+              )
+              : <span className="text-slate-300">—</span>),
+          }] : []),
           ...(isOfficer ? [{
             key: 'actions', header: t('common.actions'),
             render: (r) => {
