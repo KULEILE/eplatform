@@ -29,6 +29,7 @@ router.post('/theory-sessions', c2.upsertTheorySession);
 router.get('/theory-sessions', c2.listTheorySessions);
 router.post('/theory-sessions/:id/publish', c2.publishTheorySession);
 router.post('/theory-sessions/:id/postpone', c2.postponeTheorySession);
+router.post('/theory-sessions/:id/cancel', c2.cancelTheorySession);
 
 // Driving Licence — Application/Renewal/Replacement, consolidated onto one bespoke controller
 // (migration 067). Registered BEFORE the generic '/:id/:action' catch-all below, for the same

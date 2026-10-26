@@ -1253,7 +1253,10 @@
       "postponeSessionIntro": "Move this published sitting to a new date and/or time — for example because of bad weather. Every citizen already linked to it is carried over automatically and notified; the question set stays locked and unchanged.",
       "duration": "Duration",
       "durationMinutes": "{{n}} min",
-      "durationHelp": "How long the shared window stays open once published — e.g. 60 minutes."
+      "durationHelp": "How long the shared window stays open once published — e.g. 60 minutes.",
+      "cancel": "Cancel",
+      "cancelSessionIntro": "Scrap this published sitting entirely — for example if the question set itself needs to be redone. Every citizen still waiting (not yet taken it) is moved back to awaiting a new test and notified; anyone who already took and was graded keeps that result. The session reopens as a draft so you can author it fresh and publish again.",
+      "cancelledNotice": "Cancelled — {{count}} citizen(s) moved back to awaiting a new test and notified."
     },
     "theoryTest": {
       "takeTest": "Take test",

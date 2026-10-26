@@ -1253,7 +1253,10 @@
       "postponeSessionIntro": "Fetola khoeli ena e phatlalalitsoeng ho ea letsatsi le/kapa nako e ncha — mohlala ka lebaka la boemo bo bobe ba leholimo. Baahi bohle ba hokahantsoeng le eona ba tla isoa letsatsing le lecha ka boeona 'me ba tsebisoe; sete ea lipotso e ntse e koetsoe 'me ha e fetoha.",
       "duration": "Nako e tsamaisehang",
       "durationMinutes": "metsotso e {{n}}",
-      "durationHelp": "Nako eo sete e lula e butsoe ka nako e tšoanang ha e se e phatlalalitsoe — mohlala metsotso e 60."
+      "durationHelp": "Nako eo sete e lula e butsoe ka nako e tšoanang ha e se e phatlalalitsoe — mohlala metsotso e 60.",
+      "cancel": "Hlakola",
+      "cancelSessionIntro": "Hlakola tlhahlobo ena e se e phatlalalitsoe ka botlalo — mohlala haeba sete ea lipotso e hloka ho ngolisoa hape. Baahi bohle ba ntseng ba eme (ba e-s'o e nke) ba tla khutlisetsoa ho ema tlhahlobo e ncha mme ba tsebisoe; ba seng ba e nkile 'me ba lekoe ba tla boloka sephetho seo. Khoeli e khutlela boemong ba pampiri ea pele e le hore u ka e ngolisa hape 'me ua e phatlalatsa hape.",
+      "cancelledNotice": "E hlakotsoe — baahi ba {{count}} ba khutliselitsoe ho ema tlhahlobo e ncha 'me ba tsebisitsoe."
     },
     "theoryTest": {
       "takeTest": "Nka tlhahlobo",

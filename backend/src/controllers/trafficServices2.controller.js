@@ -502,6 +502,73 @@ async function postponeTheorySession(req, res, next) {
   } catch (err) { next(err); }
 }
 
+/** POST /traffic/theory-sessions/:id/cancel (officer) body:{reason} — Batch 23: "enable the
+ *  traffic officer to be able cancel test and set the new one." Deliberately scoped to the whole
+ *  shared SESSION, never to one citizen's individual booking — the user was explicit about why:
+ *  "what we must avoid is to allow office to deal with individuals because he may see the name of
+ *  person he do not like and keep setting new test or difficult one for specific one." Cancelling
+ *  always affects every citizen sitting that day uniformly; there is no endpoint anywhere that
+ *  lets an officer single out one citizen's Theory booking at all, by design.
+ *
+ *  Different from postponeTheorySession() above: Postpone keeps the locked question set and just
+ *  moves the date/time, for when the sitting itself is still fine, just needs to happen at a
+ *  different time. Cancel is for when the session itself needs to be scrapped and redone — it
+ *  reverts the session back to 'Draft' (no new status value needed: an unpublished session IS a
+ *  draft, whether brand new or reopened) so the officer "sets the new one" through the exact same
+ *  editing/publishing flow a brand-new session already uses (upsertTheorySession /
+ *  publishTheorySession) — no separate "create replacement" endpoint needed. Every citizen still
+ *  waiting (Scheduled, not yet submitted) is unlinked back to "awaiting officer to publish" —
+ *  exactly how they looked before any session existed for that date — and notified. Anyone who
+ *  already took and was graded under the old session (status is 'Completed' by then, so this
+ *  WHERE clause never touches them, same as postponeTheorySession's) keeps that result untouched:
+ *  cancelling a session afterward for an unrelated reason shouldn't retroactively void an
+ *  already-recorded outcome. */
+async function cancelTheorySession(req, res, next) {
+  try {
+    if (!isOfficer(req)) return res.status(403).json({ error: 'Officer only.' });
+    const { reason } = req.body;
+    if (!reason || !String(reason).trim()) return res.status(400).json({ error: 'A reason is required.' });
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      const { rows: sessionRows } = await client.query('SELECT * FROM theory_test_sessions WHERE theory_test_session_id = $1 FOR UPDATE', [req.params.id]);
+      if (sessionRows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Session not found.' }); }
+      const existing = sessionRows[0];
+      if (existing.office_id !== req.user.officeId) { await client.query('ROLLBACK'); return res.status(403).json({ error: 'Not your office.' }); }
+      if (existing.status !== 'Published') { await client.query('ROLLBACK'); return res.status(409).json({ error: 'Only a published session can be cancelled.' }); }
+
+      const { rows: sessRows } = await client.query(
+        `UPDATE theory_test_sessions SET status = 'Draft', published_by_user_id = NULL, published_at = NULL,
+                cancelled_reason = $1, cancelled_at = NOW(), cancelled_by_user_id = $2, updated_at = NOW()
+         WHERE theory_test_session_id = $3 RETURNING *`,
+        [String(reason).trim(), req.user.userId, req.params.id]
+      );
+      const session = sessRows[0];
+      const { rows: bookings } = await client.query(
+        `UPDATE driving_test_bookings SET theory_session_id = NULL, updated_at = NOW()
+         WHERE theory_session_id = $1 AND test_type = 'Theory' AND status = 'Scheduled' RETURNING *`,
+        [session.theory_test_session_id]
+      );
+      await client.query('COMMIT');
+
+      for (const bk of bookings) {
+        const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [bk.citizen_id])).rows[0];
+        if (userRow) {
+          await createNotification({
+            userId: userRow.user_id, title: 'Theory test cancelled', type: 'Status Change',
+            message: `Your theory test sitting on ${String(session.test_date).slice(0, 10)} has been cancelled. Reason: ${String(reason).trim()}. You'll be notified again once a new one is published for that date.`,
+          });
+        }
+      }
+      res.json({ session, bookingsAffected: bookings.length });
+    } catch (err) {
+      await client.query('ROLLBACK'); throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) { next(err); }
+}
+
 /** GET /traffic/test-bookings/:id/theory-test (citizen) — the questions for the citizen's own
  *  Theory booking, WITHOUT correctIndex (never sent to the citizen — see scoring below). Only
  *  available once the session it belongs to is published, the shared window has actually
@@ -1091,7 +1158,7 @@ async function updateDrivingInstructorStatus(req, res, next) {
 module.exports = {
   requestTestBooking, listTestBookings, getTestBooking, schedulePracticalTest, postponeTestBooking,
   recordTestResult, cancelTestBooking, rejectTestBooking,
-  upsertTheorySession, listTheorySessions, publishTheorySession, postponeTheorySession, getTheoryTest, saveTheoryProgress, submitTheoryAnswers,
+  upsertTheorySession, listTheorySessions, publishTheorySession, postponeTheorySession, cancelTheorySession, getTheoryTest, saveTheoryProgress, submitTheoryAnswers,
   vehicleInspectionsController,
   transportPermitsController,
   createDrivingInstructor, listDrivingInstructors, getDrivingInstructor, updateDrivingInstructorStatus,

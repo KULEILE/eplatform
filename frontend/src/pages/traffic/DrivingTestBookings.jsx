@@ -634,6 +634,8 @@ function TheorySessionsPanel({ t, onChanged }) {
   const [postponeDate, setPostponeDate] = useState('');
   const [postponeTime, setPostponeTime] = useState('');
   const [postponeReason, setPostponeReason] = useState('');
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
 
   function load() { api.get(SESSIONS_BASE).then((d) => setSessions(d.sessions)).catch(() => setSessions([])); }
   useEffect(() => { load(); }, []);
@@ -653,6 +655,29 @@ function TheorySessionsPanel({ t, onChanged }) {
       await api.post(`${SESSIONS_BASE}/${postponeTarget}/postpone`, { newDate: postponeDate, newTime: postponeTime || undefined, reason: postponeReason.trim() });
       setSuccess(t('common.saved'));
       setPostponeTarget(null); setPostponeDate(''); setPostponeTime(''); setPostponeReason('');
+      load();
+      onChanged?.();
+    } catch (err) { setError(err.message || t('common.somethingWentWrong')); } finally { setBusy(false); }
+  }
+
+  function openCancel(s) {
+    setCancelTarget(s.theory_test_session_id);
+    setCancelReason('');
+  }
+
+  /** Reverts the session to Draft and unlinks every still-waiting citizen — see
+   *  cancelTheorySession() on the backend for why this is scoped to the whole session only, never
+   *  to one citizen's booking. Reusing the existing Edit/Publish flow (which the table already
+   *  shows automatically once status flips back to Draft) is deliberately how "set the new one"
+   *  is handled — no separate "create replacement" UI needed. */
+  async function onCancelSubmit(e) {
+    e.preventDefault();
+    if (!cancelTarget || !cancelReason.trim()) return;
+    setError(''); setSuccess(''); setBusy(true);
+    try {
+      const result = await api.post(`${SESSIONS_BASE}/${cancelTarget}/cancel`, { reason: cancelReason.trim() });
+      setSuccess(t('traffic.theorySessions.cancelledNotice', { count: result.bookingsAffected }));
+      setCancelTarget(null); setCancelReason('');
       load();
       onChanged?.();
     } catch (err) { setError(err.message || t('common.somethingWentWrong')); } finally { setBusy(false); }
@@ -749,7 +774,10 @@ function TheorySessionsPanel({ t, onChanged }) {
                   <button type="button" disabled={busy} className="btn-primary !whitespace-nowrap !px-3 !py-1.5 !text-xs" onClick={() => onPublish(s.theory_test_session_id)}>{t('traffic.theorySessions.publish')}</button>
                 </div>
               ) : (
-                <button type="button" disabled={busy} className="text-xs font-semibold text-gov-navy underline" onClick={() => openPostpone(s)}>{t('traffic.theorySessions.postpone')}</button>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" disabled={busy} className="text-xs font-semibold text-gov-navy underline" onClick={() => openPostpone(s)}>{t('traffic.theorySessions.postpone')}</button>
+                  <button type="button" disabled={busy} className="text-xs font-semibold text-gov-red underline" onClick={() => openCancel(s)}>{t('traffic.theorySessions.cancel')}</button>
+                </div>
               ),
             },
           ]}
@@ -825,6 +853,20 @@ function TheorySessionsPanel({ t, onChanged }) {
           </FormField>
           <FormField label={t('services.reason')} htmlFor="sessionPostponeReason" required>
             <textarea id="sessionPostponeReason" required rows={2} className="form-input" value={postponeReason} onChange={(e) => setPostponeReason(e.target.value)} />
+          </FormField>
+        </form>
+      </Modal>
+
+      <Modal open={!!cancelTarget} onClose={() => setCancelTarget(null)} title={t('traffic.theorySessions.cancel')}
+        footer={<>
+          <button type="button" className="btn-secondary" onClick={() => setCancelTarget(null)}>{t('common.cancel')}</button>
+          <button type="submit" form="session-cancel-form" disabled={busy || !cancelReason.trim()} className="btn-danger">{t('traffic.theorySessions.cancel')}</button>
+        </>}
+      >
+        <form id="session-cancel-form" onSubmit={onCancelSubmit} noValidate>
+          <p className="mb-4 text-sm text-slate-600">{t('traffic.theorySessions.cancelSessionIntro')}</p>
+          <FormField label={t('services.reason')} htmlFor="sessionCancelReason" required>
+            <textarea id="sessionCancelReason" required rows={2} className="form-input" value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} />
           </FormField>
         </form>
       </Modal>
