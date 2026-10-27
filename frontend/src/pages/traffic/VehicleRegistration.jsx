@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import DepartmentServicePage from '../../components/DepartmentServicePage';
 
@@ -23,6 +24,14 @@ import DepartmentServicePage from '../../components/DepartmentServicePage';
 // Registration (Second-Hand Imported)', which does — and which needs the same customs paperwork
 // as a brand-new import, since both are crossing a border for the first time.
 //
+// Batch 32 — two follow-ups after reviewing Batch 31: (1) the category guide card below is now
+// citizen-only (an officer isn't choosing a category, they're reviewing an existing one); (2) the
+// citizen must now upload the actual customs clearance DOCUMENT, not just type its reference
+// number (migration 076), and the physical-inspection step now requires the officer to type the
+// chassis/engine numbers they actually see on the vehicle, which the backend cross-checks against
+// what the citizen entered and refuses to continue on a mismatch (physicalInspectionExtra in
+// traffic.controller.js) — see this file's INSPECTION_NUMBER_FIELDS and the Batch 32 README.
+//
 // requiresCustomsClearance mirrors traffic.controller.js's VEHICLE_REGISTRATION_REQUIREMENTS —
 // duplicated client-side the same way this codebase already duplicates a handful of other small
 // server-side checks (see e.g. getNationalIdCapture's own comment) rather than sharing a module
@@ -31,6 +40,19 @@ import DepartmentServicePage from '../../components/DepartmentServicePage';
 function requiresCustomsClearance(serviceType) {
   return serviceType === 'Vehicle Registration (Imported/SADC)' || serviceType === 'Vehicle Registration (Second-Hand Imported)';
 }
+
+// Batch 32 — "during inspection the officer must type the chassis and engine number and the
+// system must detect if they are the same as the owner entered — if they differ application must
+// not continue": both physical-inspection actions now also require the officer's own typed
+// chassis/engine numbers (requiresFields — see DepartmentServicePage's doc comment), posted
+// alongside the existing notes and checked server-side (traffic.controller.js's
+// physicalInspectionExtra) against what the citizen entered when they applied. A mismatch blocks
+// the step only — it does not auto-reject the application (the citizen's own choice: see the
+// Batch 32 README).
+const INSPECTION_NUMBER_FIELDS = [
+  { name: 'officerChassisNumber', labelKey: 'traffic.vehicleRegistrationForm.officerChassisNumberLabel' },
+  { name: 'officerEngineNumber', labelKey: 'traffic.vehicleRegistrationForm.officerEngineNumberLabel' },
+];
 
 // Batch 31 — "keep customs verification separate from document uploading": an imported
 // registration now passes through an extra 'Customs Clearance Verified' status (migration 075)
@@ -48,9 +70,9 @@ function nextAction(record) {
       // registration": a registration can no longer reach Approved by document review alone.
       return requiresCustomsClearance(record.service_type)
         ? { action: 'verify-customs-clearance', labelKey: 'traffic.vehicleRegistrationForm.confirmCustomsClearance', requiresText: true, textLabelKey: 'traffic.vehicleRegistrationForm.customsVerificationNotesLabel' }
-        : { action: 'confirm-physical-inspection', labelKey: 'traffic.vehicleRegistrationForm.confirmPhysicalInspection', requiresText: true, textLabelKey: 'traffic.vehicleRegistrationForm.physicalInspectionNotesLabel' };
+        : { action: 'confirm-physical-inspection', labelKey: 'traffic.vehicleRegistrationForm.confirmPhysicalInspection', requiresText: true, textLabelKey: 'traffic.vehicleRegistrationForm.physicalInspectionNotesLabel', requiresFields: INSPECTION_NUMBER_FIELDS };
     case 'Customs Clearance Verified':
-      return { action: 'confirm-physical-inspection-after-customs', labelKey: 'traffic.vehicleRegistrationForm.confirmPhysicalInspection', requiresText: true, textLabelKey: 'traffic.vehicleRegistrationForm.physicalInspectionNotesLabel' };
+      return { action: 'confirm-physical-inspection-after-customs', labelKey: 'traffic.vehicleRegistrationForm.confirmPhysicalInspection', requiresText: true, textLabelKey: 'traffic.vehicleRegistrationForm.physicalInspectionNotesLabel', requiresFields: INSPECTION_NUMBER_FIELDS };
     case 'Physically Inspected': return { action: 'approve-registration', labelKey: 'common.approve' };
     case 'Approved': return { action: 'ready-for-collection', labelKey: 'common.readyForCollection' };
     case 'Ready for Collection': return { action: 'collect', labelKey: 'common.collect' };
@@ -74,7 +96,12 @@ const COMMON_FIELDS = (t) => [
  *  preferredOfficeId: "citizen can fill the form then take a car to traffic" only works if the
  *  citizen knows which office to go to. */
 export default function VehicleRegistration() {
+  const { user } = useAuth();
   const { t } = useLanguage();
+  // Batch 32 — "officer do not need to see this message": the category guide is advice for a
+  // citizen deciding which type to apply under; an officer only ever sees existing applications
+  // and already knows the record's type, so showing it in their queue view was just noise.
+  const isOfficer = user.roleKey === 'traffic_officer' || user.roleKey === 'system_administrator';
   const config = {
     apiBase: '/traffic',
     idColumn: 'traffic_record_id',
@@ -95,6 +122,10 @@ export default function VehicleRegistration() {
         fields.push(
           { name: 'originCountry', type: 'text', required: true, label: t('traffic.vehicleRegistrationImportedForm.field.originCountry') },
           { name: 'customsClearanceReference', type: 'text', required: true, label: t('traffic.vehicleRegistrationImportedForm.field.customsClearance'), help: t('traffic.vehicleRegistrationImportedForm.field.customsClearanceHelp') },
+          // Batch 32 — the reference number above is just the Form CE 11 number the citizen types;
+          // this is the actual clearance document/certificate itself, so the officer verifying
+          // customs clearance has something real to review, the same as every other proof field.
+          { name: 'customsClearanceDocumentReference', type: 'photo', required: true, label: t('traffic.vehicleRegistrationImportedForm.field.customsClearanceDocument'), help: t('traffic.vehicleRegistrationImportedForm.field.customsClearanceDocumentHelp') },
           { name: 'importTaxProofReference', type: 'photo', required: true, label: t('traffic.vehicleRegistrationImportedForm.field.importTaxProof'), help: t('traffic.vehicleRegistrationImportedForm.field.importTaxProofHelp') },
           { name: 'policeClearanceReference', type: 'photo', required: true, label: t('traffic.vehicleRegistrationImportedForm.field.policeClearance'), help: t('traffic.vehicleRegistrationImportedForm.field.policeClearanceHelp') },
         );
@@ -109,17 +140,21 @@ export default function VehicleRegistration() {
     <div>
       {/* Batch 31 — the 4th real-world category from the citizen's workflow document (change of
           ownership on a vehicle already registered in Lesotho) is Vehicle Transfer's job, not a
-          duplicate form here — see this file's header comment. */}
-      <div className="card mb-4">
-        <h2 className="mb-2 text-sm font-semibold text-slate-900">{t('traffic.vehicleRegistrationForm.categoryGuideTitle')}</h2>
-        <p className="text-sm text-slate-600">{t('traffic.vehicleRegistrationForm.categoryGuideBody')}</p>
-        <p className="mt-2 text-sm text-slate-600">
-          {t('traffic.vehicleRegistrationForm.changeOfOwnershipNotice')}{' '}
-          <Link to="/traffic/vehicle-transfer" className="font-medium text-gov-navy hover:underline">
-            {t('traffic.vehicleRegistrationForm.useVehicleTransferLink')}
-          </Link>
-        </p>
-      </div>
+          duplicate form here — see this file's header comment.
+          Batch 32 — citizen-only: an officer already knows which type a given application is and
+          is never choosing a category for themselves, so this card is hidden for them. */}
+      {!isOfficer && (
+        <div className="card mb-4">
+          <h2 className="mb-2 text-sm font-semibold text-slate-900">{t('traffic.vehicleRegistrationForm.categoryGuideTitle')}</h2>
+          <p className="text-sm text-slate-600">{t('traffic.vehicleRegistrationForm.categoryGuideBody')}</p>
+          <p className="mt-2 text-sm text-slate-600">
+            {t('traffic.vehicleRegistrationForm.changeOfOwnershipNotice')}{' '}
+            <Link to="/traffic/vehicle-transfer" className="font-medium text-gov-navy hover:underline">
+              {t('traffic.vehicleRegistrationForm.useVehicleTransferLink')}
+            </Link>
+          </p>
+        </div>
+      )}
       <DepartmentServicePage config={config} />
     </div>
   );

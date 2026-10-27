@@ -54,6 +54,13 @@ import DistrictOfficeSelect from './DistrictOfficeSelect';
  * `{ officerResponse: <text> }` as the action's body — the same reason/confirm shape already used
  * for reject/request-information below, just with its own field name and label.
  *
+ * Batch 32 — that same modal can also carry `requiresFields: [{ name, labelKey }]` (e.g. Vehicle
+ * Registration's physical-inspection step: the officer must type the chassis and engine numbers
+ * they actually see on the vehicle, not just write a free-text note, so the controller can compare
+ * them against what the citizen entered). Each field renders as its own required text input above
+ * the notes textarea, and is posted alongside officerResponse as `{ [name]: <value> }`. Confirm
+ * stays disabled until officerResponse AND every requiresFields entry are non-empty.
+ *
  * Field types: 'text' | 'textarea' | 'select' | 'date' | 'photo' | 'biometric' | 'office'.
  * 'photo' and 'biometric' render the real capture components (not a text input) and store the
  * uploaded reference string. 'office' renders the district/branch picker and stores an officeId.
@@ -85,8 +92,9 @@ export default function DepartmentServicePage({ config }) {
   const [success, setSuccess] = useState('');
   const [modal, setModal] = useState(null); // { record, kind: 'reject' | 'request-information' }
   const [reason, setReason] = useState('');
-  const [responseModal, setResponseModal] = useState(null); // { record, action, textLabelKey }
+  const [responseModal, setResponseModal] = useState(null); // { record, action, textLabelKey, requiresFields? }
   const [responseText, setResponseText] = useState('');
+  const [responseFieldValues, setResponseFieldValues] = useState({}); // Batch 32 — see requiresFields doc comment above
   const [resubmitTarget, setResubmitTarget] = useState(null);
   const [resubmitForm, setResubmitForm] = useState(null);
   const [viewRecord, setViewRecord] = useState(null);
@@ -159,9 +167,10 @@ export default function DepartmentServicePage({ config }) {
   async function submitResponseModal() {
     setBusyId(responseModal.record[idColumn]);
     try {
-      await api.post(`${config.apiBase}/${responseModal.record[idColumn]}/${responseModal.action}`, { officerResponse: responseText });
+      await api.post(`${config.apiBase}/${responseModal.record[idColumn]}/${responseModal.action}`, { officerResponse: responseText, ...responseFieldValues });
       setResponseModal(null);
       setResponseText('');
+      setResponseFieldValues({});
       load();
     } finally {
       setBusyId(null);
@@ -257,7 +266,7 @@ export default function DepartmentServicePage({ config }) {
                 <div className="flex flex-wrap gap-2">
                   {nextOptions.map((opt) => (
                     <button key={opt.action} type="button" disabled={busy} className="text-sm font-medium text-gov-navy hover:underline"
-                      onClick={() => opt.requiresText ? setResponseModal({ record: r, action: opt.action, textLabelKey: opt.textLabelKey }) : transition(r, opt.action)}>
+                      onClick={() => opt.requiresText ? setResponseModal({ record: r, action: opt.action, textLabelKey: opt.textLabelKey, requiresFields: opt.requiresFields }) : transition(r, opt.action)}>
                       {t(opt.labelKey)}
                     </button>
                   ))}
@@ -298,15 +307,27 @@ export default function DepartmentServicePage({ config }) {
 
       <Modal
         open={!!responseModal}
-        onClose={() => setResponseModal(null)}
+        onClose={() => { setResponseModal(null); setResponseFieldValues({}); }}
         title={t('common.respond')}
         footer={
           <>
-            <button type="button" className="btn-secondary" onClick={() => setResponseModal(null)}>{t('common.cancel')}</button>
-            <button type="button" className="btn-primary" disabled={!responseText.trim() || busyId === responseModal?.record?.[idColumn]} onClick={submitResponseModal}>{t('common.confirm')}</button>
+            <button type="button" className="btn-secondary" onClick={() => { setResponseModal(null); setResponseFieldValues({}); }}>{t('common.cancel')}</button>
+            <button type="button" className="btn-primary"
+              disabled={!responseText.trim()
+                || (responseModal?.requiresFields || []).some((f) => !(responseFieldValues[f.name] || '').trim())
+                || busyId === responseModal?.record?.[idColumn]}
+              onClick={submitResponseModal}>{t('common.confirm')}</button>
           </>
         }
       >
+        {(responseModal?.requiresFields || []).map((f) => (
+          <div key={f.name} className="mb-3">
+            <label htmlFor={`modalField-${f.name}`} className="form-label">{t(f.labelKey)}</label>
+            <input id={`modalField-${f.name}`} type="text" className="form-input"
+              value={responseFieldValues[f.name] || ''}
+              onChange={(e) => setResponseFieldValues((v) => ({ ...v, [f.name]: e.target.value }))} />
+          </div>
+        ))}
         <label htmlFor="modalResponseText" className="form-label">{responseModal ? t(responseModal.textLabelKey) : ''}</label>
         <textarea id="modalResponseText" className="form-input" rows={4} value={responseText} onChange={(e) => setResponseText(e.target.value)} />
       </Modal>

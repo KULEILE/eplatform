@@ -1040,14 +1040,16 @@
         "preferredOffice": "Ofisi ea sephethephethe eo u tla tlisa koloi ho eona"
       },
       "confirmPhysicalInspection": "Netefatsa tlhahlobo ea ‘mele’",
-      "physicalInspectionNotesLabel": "U hlahlobile eng? (linomoro tsa chassis/enjene, boemo)",
+      "physicalInspectionNotesLabel": "Ho na le tse ling tseo u li boneng? (boemo ba koloi, liphapang, jj.)",
       "physicalInspectionNotice": "Hang ha u romella, tlisa koloi ofising ea sephethephethe eo u e khethileng. Molaoli o tlameha ho hlahloba koloi ka ‘mele’ a netefatse linomoro tsa chassis le enjene pele ngoliso ea hau e ka amoheloa.",
       "confirmCustomsClearance": "Netefatsa bopaki ba 'muso (customs)",
       "customsVerificationNotesLabel": "U hlahlobile eng? (bopaki ba 'muso, VAT/lekhetho la ho tlisa, bopaki ba sepolesa)",
       "categoryGuideTitle": "Ke sehlopha sefe seo ke lokelang ho se khetha?",
       "categoryGuideBody": "Khetha \"Ngoliso ea Koloi\" bakeng sa koloi e ncha e rekiloeng Lesotho. Khetha \"Ngoliso ea Koloi (e Tliselitsoeng / SADC)\" bakeng sa koloi e ncha e tliselitsoeng Lesotho. Khetha \"Ngoliso ea Koloi e Sebelisitsoeng (e Tliselitsoeng)\" bakeng sa koloi e sebelisitsoeng e tliselitsoeng Lesotho. Bakeng sa koloi e tliselitsoeng, u tlameha pele ho qeta ts'ebetso ea 'muso (customs) le Revenue Services Lesotho (RSL) pele u kopa mona — RSL e sebetsa ka ntle ho sistimi ena, kahoo sistimi ena e ke ke ea ba ea ikopanya le bona bakeng sa hau.",
       "changeOfOwnershipNotice": "Na u ngolisa koloi e sebelisitsoeng e seng e ngolisitsoe Lesotho, 'me u fetola feela mong'a eona?",
-      "useVehicleTransferLink": "Sebelisa Phetisetso ea Koloi ho e-na le mona"
+      "useVehicleTransferLink": "Sebelisa Phetisetso ea Koloi ho e-na le mona",
+      "officerChassisNumberLabel": "Nomoro ea chassis eo u e bonang holim’a koloi",
+      "officerEngineNumberLabel": "Nomoro ea enjene eo u e bonang holim’a koloi"
     },
     "vehicleRegistrationImportedForm": {
       "title": "Ngoliso ea Koloi (e Tliselitsoeng / SADC)",
@@ -1060,7 +1062,9 @@
         "importTaxProof": "Bopaki ba tefo ea VAT / lekhetho la ho tlisa",
         "importTaxProofHelp": "Setšoántsšo sa resiti ea hau ea tefo ea VAT/lekhetho.",
         "policeClearance": "Nomoro ea bopaki ba sepolesa",
-        "policeClearanceHelp": "Setšoántsšo sa bopaki ba sepolesa (CID/Interpol/SARPCC) bo netefatsang hore koloi ha e tlalehoe e utsoitsoe."
+        "policeClearanceHelp": "Setšoántsšo sa bopaki ba sepolesa (CID/Interpol/SARPCC) bo netefatsang hore koloi ha e tlalehoe e utsoitsoe.",
+        "customsClearanceDocument": "Tokomane / setifikeiti sa bopaki ba ‘muso (customs)",
+        "customsClearanceDocumentHelp": "Setšoantšo sa setifikeiti sa nnete sa bopaki ba ‘muso (customs) ho tsoa RSL — eseng nomoro ea bopaki feela."
       }
     },
     "vehicleRegistrationSecondHandForm": {

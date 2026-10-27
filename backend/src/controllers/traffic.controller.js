@@ -90,6 +90,10 @@ const COMMON_VEHICLE_REGISTRATION_FIELDS = [
 const CUSTOMS_VEHICLE_REGISTRATION_FIELDS = [
   { field: 'originCountry', message: 'originCountry is required for an imported or SADC vehicle registration.' },
   { field: 'customsClearanceReference', message: 'customsClearanceReference is required (the Customs clearance / Form CE 11 reference number) for an imported or SADC vehicle registration.' },
+  // Batch 32 — the reference number above is just a typed string; this is the actual customs
+  // clearance document/certificate itself, so the officer verifying customs clearance has a real
+  // document to review, the same as every other proof requirement already asks for a photo.
+  { field: 'customsClearanceDocumentReference', message: 'A photo of your customs clearance document/certificate from RSL is required for an imported or SADC vehicle registration.' },
   { field: 'importTaxProofReference', message: 'A photo of your proof of VAT/import duty payment is required for an imported or SADC vehicle registration.' },
   { field: 'policeClearanceReference', message: 'A photo of your CID/Interpol (SARPCO) police clearance is required for an imported or SADC vehicle registration, to confirm the vehicle is not reported stolen.' },
 ];
@@ -318,15 +322,41 @@ function requireVehicleRegistration(record) {
   return null;
 }
 
+/** Batch 32 — "during inspection the officer must type the chassis and engine number and the
+ *  system so detect if they are the same as the owner entered if they differ application must not
+ *  continue": normalizes a chassis/engine number for comparison (trims, uppercases, and strips
+ *  internal whitespace) so a harmless formatting difference — lowercase, an extra space — doesn't
+ *  register as a mismatch, while an actually different number still does. */
+function normalizeVehicleNumber(value) {
+  return (value || '').trim().toUpperCase().replace(/\s+/g, '');
+}
+
 /** Shared by 'confirm-physical-inspection' (local registrations, straight from Documents Checked)
  *  and 'confirm-physical-inspection-after-customs' (imports, after customs clearance has already
- *  been verified) — see statusFlow below. Requires a non-empty officer note, same as before. */
-function physicalInspectionExtra(req) {
+ *  been verified) — see statusFlow below. Requires a non-empty officer note, same as before, PLUS
+ *  (Batch 32) the officer's own typed chassis/engine numbers, cross-checked against what the
+ *  citizen entered on the application. A mismatch refuses the transition outright — the citizen's
+ *  decided answer here (see the Batch 32 README) is that the system only BLOCKS the step on a
+ *  mismatch; it never auto-rejects on its own. The officer still has to look at the mismatch and
+ *  decide — typo vs. a genuinely different vehicle — the same way they'd use "Reject" or "Request
+ *  more information" for any other problem with an application. */
+function physicalInspectionExtra(record, req) {
   const notes = (req.body.officerResponse || '').trim();
   if (!notes) return { error: 'Inspection notes are required — confirm the vehicle was physically brought in and that its chassis and engine numbers match the application.' };
+  const officerChassisNumber = (req.body.officerChassisNumber || '').trim();
+  const officerEngineNumber = (req.body.officerEngineNumber || '').trim();
+  if (!officerChassisNumber || !officerEngineNumber) {
+    return { error: 'You must type the chassis number and engine number you see on the vehicle itself — these are compared against what the citizen entered on the application.' };
+  }
+  if (normalizeVehicleNumber(officerChassisNumber) !== normalizeVehicleNumber(record.chassis_number)) {
+    return { error: `The chassis number you entered ("${officerChassisNumber}") does not match the chassis number on the application ("${record.chassis_number}"). The application cannot continue until this is resolved — use "Reject" or "Request more information" if this is a genuine discrepancy, not a typo.` };
+  }
+  if (normalizeVehicleNumber(officerEngineNumber) !== normalizeVehicleNumber(record.engine_number)) {
+    return { error: `The engine number you entered ("${officerEngineNumber}") does not match the engine number on the application ("${record.engine_number}"). The application cannot continue until this is resolved — use "Reject" or "Request more information" if this is a genuine discrepancy, not a typo.` };
+  }
   return {
-    setSql: `physical_inspection_confirmed_at = NOW(), physical_inspection_confirmed_by_user_id = $3, physical_inspection_notes = $4`,
-    params: [req.user.userId, notes],
+    setSql: `physical_inspection_confirmed_at = NOW(), physical_inspection_confirmed_by_user_id = $3, physical_inspection_notes = $4, physical_inspection_chassis_number = $5, physical_inspection_engine_number = $6`,
+    params: [req.user.userId, notes, officerChassisNumber, officerEngineNumber],
   };
 }
 
@@ -365,6 +395,7 @@ const controller = makeDepartmentController({
     { column: 'origin_country', fromBody: 'originCountry' },
     { column: 'ownership_proof_reference', fromBody: 'ownershipProofReference' },
     { column: 'customs_clearance_reference', fromBody: 'customsClearanceReference' },
+    { column: 'customs_clearance_document_reference', fromBody: 'customsClearanceDocumentReference' },
     { column: 'import_tax_proof_reference', fromBody: 'importTaxProofReference' },
     { column: 'police_clearance_reference', fromBody: 'policeClearanceReference' },
     { column: 'new_owner_permanent_identity_number', fromBody: 'newOwnerPermanentIdentityNumber' },
@@ -424,7 +455,7 @@ const controller = makeDepartmentController({
         if (requiresCustoms(record.service_type)) {
           return { error: 'Customs clearance must be verified before the physical inspection step for this registration type — use "Verify customs clearance" first.' };
         }
-        return physicalInspectionExtra(req);
+        return physicalInspectionExtra(record, req);
       },
     },
     'confirm-physical-inspection-after-customs': {
@@ -432,7 +463,7 @@ const controller = makeDepartmentController({
       extra: (record, req) => {
         const guard = requireVehicleRegistration(record);
         if (guard) return guard;
-        return physicalInspectionExtra(req);
+        return physicalInspectionExtra(record, req);
       },
     },
     'approve-registration': {

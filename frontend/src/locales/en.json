@@ -1040,14 +1040,16 @@
         "preferredOffice": "Traffic office you will bring the vehicle to"
       },
       "confirmPhysicalInspection": "Confirm physical inspection",
-      "physicalInspectionNotesLabel": "What did you check? (chassis/engine numbers, condition)",
+      "physicalInspectionNotesLabel": "Any other observations (vehicle condition, discrepancies, etc.)",
       "physicalInspectionNotice": "Once submitted, bring the vehicle to your chosen traffic office. An officer must physically inspect it and confirm the chassis and engine numbers before your registration can be approved.",
       "confirmCustomsClearance": "Verify customs clearance",
       "customsVerificationNotesLabel": "What did you check? (customs clearance, VAT/import tax proof, police clearance)",
       "categoryGuideTitle": "Which category should I choose?",
       "categoryGuideBody": "Choose \"Vehicle Registration\" for a brand-new vehicle bought in Lesotho. Choose \"Vehicle Registration (Imported/SADC)\" for a brand-new vehicle imported into Lesotho. Choose \"Vehicle Registration (Second-Hand Imported)\" for a second-hand vehicle imported into Lesotho. For an imported vehicle, you must first complete customs clearance with Revenue Services Lesotho (RSL) before applying here — RSL operates outside this platform, so this system cannot contact them for you.",
       "changeOfOwnershipNotice": "Already registering a second-hand vehicle that's already registered in Lesotho, and just changing the owner on record?",
-      "useVehicleTransferLink": "Use Vehicle Transfer instead"
+      "useVehicleTransferLink": "Use Vehicle Transfer instead",
+      "officerChassisNumberLabel": "Chassis number you see on the vehicle",
+      "officerEngineNumberLabel": "Engine number you see on the vehicle"
     },
     "vehicleRegistrationImportedForm": {
       "title": "Vehicle Registration (Imported / SADC)",
@@ -1060,7 +1062,9 @@
         "importTaxProof": "Proof of import VAT / tax payment",
         "importTaxProofHelp": "A photo of your VAT/import duty payment receipt.",
         "policeClearance": "Police clearance reference",
-        "policeClearanceHelp": "A photo of your CID/Interpol/SARPCC police clearance confirming the vehicle is not reported stolen."
+        "policeClearanceHelp": "A photo of your CID/Interpol/SARPCC police clearance confirming the vehicle is not reported stolen.",
+        "customsClearanceDocument": "Customs clearance document / certificate",
+        "customsClearanceDocumentHelp": "A photo of the actual customs clearance certificate from RSL — not just the reference number."
       }
     },
     "vehicleRegistrationSecondHandForm": {
