@@ -15,6 +15,7 @@ export default function PoliceClearanceCertificate() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [cert, setCert] = useState(null);
+  const [convictions, setConvictions] = useState([]);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
@@ -24,7 +25,7 @@ export default function PoliceClearanceCertificate() {
   function load() {
     setLoadError('');
     api.get(`/police/clearance/${id}/certificate`)
-      .then((d) => setCert(d.clearance))
+      .then((d) => { setCert(d.clearance); setConvictions(d.convictions || []); })
       .catch((err) => setLoadError(err.message || t('common.somethingWentWrong')));
   }
   useEffect(() => { load(); }, [id]);
@@ -100,6 +101,25 @@ export default function PoliceClearanceCertificate() {
         <p className="relative mt-5 rounded-md bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900">
           {cert.clearance_result === 'Record Found' ? t('police.clearance.resultStatementFound') : t('police.clearance.resultStatementClean')}
         </p>
+
+        {/* Batch 34 — "show whether the citizen has been arrested and if yes in which year what
+            are the charges and sentence": scoped to actual convictions only, same fairness
+            principle as the verdict itself above — see getCertificate()'s own doc comment. */}
+        {cert.clearance_result === 'Record Found' && convictions.length > 0 && (
+          <div className="relative mt-4 rounded-md border border-slate-200 p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t('police.clearance.recordDetailTitle')}</p>
+            <ul className="space-y-2 text-sm text-slate-800">
+              {convictions.map((cv) => (
+                <li key={cv.sentence_id} className="border-b border-dotted border-slate-200 pb-2 last:border-0 last:pb-0">
+                  <span className="font-semibold">{new Date(cv.sentence_date || cv.created_at).getFullYear()}</span>
+                  {cv.charge ? ` — ${cv.charge}` : ` — ${t('police.clearance.certificateTitle')} (${cv.case_reference})`}
+                  {cv.sentence_details ? ` — ${cv.sentence_details}` : ''}
+                  {cv.court_name ? ` (${cv.court_name})` : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="relative mt-6 flex flex-wrap items-end justify-between gap-4">
           <div>

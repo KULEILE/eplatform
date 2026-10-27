@@ -1,7 +1,9 @@
 const db = require('../config/db');
 const { makeDepartmentController } = require('../utils/simpleDepartmentController');
 const { recordAudit } = require('../utils/audit');
-const { getDepartmentId } = require('../utils/lookup');
+const { getDepartmentId, indexApplication } = require('../utils/lookup');
+const { generateReference } = require('../utils/referenceGenerator');
+const { createNotification } = require('../utils/notify');
 const { getCaseHistoryForCitizen, computeSuggestedClearanceResult } = require('../utils/policeHistory');
 
 // ============================================================================================
@@ -12,6 +14,21 @@ const { getCaseHistoryForCitizen, computeSuggestedClearanceResult } = require('.
 // investigations (see police.controller.js). Built on the same generic department-service
 // factory as Traffic/Finance/Pensions, plus a certificate-generation step and a certificate
 // view, the same pattern Home Affairs uses for birth certificates and National ID cards.
+//
+// Batch 34 — "the system automatically generate police clearance": applying for a certificate
+// used to start a 5-step officer-driven chain (start-review -> begin-background-check ->
+// approve -> ready-for-collection -> collect) before anything was issued. Per the explicit,
+// settled instruction behind this change, a NEW application now skips straight to a finished,
+// Ready for Collection certificate the moment it's submitted — see the custom apply() below,
+// which replaces base.apply entirely rather than reusing simpleDepartmentController's version
+// (that factory has no "insert already at a later status" hook). The computation itself
+// (computeSuggestedClearanceResult, certificate number) is exactly the same logic the old
+// 'approve' transition's extra() already used — only WHEN it runs has changed, not what it
+// computes. The 'start-review'/'begin-background-check'/'approve' transitions below are left in
+// statusFlow untouched (not removed) purely so any record that already existed in an earlier
+// status before this batch can still be walked through to completion by an officer; no new
+// application will ever reach those statuses again. 'ready-for-collection' and 'collect'
+// (signature capture) are unaffected either way.
 // ============================================================================================
 
 const base = makeDepartmentController({
@@ -64,6 +81,56 @@ const base = makeDepartmentController({
     },
   },
 });
+
+/** POST /api/police/clearance/apply — Batch 34: a NEW application is issued automatically and
+ *  immediately, with no officer step at all. Computes the same real suggested verdict
+ *  (computeSuggestedClearanceResult) and generates a certificate number the same way the old
+ *  'approve' transition did, but does it at the moment of applying rather than waiting for an
+ *  officer to click through a review chain. The record is inserted directly at 'Ready for
+ *  Collection' — the only remaining step is the citizen physically collecting the printed
+ *  certificate and signing for it (see policeClearance's existing 'collect' transition /
+ *  PoliceClearanceCertificate.jsx), which was never an officer *review* step, just a
+ *  physical-counter signature capture, so it's unaffected by removing the review chain. */
+async function apply(req, res, next) {
+  try {
+    if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required to use this service.' });
+    const { serviceType, purpose, preferredOfficeId } = req.body;
+    if (serviceType !== 'Police Clearance Certificate') {
+      return res.status(400).json({ error: 'serviceType must be one of: Police Clearance Certificate' });
+    }
+    const referenceNumber = generateReference('PCC');
+    const clearanceResult = await computeSuggestedClearanceResult(req.user.citizenId);
+    const certificateNumber = 'PCC-' + String(Math.floor(100000 + Math.random() * 900000));
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(
+        `INSERT INTO police_clearance_requests
+           (citizen_id, application_reference, service_type, purpose, preferred_office_id,
+            status, certificate_number, issue_date, clearance_result)
+         VALUES ($1,$2,$3,$4,$5,'Ready for Collection',$6,CURRENT_DATE,$7)
+         RETURNING clearance_record_id`,
+        [req.user.citizenId, referenceNumber, serviceType, purpose || null, preferredOfficeId || null, certificateNumber, clearanceResult]
+      );
+      const recordId = rows[0].clearance_record_id;
+      await indexApplication(client, {
+        citizenId: req.user.citizenId, departmentKey: 'police', serviceType, referenceNumber,
+        sourceTable: 'police_clearance_requests', sourceId: recordId, status: 'Ready for Collection',
+      });
+      await client.query('COMMIT');
+      await createNotification({
+        userId: req.user.userId, title: 'Police Clearance Certificate ready',
+        message: `Reference ${referenceNumber}. Your certificate has been generated automatically and is ready for collection.`,
+        type: 'Ready for Collection',
+      });
+      res.status(201).json({ recordId, referenceNumber, status: 'Ready for Collection', certificateNumber, clearanceResult });
+    } catch (err) {
+      await client.query('ROLLBACK'); throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) { next(err); }
+}
 
 /** POST /api/police/clearance/:id/resubmit (citizen, owner only) — Feature 4: lets the citizen
  *  correct and resubmit after Additional Information Required or Rejected, instead of starting
@@ -121,7 +188,17 @@ async function getHistory(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** GET /api/police/clearance/:id/certificate — the formatted, printable certificate. */
+/** GET /api/police/clearance/:id/certificate — the formatted, printable certificate.
+ *
+ *  Batch 34 — "it should show whether the citizen has been arrested and if yes in which year
+ *  what are the charges and sentence automatically": per the settled answer, the printed
+ *  certificate itself (not just the officer's pre-approval review screen, which already had
+ *  this via GET .../history) now carries that detail when the result is 'Record Found'. It is
+ *  deliberately scoped to actual convictions only (outcome = 'Convicted - Sentenced', the same
+ *  one thing that ever makes clearance_result = 'Record Found' in the first place — see
+ *  policeHistory.js's computeSuggestedClearanceResult) — a mere arrest, open case, or acquittal
+ *  is still never printed here, same fairness principle that already governs the verdict
+ *  itself, just now also applied to what level of detail backs it up. */
 async function getCertificate(req, res, next) {
   try {
     const { rows } = await db.query(
@@ -149,8 +226,23 @@ async function getCertificate(req, res, next) {
         targetType: 'police_clearance_request', targetId: record.clearance_record_id,
       });
     }
-    res.json({ clearance: record });
+
+    let convictions = [];
+    if (record.clearance_result === 'Record Found') {
+      const { rows: convictionRows } = await db.query(
+        `SELECT s.sentence_id, s.outcome, s.sentence_details, s.court_name, s.sentence_date, s.created_at,
+                a.charge, c.case_reference
+         FROM police_sentences s
+         JOIN police_cases c ON c.case_id = s.case_id
+         LEFT JOIN police_arrests a ON a.arrest_id = s.arrest_id
+         WHERE s.subject_citizen_id = $1 AND s.outcome = 'Convicted - Sentenced'
+         ORDER BY COALESCE(s.sentence_date, s.created_at::date) DESC`,
+        [record.citizen_id]
+      );
+      convictions = convictionRows;
+    }
+    res.json({ clearance: record, convictions });
   } catch (err) { next(err); }
 }
 
-module.exports = { ...base, getCertificate, resubmit, getHistory };
+module.exports = { ...base, apply, getCertificate, resubmit, getHistory };

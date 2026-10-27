@@ -1503,13 +1503,14 @@
       "serviceName": "Tshebeletso ya Sepolesa sa Lesotho",
       "certifyIntro": "Sena ke ho netefatsa hore patlisiso ya direkoto tsa sepolesa e entswe malebana le motho ya bitsitsweng ka tlase, ka sephetho se latelang:",
       "resultStatementClean": "Ha ho rekoto ya nyeoe e emeng ya bosholu e fumanweng kgahlanong le motho enwa ho fihlela letsatsing la ho ntshuwa.",
-      "resultStatementFound": "Ho fumanwe rekoto kgahlanong le motho enwa. Ka kopo ikopanye le ofisi e ntshitseng bakeng sa dintlha tse ding.",
+      "resultStatementFound": "Ho fumanwe rekoto kgahlanong le motho enwa. Dikahlolo tse ngodisitsweng di hlalositswe ka tlase.",
       "officerSignature": "Tekeno ya Ofisiri e Ntshang",
       "field": {
         "fullName": "Lebitso le Felletseng",
         "sex": "Bong",
         "issueDate": "Letsatsi la ho Ntshuwa"
-      }
+      },
+      "recordDetailTitle": "Dintlha tsa rekoto (dikahlolo tse ngodisitsweng)"
     },
     "handBiometric": "Tlhahlobo ea sebopeho sa letsoho",
     "startHandScan": "Qala tlhahlobo ea letsoho",
@@ -1576,7 +1577,26 @@
       "statusNote": "Ntlha (ha e hlokahale)",
       "backToCases": "Khutlela lenaneng la dinyewe",
       "openedBy": "E buletswe ke",
-      "openedOn": "E buletswe ka"
+      "openedOn": "E buletswe ka",
+      "recordArrestIdentityTitle": "Mohato wa 1: Netefatsa boitsebiso",
+      "currentCaseSubject": "Motho wa nyewe ya jwale",
+      "confirmSameSubject": "E, ke yena ya tshwerwe",
+      "verifyDifferentIdentity": "Tjhe — netefatsa boitsebiso bo fapaneng",
+      "noConfirmedSubjectYet": "Nyewe ena ha e na boitsebiso bo netefatsitsweng — netefatsa motho ya tshwarwang ka tlase.",
+      "identityModePin": "Nomoro ya boitsebiso",
+      "identityModeName": "Lebitso",
+      "identityModeHand": "Tlhahlobo ya sebopeho sa letsoho",
+      "runIdentityCheck": "Netefatsa",
+      "fallbackNameLabel": "Lebitso kapa tlhaloso (ha ho tumellano e netefatsitsweng)",
+      "fallbackNameHelp": "E hlokahala hobane ha ho rekoto ya moahi e netefaditsweng — e sebediswa e le lebitso la motho ka mongolo.",
+      "continueToDetails": "Tswela pele ho dintlha tsa qoso",
+      "backToIdentity": "← Fetola boitsebiso",
+      "requestCorrection": "Kopa phetoho",
+      "correctionPending": "Phetoho e emetse tlhahlobo ya motsamaisi",
+      "correctionReason": "Lebaka la phetoho",
+      "submitCorrectionRequest": "Romela kopo ya phetoho",
+      "correctionModalTitle": "Kopa phetoho ya kahlolo",
+      "correctionModalIntro": "Sena se romela phetoho e sisintsweng bakeng sa tlhahlobo ya motsamaisi — kahlolo e ngodisitsweng ha e fetohe ho fihlela e netefaditswe."
     },
     "reports": {
       "apply": "Romela tlaleho",
@@ -1665,7 +1685,7 @@
       "procedure1Title": "Ho tlaleha ketsahalo",
       "procedure1Body": "Sebedisa tshebeletso e amehang ya tlaleho ho tswa lenaneng la Sepolesa (thepa e lahlehileng/e utswitsweng, botlokotsebe ka kakaretso kapa ba inthanete, batho ba lahlehileng, pefo ya lelapa, dikotsi tsa sephethephethe, kapa pletso). O tla fumana nomoro ya tshupiso mme o ka latela tswelopele ho tswa ho Dikopo tsa Ka.",
       "procedure2Title": "Ho kopa Setifikeiti sa Phepelo ya Sepolesa",
-      "procedure2Body": "Kopa inthaneteng, hlalosa morero wa hao (mosebetsi, maeto/visa, thuto, bojaki, kapa tse ding), mme o kgethe lekala la ho e nka. O tla tsebiswa ha e se e lokile ho nkuwa.",
+      "procedure2Body": "Kopa inthaneteng mme o hlalose morero wa hao (mosebetsi, maeto/visa, thuto, bojaki, kapa tse ding). Setifikeiti sa hao se hlahiswa ka bo sona hang-hang mme se lokile ho nkuwa hang-hang — kgetha lekala la ho e nka mme o tla tsebiswa ha e ka nkuwa.",
       "procedure3Title": "Ho beha nako ya kopano",
       "procedure3Body": "Ditshebeletso tse ding di hloka ketelo ka bowena. Beha nako ya kopano ya Sepolesa ho tswa leqepheng la Dikopano mme o kgethe lekala le nako e nepahetseng.",
       "officesTitle": "Dibaka tsa diofisi",
@@ -1673,6 +1693,21 @@
       "noOffices": "Ha ho tlhahisoleseding ya diofisi e fumanehang hajwale.",
       "askTitle": "O na le potso e eng?",
       "askIntro": "Romela kopo ya tlhahisoleseding mme lepolesa le tla arabela."
+    },
+    "amendments": {
+      "title": "Dikopo tsa Phetoho ya Kahlolo",
+      "navLabel": "Diphetoho tsa Kahlolo",
+      "intro": "Diphetoho tseo lepolesa le kopileng ho kahlolo e ngodisitsweng. Ho netefatsa ho kenya phetoho rekotong ya nnete; ho hana ho siya rekoto ya pele jwalo ka ha e ne e le teng.",
+      "noRequests": "Ha ho dikopo tsa phetoho.",
+      "allStatuses": "Tsohle",
+      "requestedBy": "E kopiwe ke",
+      "reason": "Lebaka le fanweng",
+      "currentValue": "E ngodisitsweng jwale",
+      "proposedValue": "Phetoho e sisintsweng",
+      "approve": "Netefatsa",
+      "reject": "Hana",
+      "reviewNoteLabel": "Ntlha",
+      "reviewNoteRequiredHelp": "Lebaka le hlokahala ho hana kopo."
     }
   },
   "applications": {

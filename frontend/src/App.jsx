@@ -86,6 +86,7 @@ import PoliceClearanceCertificate from './pages/police/PoliceClearanceCertificat
 import PoliceCaseList from './pages/police/PoliceCaseList';
 import PoliceCaseDetail from './pages/police/PoliceCaseDetail';
 import PoliceCaseTrack from './pages/police/PoliceCaseTrack';
+import PoliceSentenceAmendments from './pages/police/PoliceSentenceAmendments';
 import PoliceInformation from './pages/police/PoliceInformation';
 import PoliceInformationRequest from './pages/police/PoliceInformationRequest';
 import LostPropertyReport from './pages/police/LostPropertyReport';
@@ -185,6 +186,7 @@ export default function App() {
         <Route path="/police/cases" element={<ProtectedRoute roles={['police_officer', 'system_administrator']}><PoliceCaseList /></ProtectedRoute>} />
         <Route path="/police/cases/track" element={<ProtectedRoute roles={['citizen']}><PoliceCaseTrack /></ProtectedRoute>} />
         <Route path="/police/cases/:id" element={<ProtectedRoute roles={['police_officer', 'system_administrator']}><PoliceCaseDetail /></ProtectedRoute>} />
+        <Route path="/police/sentence-amendments" element={<ProtectedRoute roles={['system_administrator']}><PoliceSentenceAmendments /></ProtectedRoute>} />
         <Route path="/police/information" element={<ProtectedRoute><PoliceInformation /></ProtectedRoute>} />
         <Route path="/police/information-request" element={<ProtectedRoute><PoliceInformationRequest /></ProtectedRoute>} />
         <Route path="/police/reports/lost-property" element={<ProtectedRoute><LostPropertyReport /></ProtectedRoute>} />

@@ -37,6 +37,14 @@ router.patch('/cases/:id/status', pcase.setCaseStatus);
 router.post('/cases/:id/arrests', pcase.recordArrest);
 router.post('/cases/:id/sentences', pcase.recordSentence);
 
+// Sentence corrections (Batch 34): an officer requests a change, only an administrator can
+// approve/reject it — see policeCase.controller.js's requestSentenceAmendment/
+// approveSentenceAmendment/rejectSentenceAmendment and migration 077.
+router.post('/sentences/:sentenceId/amendment-requests', pcase.requestSentenceAmendment);
+router.get('/sentence-amendment-requests', pcase.listSentenceAmendmentRequests);
+router.post('/sentence-amendment-requests/:id/approve', pcase.approveSentenceAmendment);
+router.post('/sentence-amendment-requests/:id/reject', pcase.rejectSentenceAmendment);
+
 // Citizen-facing incident/request reporting — the eight reporting services plus Information
 // Requests (migration 055, policeReports.controller.js), on the same generic
 // apply/list/get/transition/resubmit/request-information/reject shape as everything else built

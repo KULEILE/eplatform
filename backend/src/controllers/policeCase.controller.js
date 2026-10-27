@@ -24,6 +24,11 @@ const { recordAudit } = require('../utils/audit');
 const { getCaseHistoryForCitizen } = require('../utils/policeHistory');
 
 const OFFICER_ROLES = ['police_officer', 'system_administrator'];
+// Batch 34 — "must require the administrator approval first": deliberately NOT the same as
+// OFFICER_ROLES above. A police_officer may request a sentence correction but must never be the
+// one who approves/rejects it — see approveSentenceAmendment/rejectSentenceAmendment below.
+const ADMIN_ROLES = ['system_administrator'];
+const AMENDMENT_OUTCOMES = ['Convicted - Sentenced', 'Acquitted', 'Case Dismissed', 'Caution/Diversion'];
 
 async function resolveSubject({ permanentIdentityNumber, subjectName }) {
   if (permanentIdentityNumber) {
@@ -105,8 +110,14 @@ async function getCase(req, res, next) {
         [req.params.id]
       ),
       db.query(
-        `SELECT s.*, u.email AS recorded_by_email FROM police_sentences s
+        // Batch 34: LEFT JOINs the sentence's own Pending correction request, if it has one — the
+        // partial unique index on police_sentence_amendment_requests guarantees at most one row
+        // per sentence here, so this never duplicates a sentence row.
+        `SELECT s.*, u.email AS recorded_by_email,
+                ar.amendment_id AS pending_amendment_id, ar.reason AS pending_amendment_reason, ar.created_at AS pending_amendment_created_at
+         FROM police_sentences s
          LEFT JOIN users u ON u.user_id = s.recorded_by_user_id
+         LEFT JOIN police_sentence_amendment_requests ar ON ar.sentence_id = s.sentence_id AND ar.status = 'Pending'
          WHERE s.case_id = $1 ORDER BY COALESCE(s.sentence_date, s.created_at::date) DESC`,
         [req.params.id]
       ),
@@ -173,6 +184,20 @@ async function recordArrest(req, res, next) {
     // any other status explicitly afterwards via setCaseStatus.
     if (policeCase.status === 'Open') {
       await db.query(`UPDATE police_cases SET status = 'Under Investigation', updated_at = NOW() WHERE case_id = $1`, [policeCase.case_id]);
+    }
+
+    // Batch 34 — "the case may be open with no suspect info, later the investigation reveals a
+    // suspect, then the system must allow officers to do that": if this case didn't have a
+    // confirmed citizen subject yet, and the officer explicitly supplied an identity for THIS
+    // arrest (rather than just inheriting the case's own existing placeholder subject, the
+    // `else` branch above), treat that confirmed identity as resolving the case too. If the case
+    // already names a different confirmed citizen, this never overwrites it — the arrest's own
+    // identification is simply recorded on the arrest, same as it always was.
+    if ((permanentIdentityNumber || subjectName) && !policeCase.subject_citizen_id && (subject.citizenId || subject.name)) {
+      await db.query(
+        `UPDATE police_cases SET subject_citizen_id = $1, subject_name = $2, updated_at = NOW() WHERE case_id = $3`,
+        [subject.citizenId, subject.name, policeCase.case_id]
+      );
     }
 
     await recordAudit({
@@ -290,4 +315,130 @@ async function trackCase(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { startCase, listCases, getCase, setCaseStatus, recordArrest, recordSentence, citizenHistory, trackCase };
+/** POST /api/police/sentences/:sentenceId/amendment-requests — officer requests a correction to
+ *  an already-recorded sentence (Batch 34). Nothing on police_sentences changes here —
+ *  recordSentence() stays insert-only. This writes a separate, Pending request holding the full
+ *  proposed replacement, which only approveSentenceAmendment() below is allowed to apply.
+ *  body: { outcome, sentenceDetails?, courtName?, sentenceDate?, reason } — same validation
+ *  recordSentence() itself already applies, re-applied here against the PROPOSED values. */
+async function requestSentenceAmendment(req, res, next) {
+  try {
+    if (!OFFICER_ROLES.includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
+    const { reason, outcome, sentenceDetails, courtName, sentenceDate } = req.body;
+    if (!reason || !reason.trim()) return res.status(400).json({ error: 'A reason for the correction is required.' });
+    if (!AMENDMENT_OUTCOMES.includes(outcome)) return res.status(400).json({ error: `outcome must be one of: ${AMENDMENT_OUTCOMES.join(', ')}` });
+    if (outcome === 'Convicted - Sentenced' && (!sentenceDetails || !sentenceDetails.trim())) {
+      return res.status(400).json({ error: 'sentenceDetails is required when the proposed outcome is a conviction.' });
+    }
+    const { rows: sentenceRows } = await db.query('SELECT * FROM police_sentences WHERE sentence_id = $1', [req.params.sentenceId]);
+    if (sentenceRows.length === 0) return res.status(404).json({ error: 'Sentence not found.' });
+    const { rows: pending } = await db.query(
+      `SELECT 1 FROM police_sentence_amendment_requests WHERE sentence_id = $1 AND status = 'Pending'`,
+      [req.params.sentenceId]
+    );
+    if (pending.length > 0) return res.status(409).json({ error: 'A correction request is already pending for this sentence.' });
+
+    const { rows } = await db.query(
+      `INSERT INTO police_sentence_amendment_requests
+         (sentence_id, requested_by_user_id, reason, proposed_outcome, proposed_sentence_details, proposed_court_name, proposed_sentence_date)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+      [req.params.sentenceId, req.user.userId, reason.trim(), outcome, sentenceDetails ? sentenceDetails.trim() : null, courtName || null, sentenceDate || null]
+    );
+    const record = rows[0];
+    await recordAudit({
+      userId: req.user.userId, departmentId: await getDepartmentId('police'),
+      action: 'POLICE_SENTENCE_AMENDMENT_REQUESTED', targetType: 'police_sentence', targetId: sentenceRows[0].sentence_id,
+      reason: reason.trim(), metadata: { amendmentId: record.amendment_id, proposedOutcome: outcome },
+    });
+    res.status(201).json({ amendment: record });
+  } catch (err) { next(err); }
+}
+
+/** GET /api/police/sentence-amendment-requests?status=Pending — the administrator's approval
+ *  queue, across every case (Batch 34). Readable by any officer (so one can check the status of
+ *  their own request), but only an administrator can act on one — see approve/reject below. */
+async function listSentenceAmendmentRequests(req, res, next) {
+  try {
+    if (!OFFICER_ROLES.includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
+    const { status } = req.query;
+    const { rows } = await db.query(
+      `SELECT ar.*, s.case_id, s.outcome AS current_outcome, s.sentence_details AS current_sentence_details,
+              s.court_name AS current_court_name, s.sentence_date AS current_sentence_date,
+              c.case_reference, ru.email AS requested_by_email, av.email AS reviewed_by_email
+       FROM police_sentence_amendment_requests ar
+       JOIN police_sentences s ON s.sentence_id = ar.sentence_id
+       JOIN police_cases c ON c.case_id = s.case_id
+       LEFT JOIN users ru ON ru.user_id = ar.requested_by_user_id
+       LEFT JOIN users av ON av.user_id = ar.reviewed_by_user_id
+       WHERE $1::text IS NULL OR ar.status = $1
+       ORDER BY ar.created_at DESC`,
+      [status || null]
+    );
+    res.json({ amendmentRequests: rows });
+  } catch (err) { next(err); }
+}
+
+/** POST /api/police/sentence-amendment-requests/:id/approve — ADMINISTRATOR ONLY (Batch 34;
+ *  never the requesting officer, never any police_officer at all). Applies the proposed values
+ *  to the actual police_sentences row and closes out the request — this is the one and only
+ *  place a police_sentences row can ever change after it's first recorded. */
+async function approveSentenceAmendment(req, res, next) {
+  try {
+    if (!ADMIN_ROLES.includes(req.user.roleKey)) return res.status(403).json({ error: 'Administrator only.' });
+    const client = await db.getClient();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(`SELECT * FROM police_sentence_amendment_requests WHERE amendment_id = $1 FOR UPDATE`, [req.params.id]);
+      if (rows.length === 0) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Correction request not found.' }); }
+      const amendment = rows[0];
+      if (amendment.status !== 'Pending') { await client.query('ROLLBACK'); return res.status(409).json({ error: `This request is already ${amendment.status}.` }); }
+      await client.query(
+        `UPDATE police_sentences SET outcome = $1, sentence_details = $2, court_name = $3, sentence_date = $4, updated_at = NOW() WHERE sentence_id = $5`,
+        [amendment.proposed_outcome, amendment.proposed_sentence_details, amendment.proposed_court_name, amendment.proposed_sentence_date, amendment.sentence_id]
+      );
+      const { rows: updated } = await client.query(
+        `UPDATE police_sentence_amendment_requests SET status = 'Approved', reviewed_by_user_id = $1, review_note = $2, reviewed_at = NOW(), updated_at = NOW() WHERE amendment_id = $3 RETURNING *`,
+        [req.user.userId, req.body.reviewNote || null, amendment.amendment_id]
+      );
+      await client.query('COMMIT');
+      await recordAudit({
+        userId: req.user.userId, departmentId: await getDepartmentId('police'),
+        action: 'POLICE_SENTENCE_AMENDMENT_APPROVED', targetType: 'police_sentence', targetId: amendment.sentence_id,
+        reason: req.body.reviewNote || null, metadata: { amendmentId: amendment.amendment_id },
+      });
+      res.json({ amendment: updated[0] });
+    } catch (err) {
+      await client.query('ROLLBACK'); throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) { next(err); }
+}
+
+/** POST /api/police/sentence-amendment-requests/:id/reject — ADMINISTRATOR ONLY (Batch 34). The
+ *  original police_sentences row is never touched; only the request itself is marked rejected,
+ *  with a reason the requesting officer can see. */
+async function rejectSentenceAmendment(req, res, next) {
+  try {
+    if (!ADMIN_ROLES.includes(req.user.roleKey)) return res.status(403).json({ error: 'Administrator only.' });
+    const { reviewNote } = req.body;
+    if (!reviewNote || !reviewNote.trim()) return res.status(400).json({ error: 'A reason is required to reject a correction request.' });
+    const { rows } = await db.query(
+      `UPDATE police_sentence_amendment_requests SET status = 'Rejected', reviewed_by_user_id = $1, review_note = $2, reviewed_at = NOW(), updated_at = NOW()
+       WHERE amendment_id = $3 AND status = 'Pending' RETURNING *`,
+      [req.user.userId, reviewNote.trim(), req.params.id]
+    );
+    if (rows.length === 0) return res.status(409).json({ error: 'This request is not pending (already reviewed, or does not exist).' });
+    await recordAudit({
+      userId: req.user.userId, departmentId: await getDepartmentId('police'),
+      action: 'POLICE_SENTENCE_AMENDMENT_REJECTED', targetType: 'police_sentence', targetId: rows[0].sentence_id,
+      reason: reviewNote.trim(), metadata: { amendmentId: rows[0].amendment_id },
+    });
+    res.json({ amendment: rows[0] });
+  } catch (err) { next(err); }
+}
+
+module.exports = {
+  startCase, listCases, getCase, setCaseStatus, recordArrest, recordSentence, citizenHistory, trackCase,
+  requestSentenceAmendment, listSentenceAmendmentRequests, approveSentenceAmendment, rejectSentenceAmendment,
+};

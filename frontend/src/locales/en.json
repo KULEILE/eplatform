@@ -1503,13 +1503,14 @@
       "serviceName": "Lesotho Mounted Police Service",
       "certifyIntro": "This is to certify that a search of police records has been conducted in respect of the person named below, with the following result:",
       "resultStatementClean": "No record of a pending criminal case was found against this person as at the date of issue.",
-      "resultStatementFound": "A record was found against this person. Please contact the issuing office for further detail.",
+      "resultStatementFound": "A record was found against this person. The conviction(s) on file are detailed below.",
       "officerSignature": "Issuing Officer Signature",
       "field": {
         "fullName": "Full Name",
         "sex": "Sex",
         "issueDate": "Date of Issue"
-      }
+      },
+      "recordDetailTitle": "Record detail (convictions on file)"
     },
     "handBiometric": "Hand biometric scan",
     "startHandScan": "Start hand scan",
@@ -1576,7 +1577,26 @@
       "statusNote": "Note (optional)",
       "backToCases": "Back to case list",
       "openedBy": "Opened by",
-      "openedOn": "Opened on"
+      "openedOn": "Opened on",
+      "recordArrestIdentityTitle": "Step 1: Confirm identity",
+      "currentCaseSubject": "Current case subject",
+      "confirmSameSubject": "Yes, this is who was arrested",
+      "verifyDifferentIdentity": "No — verify a different identity",
+      "noConfirmedSubjectYet": "This case has no confirmed identity yet — verify who is being arrested below.",
+      "identityModePin": "ID number",
+      "identityModeName": "Name",
+      "identityModeHand": "Hand biometric",
+      "runIdentityCheck": "Verify",
+      "fallbackNameLabel": "Name or description (no confirmed match)",
+      "fallbackNameHelp": "Required since no citizen record was confirmed — used as a free-text subject name.",
+      "continueToDetails": "Continue to charge details",
+      "backToIdentity": "← Change identity",
+      "requestCorrection": "Request correction",
+      "correctionPending": "Correction pending administrator review",
+      "correctionReason": "Reason for correction",
+      "submitCorrectionRequest": "Submit correction request",
+      "correctionModalTitle": "Request a sentence correction",
+      "correctionModalIntro": "This submits a proposed change for an administrator to review — the recorded sentence is not changed until it's approved."
     },
     "reports": {
       "apply": "Submit report",
@@ -1665,7 +1685,7 @@
       "procedure1Title": "Reporting an incident",
       "procedure1Body": "Use the relevant reporting service from the Police hub (lost/stolen property, general or cybercrime, missing persons, domestic violence, traffic accidents, or a complaint). You will receive a reference number and can track progress from My Applications.",
       "procedure2Title": "Applying for a Police Clearance Certificate",
-      "procedure2Body": "Apply online, state your purpose (employment, travel/visa, education, immigration, or other), and choose a branch for collection. You will be notified once it is ready for collection.",
+      "procedure2Body": "Apply online and state your purpose (employment, travel/visa, education, immigration, or other). Your certificate is generated automatically and is ready for collection immediately — choose a branch for collection and you will be notified once it can be collected.",
       "procedure3Title": "Booking an appointment",
       "procedure3Body": "Some services require a visit in person. Book a Police appointment from the Appointments page and choose a convenient branch and time.",
       "officesTitle": "Office locations",
@@ -1673,6 +1693,21 @@
       "noOffices": "No office information is available right now.",
       "askTitle": "Still have a question?",
       "askIntro": "Submit an information request and an officer will respond."
+    },
+    "amendments": {
+      "title": "Sentence Correction Requests",
+      "navLabel": "Sentence Corrections",
+      "intro": "Corrections an officer has requested to an already-recorded sentence. Approving applies the change to the actual record; rejecting leaves the original exactly as it was.",
+      "noRequests": "No correction requests.",
+      "allStatuses": "All",
+      "requestedBy": "Requested by",
+      "reason": "Reason given",
+      "currentValue": "Currently recorded",
+      "proposedValue": "Proposed change",
+      "approve": "Approve",
+      "reject": "Reject",
+      "reviewNoteLabel": "Note",
+      "reviewNoteRequiredHelp": "A reason is required to reject a request."
     }
   },
   "applications": {

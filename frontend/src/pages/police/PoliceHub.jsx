@@ -22,6 +22,7 @@ const SERVICES = [
   { key: 'identityLookup', to: '/police/identity-verification', icon: '🔎', roles: ['police_officer', 'system_administrator'], labelKey: 'police.identityLookup' },
   { key: 'nationalIdBiometrics', to: '/police/national-id-biometrics', icon: '🖐️', roles: ['police_officer', 'system_administrator'], labelKey: 'police.nationalIdBiometrics.title' },
   { key: 'cases', to: '/police/cases', icon: '🗂️', roles: ['police_officer', 'system_administrator'], labelKey: 'police.cases.navLabel' },
+  { key: 'sentenceAmendments', to: '/police/sentence-amendments', icon: '🛡️', roles: ['system_administrator'], labelKey: 'police.amendments.navLabel' },
 ];
 
 /** Every citizen-facing service from the department's full service list is represented here —
