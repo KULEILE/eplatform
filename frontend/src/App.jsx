@@ -75,6 +75,8 @@ import SupplierPaymentTracking from './pages/finance/SupplierPaymentTracking';
 import FinanceComplaint from './pages/finance/FinanceComplaint';
 import RetirementTracking from './pages/finance/RetirementTracking';
 import BudgetAndTenders from './pages/finance/BudgetAndTenders';
+import ReportFinancialIssue from './pages/finance/ReportFinancialIssue';
+import FinanceBudgetRequests from './pages/finance/FinanceBudgetRequests';
 import Pensions from './pages/pensions/Pensions';
 import PensionEnquiry from './pages/pensions/PensionEnquiry';
 import Police from './pages/police/Police';
@@ -105,6 +107,9 @@ import AdminSettings from './pages/admin/AdminSettings';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminAudit from './pages/admin/AdminAudit';
 import AdminOffices from './pages/admin/AdminOffices';
+import BranchBudgetRequests from './pages/admin/BranchBudgetRequests';
+import DeptFinanceHub from './pages/deptFinance/DeptFinanceHub';
+import DeptFinanceIssues from './pages/deptFinance/DeptFinanceIssues';
 
 export default function App() {
   return (
@@ -207,6 +212,17 @@ export default function App() {
         <Route path="/admin/offices" element={<ProtectedRoute roles={['system_administrator']}><AdminOffices /></ProtectedRoute>} />
 
         <Route path="/branch/users" element={<ProtectedRoute roles={['branch_admin']}><AdminUsers /></ProtectedRoute>} />
+        <Route path="/branch/budget-requests" element={<ProtectedRoute roles={['branch_admin']}><BranchBudgetRequests /></ProtectedRoute>} />
+
+        {/* Migration 078 — Department Finance Administrator: not tied to one office, switches
+            between any department+branch (DeptFinanceHub), then resolves/escalates financial
+            issues (DeptFinanceIssues) and manages that office's employees (reusing AdminUsers). */}
+        <Route path="/department-finance" element={<ProtectedRoute roles={['department_finance_admin']}><DeptFinanceHub /></ProtectedRoute>} />
+        <Route path="/department-finance/issues" element={<ProtectedRoute roles={['department_finance_admin']}><DeptFinanceIssues /></ProtectedRoute>} />
+        <Route path="/department-finance/employees" element={<ProtectedRoute roles={['department_finance_admin']}><AdminUsers /></ProtectedRoute>} />
+
+        <Route path="/report-financial-issue" element={<ProtectedRoute roles={['citizen']}><ReportFinancialIssue /></ProtectedRoute>} />
+        <Route path="/finance/budget-requests" element={<ProtectedRoute roles={['finance_officer', 'system_administrator']}><FinanceBudgetRequests /></ProtectedRoute>} />
 
         <Route path="*" element={<Landing />} />
       </Routes>

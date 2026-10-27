@@ -15,7 +15,10 @@ router.put('/settings', requireAdmin, admin.updateSettings);
 router.post('/logo', requireAdmin, uploadLogoMw.single('logo'), admin.uploadLogo);
 router.delete('/logo', requireAdmin, admin.removeLogo);
 
-const requireAccountManager = requireRole('system_administrator', 'branch_admin');
+// department_finance_admin (migration 078) reuses this same employee-account management —
+// admin.controller.js scopes it to whichever office that administrator is currently switched
+// to, exactly as it already scopes branch_admin to its one fixed office.
+const requireAccountManager = requireRole('system_administrator', 'branch_admin', 'department_finance_admin');
 router.get('/users', requireAccountManager, admin.listUsers);
 router.post('/users', requireAccountManager, admin.createUser);
 router.patch('/users/:id', requireAccountManager, admin.updateUser);

@@ -1,11 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import DepartmentServicePage from '../../components/DepartmentServicePage';
-
-// These two services have their own pages (SupplierPaymentTracking.jsx, FinanceComplaint.jsx)
-// with their own forms and officer actions, so they are kept out of the generic list below.
-const OWN_PAGE_TYPES = ['Government Supplier Payment Tracking', 'Finance Complaint or Enquiry'];
 
 const config = {
   apiBase: '/finance',
@@ -14,7 +11,6 @@ const config = {
   serviceTypeNs: 'finance',
   officerRoleKey: 'finance_officer',
   serviceTypes: ['Supplier Registration Validation', 'Payment Information Update', 'Tax Identity Confirmation', 'Financial Records Correction'],
-  listFilter: (r) => !OWN_PAGE_TYPES.includes(r.service_type),
   transitions: {
     'Submitted': { action: 'start-review', labelKey: 'status.Under Review' },
     'Under Review': { action: 'verify-identity', labelKey: 'status.Identity Verified' },
@@ -24,25 +20,39 @@ const config = {
   },
 };
 
-const LINKS = [
-  { to: '/finance/government-employment', icon: '🏛', labelKeys: ['finance.employment.panelTitle', 'finance.retirement.title'] },
-  { to: '/finance/retirement-tracking', icon: '📈', labelKeys: ['finance.retirementTracking.title'] },
-  { to: '/finance/supplier-payments', icon: '🧾', labelKeys: ['finance.supplierPayment.title'] },
-  { to: '/finance/complaints', icon: '💬', labelKeys: ['finance.complaint.title'] },
-  { to: '/finance/publications', icon: '📄', labelKeys: ['finance.publications.title'] },
-  { to: '/finance/corrections', icon: '✏', labelKeys: ['finance.correction'] },
-];
-
 export default function Finance() {
+  const { user } = useAuth();
   const { t } = useLanguage();
+  // Branch Budget Requests (migration 078) stays with the existing finance_officer role per
+  // the explicit answer "leave it with Finance Officer" — not the new Department Finance
+  // Administrator. Shown only to the officers who review/approve/disburse them.
+  const canReviewBudgetRequests = ['finance_officer', 'system_administrator'].includes(user.roleKey);
   return (
     <div>
-      <div className="mb-6 flex flex-wrap gap-x-6 gap-y-3 text-sm">
-        {LINKS.map((l) => (
-          <Link key={l.to} to={l.to} className="font-medium text-gov-navy hover:underline">
-            {l.icon} {l.labelKeys.map((k) => t(k)).join(' / ')}
+      <div className="mb-6 flex flex-wrap gap-4 text-sm">
+        <Link to="/finance/government-employment" className="font-medium text-gov-navy hover:underline">
+          🏛 {t('finance.employment.panelTitle')} / {t('finance.retirement.title')}
+        </Link>
+        <Link to="/finance/retirement-tracking" className="font-medium text-gov-navy hover:underline">
+          📋 {t('finance.retirementTracking.title')}
+        </Link>
+        <Link to="/finance/supplier-payments" className="font-medium text-gov-navy hover:underline">
+          💰 {t('finance.supplierPayment.title')}
+        </Link>
+        <Link to="/finance/complaints" className="font-medium text-gov-navy hover:underline">
+          📨 {t('finance.complaint.title')}
+        </Link>
+        <Link to="/finance/publications" className="font-medium text-gov-navy hover:underline">
+          📑 {t('finance.publications.title')}
+        </Link>
+        <Link to="/finance/corrections" className="font-medium text-gov-navy hover:underline">
+          ✏ {t('finance.correction')}
+        </Link>
+        {canReviewBudgetRequests && (
+          <Link to="/finance/budget-requests" className="font-medium text-gov-navy hover:underline">
+            🏦 {t('finance.budgetRequests.title')}
           </Link>
-        ))}
+        )}
       </div>
       <DepartmentServicePage config={config} />
     </div>

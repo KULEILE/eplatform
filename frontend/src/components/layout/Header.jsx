@@ -258,7 +258,13 @@ export default function Header() {
                       <Link to="/admin" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm hover:bg-slate-50">{t('nav.admin')}</Link>
                     )}
                     {user.roleKey === 'branch_admin' && (
-                      <Link to="/branch/users" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm hover:bg-slate-50">{t('nav.manageEmployees')}</Link>
+                      <>
+                        <Link to="/branch/users" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm hover:bg-slate-50">{t('nav.manageEmployees')}</Link>
+                        <Link to="/branch/budget-requests" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm hover:bg-slate-50">{t('finance.budgetRequests.branchTitle')}</Link>
+                      </>
+                    )}
+                    {user.roleKey === 'department_finance_admin' && (
+                      <Link to="/department-finance" onClick={() => setMenuOpen(false)} className="block px-4 py-2 text-sm hover:bg-slate-50">{t('deptFinance.title')}</Link>
                     )}
                     <button
                       type="button"

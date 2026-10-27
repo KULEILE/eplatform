@@ -19,9 +19,9 @@ function maskPin(pin) {
   return pin.slice(0, -4).replace(/./g, '•') + pin.slice(-4);
 }
 
-function QuickActionsStrip({ t, systemOnline }) {
+function QuickActionsStrip({ t, systemOnline, isCitizen }) {
   return (
-    <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <section className={`mt-4 grid grid-cols-2 gap-3 ${isCitizen ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
       <Link to="/applications" className="card-link flex items-center gap-3">
         <DocumentTextIcon className="h-6 w-6 shrink-0 text-gov-navy" strokeWidth={1.6} />
         <span>
@@ -36,6 +36,17 @@ function QuickActionsStrip({ t, systemOnline }) {
           <span className="block text-xs text-slate-500">{t('dashboard.viewNotificationsDesc')}</span>
         </span>
       </Link>
+      {isCitizen && (
+        // Migration 078 — the ONE shared entry point for reporting a financial issue against
+        // any department, instead of a tile on every department's own hub.
+        <Link to="/report-financial-issue" className="card-link flex items-center gap-3">
+          <InboxStackIcon className="h-6 w-6 shrink-0 text-gov-navy" strokeWidth={1.6} />
+          <span>
+            <span className="block text-sm font-semibold text-slate-900">{t('finance.reportIssue.title')}</span>
+            <span className="block text-xs text-slate-500">{t('finance.reportIssue.quickActionDesc')}</span>
+          </span>
+        </Link>
+      )}
       <a href="#" onClick={(e) => e.preventDefault()} className="card-link flex items-center gap-3">
         <LifebuoyIcon className="h-6 w-6 shrink-0 text-gov-navy" strokeWidth={1.6} />
         <span>
@@ -81,8 +92,11 @@ export default function Dashboard() {
   const isCitizen = user.roleKey === 'citizen';
   const isBranchAdmin = user.roleKey === 'branch_admin';
   const isSystemAdmin = user.roleKey === 'system_administrator';
+  // Migration 078 — switches between departments rather than belonging to one, so it must be
+  // excluded from isOfficer below (which assumes a single, fixed user.departmentKey).
+  const isDeptFinanceAdmin = user.roleKey === 'department_finance_admin';
   const isEmployee = !isCitizen;
-  const isOfficer = isEmployee && !isBranchAdmin && !isSystemAdmin;
+  const isOfficer = isEmployee && !isBranchAdmin && !isSystemAdmin && !isDeptFinanceAdmin;
   // user.isForeignNational (migration 051) is a PERMANENT historical flag — it stays TRUE even
   // after a foreign national is naturalised and granted a citizen_id, as a record of how they
   // became a citizen. It must never be used alone to decide current access (that was a bug: it
@@ -165,14 +179,18 @@ export default function Dashboard() {
           {isEmployee && (
             <p className="mt-2 max-w-xl text-sm text-white/80">
               {t(`role.${user.roleKey}`)}
-              {user.departmentKey && ` · ${t(`departments.${user.departmentKey}`)}`}
-              {user.officeName && ` · ${user.officeName}`}
+              {isDeptFinanceAdmin
+                ? (user.activeDepartmentKey ? ` · ${t(`departments.${user.activeDepartmentKey}`)} · ${user.activeOfficeName}` : ` · ${t('deptFinance.noContextShort')}`)
+                : <>
+                  {user.departmentKey && ` · ${t(`departments.${user.departmentKey}`)}`}
+                  {user.officeName && ` · ${user.officeName}`}
+                </>}
             </p>
           )}
         </div>
       </section>
 
-      <QuickActionsStrip t={t} systemOnline={systemOnline} />
+      <QuickActionsStrip t={t} systemOnline={systemOnline} isCitizen={isCitizen} />
 
       {isSystemAdmin && (
         <section className="mt-10">
@@ -231,6 +249,13 @@ export default function Dashboard() {
                 <span className="mt-1 block text-sm text-slate-600">{t('dashboard.manageEmployeesDesc')}</span>
               </span>
             </Link>
+            <Link to="/branch/budget-requests" className="card-link flex items-start gap-4">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-600 text-white shadow-sm"><InboxStackIcon className="h-6 w-6" strokeWidth={1.75} /></span>
+              <span>
+                <span className="block text-base font-semibold text-slate-900">{t('finance.budgetRequests.branchTitle')}</span>
+                <span className="mt-1 block text-sm text-slate-600">{t('dashboard.branchBudgetRequestsDesc')}</span>
+              </span>
+            </Link>
             <div className="card flex items-start gap-4">
               <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-600 text-white shadow-sm"><BuildingOffice2Icon className="h-6 w-6" strokeWidth={1.75} /></span>
               <span>
@@ -238,6 +263,42 @@ export default function Dashboard() {
                 <span className="mt-1 block text-sm text-slate-600">{t(`departments.${user.departmentKey}`)}</span>
               </span>
             </div>
+          </div>
+        </section>
+      )}
+
+      {isDeptFinanceAdmin && (
+        <section className="mt-10">
+          <h2 className="section-title">{t('deptFinance.title')}</h2>
+          <p className="mt-1 text-sm text-slate-600">{t('deptFinance.intro')}</p>
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Link to="/department-finance" className="card-link flex items-start gap-4">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-600 text-white shadow-sm"><BuildingOffice2Icon className="h-6 w-6" strokeWidth={1.75} /></span>
+              <span>
+                <span className="block text-base font-semibold text-slate-900">
+                  {user.activeOfficeId ? `${t(`departments.${user.activeDepartmentKey}`)} — ${user.activeOfficeName}` : t('deptFinance.noContextShort')}
+                </span>
+                <span className="mt-1 block text-sm text-slate-600">{t('deptFinance.switchContext')}</span>
+              </span>
+            </Link>
+            {user.activeOfficeId && (
+              <>
+                <Link to="/department-finance/issues" className="card-link flex items-start gap-4">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm"><InboxStackIcon className="h-6 w-6" strokeWidth={1.75} /></span>
+                  <span>
+                    <span className="block text-base font-semibold text-slate-900">{t('deptFinance.issuesTitle')}</span>
+                    <span className="mt-1 block text-sm text-slate-600">{t('deptFinance.issuesDesc')}</span>
+                  </span>
+                </Link>
+                <Link to="/department-finance/employees" className="card-link flex items-start gap-4">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm"><UserPlusIcon className="h-6 w-6" strokeWidth={1.75} /></span>
+                  <span>
+                    <span className="block text-base font-semibold text-slate-900">{t('nav.manageEmployees')}</span>
+                    <span className="mt-1 block text-sm text-slate-600">{t('deptFinance.employeesDesc')}</span>
+                  </span>
+                </Link>
+              </>
+            )}
           </div>
         </section>
       )}

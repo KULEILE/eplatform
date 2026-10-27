@@ -87,14 +87,27 @@ async function removeLogo(req, res, next) {
   } catch (err) { next(err); }
 }
 
+/** True for a role that manages employees for one branch office at a time rather than
+ *  system-wide — branch_admin is permanently tied to that office; department_finance_admin
+ *  (migration 078) is tied to whichever office it is CURRENTLY switched to. */
+function currentOfficeScope(user) {
+  if (user.roleKey === 'branch_admin') return { officeId: user.officeId, departmentKey: user.departmentKey, hasContext: true };
+  if (user.roleKey === 'department_finance_admin') return { officeId: user.activeOfficeId, departmentKey: user.activeDepartmentKey, hasContext: !!user.activeOfficeId };
+  return null;
+}
+
 /**
  * GET /api/admin/users
  * A System Administrator sees every account. A Branch Administrator only sees the employees
- * appointed to their own branch office — they manage their branch, not the whole system.
+ * appointed to their own branch office. A Department Finance Administrator only sees the
+ * employees at whichever branch office it is currently switched to (migration 078) — and sees
+ * none at all until it has switched to one.
  */
 async function listUsers(req, res, next) {
   try {
-    const scopedToOffice = req.user.roleKey === 'branch_admin' ? req.user.officeId : null;
+    const scope = currentOfficeScope(req.user);
+    if (scope && !scope.hasContext) return res.json({ users: [] });
+    const scopedToOffice = scope ? scope.officeId : null;
     const { rows } = await db.query(
       `SELECT u.user_id, u.username, u.email, u.phone, u.account_status, u.is_provisional, u.must_change_password,
               u.last_login_at, u.created_at, r.role_key, r.display_name AS role_name,
@@ -138,17 +151,18 @@ async function createUser(req, res, next) {
       return res.status(400).json({ error: 'Username must be 3–50 characters, using only lowercase letters, numbers, "_" or ".".' });
     }
 
-    const isBranchAdmin = req.user.roleKey === 'branch_admin';
+    const scope = currentOfficeScope(req.user);
     const isOfficerRole = Object.prototype.hasOwnProperty.call(OFFICER_ROLE_DEPARTMENT, roleKey);
 
-    if (isBranchAdmin) {
-      if (!isOfficerRole) return res.status(403).json({ error: 'A Branch Administrator may only create officer accounts.' });
-      if (OFFICER_ROLE_DEPARTMENT[roleKey] !== req.user.departmentKey) {
-        return res.status(403).json({ error: 'You may only create officer accounts for your own department.' });
+    if (scope) {
+      if (!scope.hasContext) return res.status(400).json({ error: 'Select a department and branch office first.' });
+      if (!isOfficerRole) return res.status(403).json({ error: 'You may only create officer accounts.' });
+      if (OFFICER_ROLE_DEPARTMENT[roleKey] !== scope.departmentKey) {
+        return res.status(403).json({ error: 'You may only create officer accounts for your current department.' });
       }
-      // Always the branch admin's own branch — never taken from the request body.
-      departmentKey = req.user.departmentKey;
-      officeId = req.user.officeId;
+      // Always the admin's own (or currently switched-to) branch — never taken from the request body.
+      departmentKey = scope.departmentKey;
+      officeId = scope.officeId;
     } else if (roleKey === 'branch_admin' || isOfficerRole) {
       if (!departmentKey && isOfficerRole) departmentKey = OFFICER_ROLE_DEPARTMENT[roleKey];
       if (!departmentKey || !officeId) {
@@ -157,6 +171,11 @@ async function createUser(req, res, next) {
       if (isOfficerRole && OFFICER_ROLE_DEPARTMENT[roleKey] !== departmentKey) {
         return res.status(400).json({ error: `${roleKey} must belong to the '${OFFICER_ROLE_DEPARTMENT[roleKey]}' department.` });
       }
+    } else if (roleKey === 'department_finance_admin') {
+      // Deliberately given NO department/office at creation, unlike branch_admin — it picks
+      // its department+branch later, via the context switcher (migration 078).
+      departmentKey = undefined;
+      officeId = undefined;
     } else if (roleKey !== 'system_administrator') {
       return res.status(400).json({ error: 'Unsupported roleKey for account creation. Use citizen self-registration for citizen accounts.' });
     }
@@ -207,17 +226,20 @@ async function createUser(req, res, next) {
 async function updateUser(req, res, next) {
   try {
     const { accountStatus, roleKey, departmentKey, officeId } = req.body;
-    const isBranchAdmin = req.user.roleKey === 'branch_admin';
+    const scope = currentOfficeScope(req.user);
 
-    if (isBranchAdmin) {
-      // A branch admin may only suspend/reactivate their own employees — nothing else.
+    if (scope) {
+      // A branch admin (or a department finance admin, scoped to whichever office it is
+      // currently switched to) may only suspend/reactivate employees at that one office —
+      // nothing else.
       if (roleKey || departmentKey || officeId) {
-        return res.status(403).json({ error: 'A Branch Administrator may only change account status.' });
+        return res.status(403).json({ error: 'You may only change account status.' });
       }
+      if (!scope.hasContext) return res.status(400).json({ error: 'Select a department and branch office first.' });
       const { rows: targetRows } = await db.query('SELECT office_id FROM users WHERE user_id = $1', [req.params.id]);
       if (targetRows.length === 0) return res.status(404).json({ error: 'User not found.' });
-      if (targetRows[0].office_id !== req.user.officeId) {
-        return res.status(403).json({ error: 'You may only manage employees at your own branch.' });
+      if (targetRows[0].office_id !== scope.officeId) {
+        return res.status(403).json({ error: 'You may only manage employees at your current branch.' });
       }
     }
 

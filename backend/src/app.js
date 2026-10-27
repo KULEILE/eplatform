@@ -25,6 +25,9 @@ const uploadsRoutes = require('./routes/uploads.routes');
 const appointmentsRoutes = require('./routes/appointments.routes');
 const correctionsRoutes = require('./routes/corrections.routes');
 const biometricsRoutes = require('./routes/biometrics.routes');
+const departmentFinanceRoutes = require('./routes/departmentFinance.routes');
+const financialIssuesRoutes = require('./routes/financialIssues.routes');
+const branchBudgetRoutes = require('./routes/branchBudget.routes');
 
 const app = express();
 
@@ -84,6 +87,9 @@ app.use('/api/uploads', uploadsRoutes);
 app.use('/api/appointments', appointmentsRoutes);
 app.use('/api/corrections', correctionsRoutes);
 app.use('/api/biometrics', biometricsRoutes);
+app.use('/api/department-finance', departmentFinanceRoutes);
+app.use('/api/financial-issues', financialIssuesRoutes);
+app.use('/api/branch-budget-requests', branchBudgetRoutes);
 
 app.use((req, res) => res.status(404).json({ error: `No route for ${req.method} ${req.path}` }));
 app.use(errorHandler);

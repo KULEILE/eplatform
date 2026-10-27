@@ -93,7 +93,8 @@
     "police_officer": "Mohlanka wa Sepolesa",
     "passport_officer": "Mohlanka wa Pasepoto",
     "branch_admin": "Motsamaisi wa Lekala",
-    "system_administrator": "Motsamaisi wa Sistimi"
+    "system_administrator": "Motsamaisi wa Sistimi",
+    "department_finance_admin": "Molaoli oa Lichelete oa Mafapha"
   },
   "offices": {
     "chooseBranchTitle": "Kgetha lekala la hao la ho nka ditokomane",
@@ -311,7 +312,8 @@
     "openApplicationsDesc": "Dikopo tse butsweng tse emetseng ketso",
     "goToWorkspace": "Ea sebakeng sa mosebetsi sa {{department}}",
     "manageOfficesCardDesc": "Bula mafapha a macha 'a mosebetsi 'a lefapha lefe kapa lefe 'a li abele setereke",
-    "pendingParentConfirmationNotice": "O kentswe lebitso jwalo ka motswadi dikopong {{count}} tsa ngodiso ya tswalo tse emetseng netefatso ya hao."
+    "pendingParentConfirmationNotice": "O kentswe lebitso jwalo ka motswadi dikopong {{count}} tsa ngodiso ya tswalo tse emetseng netefatso ya hao.",
+    "branchBudgetRequestsDesc": "Kopa le ho latela chelete ea tekanyetso ea ofisi ea hau."
   },
   "departments": {
     "chooseTitle": "O ka rata ho fihlela lefapha lefe la mmuso?",
@@ -382,7 +384,12 @@
     "Not Applicable": "Ha e sebetse",
     "Published": "E phatlalalitsoe",
     "Physically Inspected": "E Hlahlobisitsoe ka 'Mele",
-    "Customs Clearance Verified": "Bopaki ba 'Muso bo Netefalitsoe"
+    "Customs Clearance Verified": "Bopaki ba 'Muso bo Netefalitsoe",
+    "Resolved": "E Rarolotsoe",
+    "Disbursed": "E Fanoe",
+    "Escalated": "E Nyolositsoe",
+    "Escalated to Finance": "E Nyolositsoe ho Lichelete",
+    "Financial Issue Report": "Tlaleho ea Bothata ba Lichelete"
   },
   "statusHelp": {
     "Draft": "Ha o e so e romele.",
@@ -1428,6 +1435,37 @@
         "Budget Document": "Tokomane ya Tekanyetso",
         "Tender Announcement": "Papatso ya Tenta"
       }
+    },
+    "reportIssue": {
+      "title": "Tlaleha Bothata ba Lichelete",
+      "intro": "Hlahisa bothata ba lichelete lefapheng le leng kapa le leng la 'muso. E tla hlahlojoa pele ke lefapha leo; haeba ba sitoa ho e rarolla, e tla nyolosetsoa lefapheng la Lichelete.",
+      "quickActionDesc": "Hlahisa bothata ba lichelete lefapheng le leng kapa le leng.",
+      "departmentHelp": "Khetha lefapha bothata ba hau bo amanang le lona.",
+      "subjectLabel": "Sehlooho",
+      "descriptionLabel": "Tlhaloso",
+      "descriptionHelp": "Hlalosa bothata ka botlalo kamoo u ka khonang.",
+      "submit": "Romela Bothata",
+      "submittedTitle": "Bothata ba hau ba lichelete bo rometsoe",
+      "submittedHelp": "Tšupiso {{reference}}. U ka latela tsoelo-pele ho tsoa ho Likopo tsa Ka."
+    },
+    "budgetRequests": {
+      "title": "Likopo tsa Tekanyetso ea Makala",
+      "branchTitle": "Kopa Tekanyetso",
+      "intro": "Likopo tsa tekanyetso tse romeletsoeng ke Baokameli ba Makala bakeng sa liofisi tsa bona.",
+      "branchIntro": "Kopa chelete ea tekanyetso bakeng sa {{office}}, le ho latela boemo ba likopo tsa hau.",
+      "newRequest": "Kopo e Ncha ea Tekanyetso",
+      "amount": "Chelete (Maloti)",
+      "purpose": "Sepheo",
+      "justification": "Lebaka",
+      "fiscalYear": "Selemo sa Lichelete",
+      "fiscalYearHelp": "mohlala, 2026/2027",
+      "submit": "Romela Kopo",
+      "noRequests": "Ha ho likopo tsa tekanyetso ho fihlela joale.",
+      "review": "Tšoaea e Hlahlojoa",
+      "approve": "Amohela",
+      "reject": "Hana",
+      "disburse": "Tšoaea e Fanoe",
+      "disburseConfirm": "Netefatsa hore chelete ena e fanoe ofisi ea lekala."
     }
   },
   "pensions": {
@@ -1841,5 +1879,29 @@
     "biometricEnrolledOneHand": "Letsoho le le leng feela le ngolisitsoe hajoale.",
     "biometricNotEnrolled": "Ha u so ngolise.",
     "biometricEnrollElsewhere": "Li-biometric tsa letsoho li nkoa hang feela, ka boeena, e le karolo ea ngoliso ea ID ea Naha — eseng mona."
+  },
+  "deptFinance": {
+    "title": "Tsamaiso ea Lichelete ea Mafapha",
+    "intro": "Fetohela ofising efe kapa efe ea lefapha ho rarolla mathata a lichelete a hlahisitsoeng moo, nyolosa a u sa khoneng ho a rarolla ho Lichelete, le ho laola basebetsi ba ofisi eo.",
+    "currentContext": "Hajoale u fetohelletse",
+    "chooseContext": "Khetha lefapha le ofisi",
+    "switchContext": "Fetola lefapha / ofisi",
+    "switchButton": "Fetola",
+    "noContextTitle": "Ha ho lefapha kapa ofisi e khethiloeng",
+    "noContextMessage": "Khetha lefapha le ofisi ea lekala pele u ka bona mathata a lichelete kapa ho laola basebetsi.",
+    "noContextShort": "Ha ho lefapha le khethiloeng",
+    "issuesTitle": "Mathata a Lichelete",
+    "issuesDesc": "Rarolla mathata a lichelete a hlahisitsoeng lefapheng la hajoale, kapa u a nyolosetse ho Lichelete.",
+    "issuesContext": "Ho bontšoa mathata a lichelete bakeng sa {{department}} — {{office}}",
+    "employeesDesc": "Eketsa le ho laola li-account tsa basebetsi ba ofisi ea hajoale.",
+    "noIssues": "Ha ho mathata a lichelete lefapheng lena hajoale.",
+    "raisedAgainst": "E hlahisitsoe khahlanong le",
+    "subject": "Sehlooho",
+    "submitted": "E Rometsoe",
+    "escalated": "E Nyolositsoe",
+    "resolve": "Rarolla",
+    "escalateToFinance": "Nyolosetsa ho Lichelete",
+    "resolutionNotesLabel": "Lintlha tsa tharollo",
+    "escalationNoteLabel": "Lintlha tsa ho nyolosa"
   }
 }

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -6,6 +7,7 @@ import { api } from '../../api/client';
 import DataTable from '../../components/ui/DataTable';
 import StatusBadge from '../../components/ui/StatusBadge';
 import FormField from '../../components/ui/FormField';
+import EmptyState from '../../components/ui/EmptyState';
 
 const OFFICER_ROLE_OPTIONS = ['home_affairs_officer', 'traffic_officer', 'finance_officer', 'pensions_officer', 'police_officer', 'passport_officer'];
 const DEPT_FOR_ROLE = {
@@ -14,22 +16,32 @@ const DEPT_FOR_ROLE = {
 };
 
 /**
- * Employee account management. Same page, two scopes:
- *  - System Administrator (mounted at /admin/users): appoints Branch Administrators to any
- *    branch, or creates any officer/administrator account directly.
+ * Employee account management. Same page, three scopes:
+ *  - System Administrator (mounted at /admin/users): appoints Branch Administrators or
+ *    Department Finance Administrators to any branch, or creates any officer/administrator
+ *    account directly.
  *  - Branch Administrator (mounted at /branch/users): can only create officer accounts for
  *    their OWN department and OWN branch — the backend enforces this regardless of what this
  *    UI sends, but the UI reflects it so the form doesn't ask for choices they don't have.
+ *  - Department Finance Administrator (mounted at /department-finance/employees, migration
+ *    078): the same as a Branch Administrator, except "their own department and branch" is
+ *    whichever one they are CURRENTLY switched to (user.activeDepartmentKey/activeOfficeId)
+ *    rather than one fixed at account creation — see DeptFinanceHub.jsx's context switcher.
  */
 export default function AdminUsers() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const isBranchAdmin = user.roleKey === 'branch_admin';
+  const isDeptFinanceAdmin = user.roleKey === 'department_finance_admin';
+  const isScopedAdmin = isBranchAdmin || isDeptFinanceAdmin;
+  const currentDepartmentKey = isBranchAdmin ? user.departmentKey : user.activeDepartmentKey;
+  const currentOfficeName = isBranchAdmin ? user.officeName : user.activeOfficeName;
+  const hasContext = isBranchAdmin ? true : !!user.activeOfficeId;
 
   const [users, setUsers] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [offices, setOffices] = useState([]);
-  const [form, setForm] = useState({ username: '', email: '', phone: '', roleKey: isBranchAdmin ? DEPT_FOR_ROLE_KEY(user.departmentKey) : 'branch_admin', departmentKey: '', officeId: '' });
+  const [form, setForm] = useState({ username: '', email: '', phone: '', roleKey: isScopedAdmin ? DEPT_FOR_ROLE_KEY(currentDepartmentKey) : 'branch_admin', departmentKey: '', officeId: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState(null); // { username, email, temporaryPassword }
@@ -39,12 +51,12 @@ export default function AdminUsers() {
     return OFFICER_ROLE_OPTIONS.find((r) => DEPT_FOR_ROLE[r] === deptKey) || OFFICER_ROLE_OPTIONS[0];
   }
 
-  function load() { api.get('/admin/users').then((d) => setUsers(d.users)); }
-  useEffect(() => { load(); }, []);
-  useEffect(() => { if (!isBranchAdmin) api.get('/departments').then((d) => setDepartments(d.departments)); }, [isBranchAdmin]);
+  function load() { if (!isDeptFinanceAdmin || hasContext) api.get('/admin/users').then((d) => setUsers(d.users)); }
+  useEffect(() => { load(); }, [user.activeOfficeId]);
+  useEffect(() => { if (!isScopedAdmin) api.get('/departments').then((d) => setDepartments(d.departments)); }, [isScopedAdmin]);
 
-  const needsDepartmentPicker = !isBranchAdmin && form.roleKey === 'branch_admin';
-  const needsOfficePicker = !isBranchAdmin && (form.roleKey === 'branch_admin' || OFFICER_ROLE_OPTIONS.includes(form.roleKey));
+  const needsDepartmentPicker = !isScopedAdmin && form.roleKey === 'branch_admin';
+  const needsOfficePicker = !isScopedAdmin && (form.roleKey === 'branch_admin' || OFFICER_ROLE_OPTIONS.includes(form.roleKey));
   const officeDepartmentKey = form.roleKey === 'branch_admin' ? form.departmentKey : DEPT_FOR_ROLE[form.roleKey];
 
   useEffect(() => {
@@ -62,7 +74,7 @@ export default function AdminUsers() {
     setBusy(true);
     try {
       const payload = { username: form.username, email: form.email || undefined, phone: form.phone || undefined, roleKey: form.roleKey };
-      if (!isBranchAdmin) {
+      if (!isScopedAdmin) {
         payload.departmentKey = form.roleKey === 'branch_admin' ? form.departmentKey : DEPT_FOR_ROLE[form.roleKey];
         payload.officeId = form.officeId || undefined;
       }
@@ -89,17 +101,24 @@ export default function AdminUsers() {
     navigator.clipboard?.writeText(created.temporaryPassword).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }).catch(() => {});
   }
 
+  if (isDeptFinanceAdmin && !hasContext) {
+    return (
+      <EmptyState icon="🏢" title={t('deptFinance.noContextTitle')} message={t('deptFinance.noContextMessage')}
+        action={<Link to="/department-finance" className="btn-primary">{t('deptFinance.chooseContext')}</Link>} />
+    );
+  }
+
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-bold text-slate-900">{isBranchAdmin ? t('nav.manageEmployees') : t('admin.users')}</h1>
+      <h1 className="mb-1 text-2xl font-bold text-slate-900">{isScopedAdmin ? t('nav.manageEmployees') : t('admin.users')}</h1>
       <p className="mb-6 text-sm text-slate-500">
-        {isBranchAdmin
-          ? t('admin.branchAdminUsersDesc', { office: user.officeName || '', department: t(`departments.${user.departmentKey}`) })
+        {isScopedAdmin
+          ? t('admin.branchAdminUsersDesc', { office: currentOfficeName || '', department: t(`departments.${currentDepartmentKey}`) })
           : t('admin.systemAdminUsersDesc')}
       </p>
 
       <form onSubmit={createUser} className="card mb-8">
-        <h2 className="mb-4 font-semibold text-slate-800">{isBranchAdmin ? t('admin.createOfficer') : t('admin.createUser')}</h2>
+        <h2 className="mb-4 font-semibold text-slate-800">{isScopedAdmin ? t('admin.createOfficer') : t('admin.createUser')}</h2>
         {error && <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {error}</p>}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -113,14 +132,15 @@ export default function AdminUsers() {
             <input id="phone" className="form-input" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
           </FormField>
 
-          {isBranchAdmin ? (
+          {isScopedAdmin ? (
             <FormField label={t('admin.role')} htmlFor="role">
-              <input disabled className="form-input bg-slate-100 text-slate-500" value={t(`role.${DEPT_FOR_ROLE_KEY(user.departmentKey)}`)} />
+              <input disabled className="form-input bg-slate-100 text-slate-500" value={t(`role.${DEPT_FOR_ROLE_KEY(currentDepartmentKey)}`)} />
             </FormField>
           ) : (
             <FormField label={t('admin.role')} htmlFor="role" required>
               <select id="role" className="form-input" value={form.roleKey} onChange={(e) => setForm((f) => ({ ...f, roleKey: e.target.value, departmentKey: '' }))}>
                 <option value="branch_admin">{t('role.branch_admin')}</option>
+                <option value="department_finance_admin">{t('role.department_finance_admin')}</option>
                 {OFFICER_ROLE_OPTIONS.map((r) => <option key={r} value={r}>{t(`role.${r}`)}</option>)}
                 <option value="system_administrator">{t('role.system_administrator')}</option>
               </select>
@@ -147,7 +167,7 @@ export default function AdminUsers() {
         </div>
 
         <p className="mb-4 rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-800">ℹ {t('admin.tempPasswordNotice')}</p>
-        <button type="submit" disabled={busy} className="btn-primary">{busy ? t('common.loading') : (isBranchAdmin ? t('admin.createOfficer') : t('admin.createUser'))}</button>
+        <button type="submit" disabled={busy} className="btn-primary">{busy ? t('common.loading') : (isScopedAdmin ? t('admin.createOfficer') : t('admin.createUser'))}</button>
       </form>
 
       {created && (

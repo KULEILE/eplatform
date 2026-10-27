@@ -93,7 +93,8 @@
     "police_officer": "Police Officer",
     "passport_officer": "Passport Officer",
     "branch_admin": "Branch Administrator",
-    "system_administrator": "System Administrator"
+    "system_administrator": "System Administrator",
+    "department_finance_admin": "Department Finance Administrator"
   },
   "offices": {
     "chooseBranchTitle": "Choose your collection branch",
@@ -311,7 +312,8 @@
     "openApplicationsDesc": "Open applications awaiting action",
     "goToWorkspace": "Go to {{department}} workspace",
     "manageOfficesCardDesc": "Open new branch offices and assign them to a district",
-    "pendingParentConfirmationNotice": "You've been named as a parent on {{count}} birth registration(s) awaiting your confirmation."
+    "pendingParentConfirmationNotice": "You've been named as a parent on {{count}} birth registration(s) awaiting your confirmation.",
+    "branchBudgetRequestsDesc": "Apply for and track budget money for your branch office."
   },
   "departments": {
     "chooseTitle": "Which government department would you like to access?",
@@ -382,7 +384,12 @@
     "Not Applicable": "Not Applicable",
     "Published": "Published",
     "Physically Inspected": "Physically Inspected",
-    "Customs Clearance Verified": "Customs Clearance Verified"
+    "Customs Clearance Verified": "Customs Clearance Verified",
+    "Resolved": "Resolved",
+    "Disbursed": "Disbursed",
+    "Escalated": "Escalated",
+    "Escalated to Finance": "Escalated to Finance",
+    "Financial Issue Report": "Financial Issue Report"
   },
   "statusHelp": {
     "Draft": "You haven't submitted this yet.",
@@ -1428,6 +1435,37 @@
         "Budget Document": "Budget Document",
         "Tender Announcement": "Tender Announcement"
       }
+    },
+    "reportIssue": {
+      "title": "Report a Financial Issue",
+      "intro": "Raise a financial issue with any government department. It will first be reviewed by that department; if they are unable to resolve it, it will be escalated to the Finance department.",
+      "quickActionDesc": "Raise a financial issue with any department.",
+      "departmentHelp": "Choose the department your issue relates to.",
+      "subjectLabel": "Subject",
+      "descriptionLabel": "Description",
+      "descriptionHelp": "Describe the issue in as much detail as possible.",
+      "submit": "Submit Issue",
+      "submittedTitle": "Your financial issue has been submitted",
+      "submittedHelp": "Reference {{reference}}. You can track its progress from My Applications."
+    },
+    "budgetRequests": {
+      "title": "Branch Budget Requests",
+      "branchTitle": "Request Budget",
+      "intro": "Budget requests submitted by Branch Administrators for their branch offices.",
+      "branchIntro": "Apply for budget money for {{office}}, and track the status of your requests.",
+      "newRequest": "New Budget Request",
+      "amount": "Amount (Maloti)",
+      "purpose": "Purpose",
+      "justification": "Justification",
+      "fiscalYear": "Fiscal Year",
+      "fiscalYearHelp": "e.g. 2026/2027",
+      "submit": "Submit Request",
+      "noRequests": "No budget requests yet.",
+      "review": "Mark Under Review",
+      "approve": "Approve",
+      "reject": "Reject",
+      "disburse": "Mark Disbursed",
+      "disburseConfirm": "Confirm that these funds have been disbursed to the branch office."
     }
   },
   "pensions": {
@@ -1841,5 +1879,29 @@
     "biometricEnrolledOneHand": "Only one hand is enrolled so far.",
     "biometricNotEnrolled": "You are not enrolled yet.",
     "biometricEnrollElsewhere": "Hand biometrics are captured once, in person, as part of National ID enrolment — not here."
+  },
+  "deptFinance": {
+    "title": "Department Finance Administration",
+    "intro": "Switch to any department's branch office to resolve the financial issues raised there, escalate ones you lack authority to resolve to Finance, and manage that office's employees.",
+    "currentContext": "Currently switched to",
+    "chooseContext": "Choose a department and branch office",
+    "switchContext": "Switch department / branch office",
+    "switchButton": "Switch",
+    "noContextTitle": "No department or branch selected yet",
+    "noContextMessage": "Choose a department and branch office before you can view financial issues or manage employees.",
+    "noContextShort": "No department selected",
+    "issuesTitle": "Financial Issues",
+    "issuesDesc": "Resolve financial issues raised for the current department, or escalate to Finance.",
+    "issuesContext": "Showing financial issues for {{department}} — {{office}}",
+    "employeesDesc": "Add and manage employee accounts for the current branch office.",
+    "noIssues": "No financial issues in this department right now.",
+    "raisedAgainst": "Raised against",
+    "subject": "Subject",
+    "submitted": "Submitted",
+    "escalated": "Escalated",
+    "resolve": "Resolve",
+    "escalateToFinance": "Escalate to Finance",
+    "resolutionNotesLabel": "Resolution notes",
+    "escalationNoteLabel": "Escalation note"
   }
 }

@@ -26,12 +26,20 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ error: 'Invalid or expired session.' });
     }
     // Re-check account status on every request so a suspended account is blocked immediately.
+    // active_department_id/active_office_id (migration 078) are only ever set for
+    // department_finance_admin — they hold whichever department+branch that administrator is
+    // CURRENTLY switched to, separate from department_id/office_id which stay NULL for this
+    // role (unlike branch_admin, it is never fixed to one branch).
     const { rows } = await db.query(
       `SELECT u.user_id, u.account_status, u.citizen_id, u.is_provisional, u.is_foreign_national, u.preferred_language,
-              u.office_id, u.must_change_password, r.role_key, d.department_key
+              u.office_id, u.must_change_password, r.role_key, d.department_key,
+              u.active_department_id, ad.department_key AS active_department_key,
+              u.active_office_id, ao.name AS active_office_name
        FROM users u
        JOIN roles r ON r.role_id = u.role_id
        LEFT JOIN departments d ON d.department_id = u.department_id
+       LEFT JOIN departments ad ON ad.department_id = u.active_department_id
+       LEFT JOIN offices ao ON ao.office_id = u.active_office_id
        WHERE u.user_id = $1`,
       [payload.userId]
     );
@@ -54,6 +62,10 @@ async function requireAuth(req, res, next) {
       preferredLanguage: user.preferred_language,
       officeId: user.office_id,
       mustChangePassword: user.must_change_password,
+      activeDepartmentId: user.active_department_id,
+      activeDepartmentKey: user.active_department_key,
+      activeOfficeId: user.active_office_id,
+      activeOfficeName: user.active_office_name,
     };
     next();
   } catch (err) {

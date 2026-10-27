@@ -32,16 +32,25 @@ function safeUser(row) {
     officeId: row.office_id,
     officeName: row.office_name,
     mustChangePassword: row.must_change_password,
+    // Only ever set for department_finance_admin (migration 078) — the department+branch
+    // office that administrator is CURRENTLY switched to. The frontend calls refresh() (which
+    // re-fetches this) right after a context switch to pick up the new values.
+    activeDepartmentKey: row.active_department_key,
+    activeOfficeId: row.active_office_id,
+    activeOfficeName: row.active_office_name,
   };
 }
 
 async function fetchUserWithRole(userId) {
   const { rows } = await db.query(
-    `SELECT u.*, r.role_key, d.department_key, o.name AS office_name
+    `SELECT u.*, r.role_key, d.department_key, o.name AS office_name,
+            ad.department_key AS active_department_key, ao.name AS active_office_name
      FROM users u
      JOIN roles r ON r.role_id = u.role_id
      LEFT JOIN departments d ON d.department_id = u.department_id
      LEFT JOIN offices o ON o.office_id = u.office_id
+     LEFT JOIN departments ad ON ad.department_id = u.active_department_id
+     LEFT JOIN offices ao ON ao.office_id = u.active_office_id
      WHERE u.user_id = $1`,
     [userId]
   );
@@ -205,10 +214,14 @@ async function login(req, res, next) {
     if (!identifier || !password) return res.status(400).json({ error: 'Username (or email) and password are required.' });
 
     const { rows } = await db.query(
-      `SELECT u.*, r.role_key, d.department_key, o.name AS office_name FROM users u
+      `SELECT u.*, r.role_key, d.department_key, o.name AS office_name,
+              ad.department_key AS active_department_key, ao.name AS active_office_name
+       FROM users u
        JOIN roles r ON r.role_id = u.role_id
        LEFT JOIN departments d ON d.department_id = u.department_id
        LEFT JOIN offices o ON o.office_id = u.office_id
+       LEFT JOIN departments ad ON ad.department_id = u.active_department_id
+       LEFT JOIN offices ao ON ao.office_id = u.active_office_id
        WHERE u.username = $1 OR LOWER(u.email) = $1`,
       [identifier]
     );
