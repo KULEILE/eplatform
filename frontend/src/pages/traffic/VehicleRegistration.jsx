@@ -1,32 +1,62 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import DepartmentServicePage from '../../components/DepartmentServicePage';
 
 // Batch 30 — "i said to you do not duplicate the services. service or document and its renewal
-// they must in one place": a New, an Imported/SADC, and a Second-Hand Local registration used to
-// be three separate tiles/pages (VehicleRegistration.jsx, VehicleRegistrationImported.jsx,
+// they must in one place": a New, an Imported/SADC, and a Second-Hand registration used to be
+// three separate tiles/pages (VehicleRegistration.jsx, VehicleRegistrationImported.jsx,
 // VehicleRegistrationSecondHand.jsx) that otherwise did almost the same thing. They're one page
 // now, with a type selector — exactly the pattern Driving Licence's Application/Renewal/
 // Replacement already established (see its own header comment) — rather than a database change:
-// the three service_type values themselves are unchanged (migration 042), so nothing about how a
-// record is stored, searched, or displayed had to move. DepartmentServicePage's extraFields can
+// the service_type values themselves are unchanged strings (migration 042), so nothing about how
+// a record is stored, searched, or displayed had to move. DepartmentServicePage's extraFields can
 // now be a function of the selected type for exactly this reason — see its own doc comment.
-const TRANSITIONS = {
-  'Submitted': { action: 'start-review', labelKey: 'status.Under Review' },
-  'Under Review': { action: 'verify-identity', labelKey: 'status.Identity Verified' },
-  'Identity Verified': { action: 'check-documents', labelKey: 'status.Documents Checked' },
-  // Batch 30 — "car registration also need physical check of officers ... citizen can fill the
-  // form then take a car to traffic so that officer can confirm that is true then approve
-  // registration": a registration can no longer reach Approved by document review alone. This
-  // officer action opens the requiresText modal (DepartmentServicePage's existing reason/confirm
-  // pattern) so the officer records what they actually checked in person — chassis/engine numbers
-  // matching, condition — before the record can move any further; the backend rejects an empty
-  // note (see traffic.controller.js's 'confirm-physical-inspection').
-  'Documents Checked': { action: 'confirm-physical-inspection', labelKey: 'traffic.vehicleRegistrationForm.confirmPhysicalInspection', requiresText: true, textLabelKey: 'traffic.vehicleRegistrationForm.physicalInspectionNotesLabel' },
-  'Physically Inspected': { action: 'approve-registration', labelKey: 'common.approve' },
-  'Approved': { action: 'ready-for-collection', labelKey: 'common.readyForCollection' },
-  'Ready for Collection': { action: 'collect', labelKey: 'common.collect' },
-};
+//
+// Batch 31 — the citizen supplied a written workflow document ("VEHICLE REGISTRATION: IMPORTED
+// VEHICLES") naming 4 real-world categories: brand-new bought locally, brand-new imported,
+// second-hand imported, and a change of ownership on a vehicle ALREADY registered in Lesotho. That
+// 4th one is exactly what Vehicle Transfer already does — building it again here would repeat the
+// same duplication Batch 30 was told to fix, so it's handled below as a plain explanation + link,
+// never a form. Batch 30's third type, 'Vehicle Registration (Second-Hand Local)', didn't
+// correspond to any of the document's 4 categories and is renamed (migration 075) to 'Vehicle
+// Registration (Second-Hand Imported)', which does — and which needs the same customs paperwork
+// as a brand-new import, since both are crossing a border for the first time.
+//
+// requiresCustomsClearance mirrors traffic.controller.js's VEHICLE_REGISTRATION_REQUIREMENTS —
+// duplicated client-side the same way this codebase already duplicates a handful of other small
+// server-side checks (see e.g. getNationalIdCapture's own comment) rather than sharing a module
+// across the frontend/backend boundary. The backend's beforeApply and statusFlow guards are the
+// real enforcement either way; this only decides which fields/actions the UI offers up front.
+function requiresCustomsClearance(serviceType) {
+  return serviceType === 'Vehicle Registration (Imported/SADC)' || serviceType === 'Vehicle Registration (Second-Hand Imported)';
+}
+
+// Batch 31 — "keep customs verification separate from document uploading": an imported
+// registration now passes through an extra 'Customs Clearance Verified' status (migration 075)
+// between Documents Checked and Physically Inspected, so these next-action labels depend on the
+// RECORD's own service type, not just its status — hence a function rather than a plain object
+// (see DepartmentServicePage's doc comment for transitions).
+function nextAction(record) {
+  switch (record.status) {
+    case 'Submitted': return { action: 'start-review', labelKey: 'status.Under Review' };
+    case 'Under Review': return { action: 'verify-identity', labelKey: 'status.Identity Verified' };
+    case 'Identity Verified': return { action: 'check-documents', labelKey: 'status.Documents Checked' };
+    case 'Documents Checked':
+      // Batch 30 — "car registration also need physical check of officers ... citizen can fill the
+      // form then take a car to traffic so that officer can confirm that is true then approve
+      // registration": a registration can no longer reach Approved by document review alone.
+      return requiresCustomsClearance(record.service_type)
+        ? { action: 'verify-customs-clearance', labelKey: 'traffic.vehicleRegistrationForm.confirmCustomsClearance', requiresText: true, textLabelKey: 'traffic.vehicleRegistrationForm.customsVerificationNotesLabel' }
+        : { action: 'confirm-physical-inspection', labelKey: 'traffic.vehicleRegistrationForm.confirmPhysicalInspection', requiresText: true, textLabelKey: 'traffic.vehicleRegistrationForm.physicalInspectionNotesLabel' };
+    case 'Customs Clearance Verified':
+      return { action: 'confirm-physical-inspection-after-customs', labelKey: 'traffic.vehicleRegistrationForm.confirmPhysicalInspection', requiresText: true, textLabelKey: 'traffic.vehicleRegistrationForm.physicalInspectionNotesLabel' };
+    case 'Physically Inspected': return { action: 'approve-registration', labelKey: 'common.approve' };
+    case 'Approved': return { action: 'ready-for-collection', labelKey: 'common.readyForCollection' };
+    case 'Ready for Collection': return { action: 'collect', labelKey: 'common.collect' };
+    default: return null;
+  }
+}
 
 const COMMON_FIELDS = (t) => [
   { name: 'vehicleMake', type: 'text', required: true, label: t('traffic.vehicleForm.field.make') },
@@ -35,13 +65,14 @@ const COMMON_FIELDS = (t) => [
   { name: 'engineNumber', type: 'text', required: true, label: t('traffic.vehicleForm.field.engineNumber') },
 ];
 
-/** New, Imported/SADC, or already-local Second-Hand registration, one page with a type selector.
- *  Imported/SADC gains four extra fields found by checking Lesotho's own published requirements
- *  for registering a vehicle from a SADC country (gov.ls): beyond the purchase/manufacturing
- *  document every type already asks for, an import also needs proof the vehicle actually cleared
- *  customs, that VAT/import duty was paid, and that it isn't reported stolen — see the batch30
- *  README for the full source list. Every type also now needs a preferredOfficeId: "citizen can
- *  fill the form then take a car to traffic" only works if the citizen knows which office to go to. */
+/** New, Imported/SADC, or Second-Hand Imported registration, one page with a type selector. Both
+ *  import categories gain the same 4 extra fields, found by checking Lesotho's own published
+ *  requirements for registering a vehicle from a SADC country (gov.ls): beyond the purchase/
+ *  manufacturing document every type already asks for, an import also needs proof the vehicle
+ *  actually cleared customs, that VAT/import duty was paid, and that it isn't reported stolen —
+ *  see the batch30/batch31 READMEs for the full source list. Every type also needs a
+ *  preferredOfficeId: "citizen can fill the form then take a car to traffic" only works if the
+ *  citizen knows which office to go to. */
 export default function VehicleRegistration() {
   const { t } = useLanguage();
   const config = {
@@ -51,15 +82,16 @@ export default function VehicleRegistration() {
     serviceTypeNs: 'traffic',
     officerRoleKey: 'traffic_officer',
     departmentKey: 'traffic',
-    serviceTypes: ['Vehicle Registration', 'Vehicle Registration (Imported/SADC)', 'Vehicle Registration (Second-Hand Local)'],
+    serviceTypes: ['Vehicle Registration', 'Vehicle Registration (Imported/SADC)', 'Vehicle Registration (Second-Hand Imported)'],
     extraFields: (serviceType) => {
+      const imported = requiresCustomsClearance(serviceType);
       const fields = [
         ...COMMON_FIELDS(t),
-        serviceType === 'Vehicle Registration (Imported/SADC)'
+        imported
           ? { name: 'ownershipProofReference', type: 'photo', required: true, label: t('traffic.vehicleRegistrationImportedForm.field.importProof'), help: t('traffic.vehicleRegistrationImportedForm.field.importProofHelp') }
           : { name: 'ownershipProofReference', type: 'photo', required: true, label: t('traffic.vehicleForm.field.ownershipProof'), help: t('traffic.vehicleForm.field.ownershipProofHelp') },
       ];
-      if (serviceType === 'Vehicle Registration (Imported/SADC)') {
+      if (imported) {
         fields.push(
           { name: 'originCountry', type: 'text', required: true, label: t('traffic.vehicleRegistrationImportedForm.field.originCountry') },
           { name: 'customsClearanceReference', type: 'text', required: true, label: t('traffic.vehicleRegistrationImportedForm.field.customsClearance'), help: t('traffic.vehicleRegistrationImportedForm.field.customsClearanceHelp') },
@@ -70,8 +102,25 @@ export default function VehicleRegistration() {
       fields.push({ name: 'preferredOfficeId', type: 'office', required: true, label: t('traffic.vehicleRegistrationForm.field.preferredOffice') });
       return fields;
     },
-    transitions: TRANSITIONS,
+    transitions: nextAction,
     formNotice: t('traffic.vehicleRegistrationForm.physicalInspectionNotice'),
   };
-  return <DepartmentServicePage config={config} />;
+  return (
+    <div>
+      {/* Batch 31 — the 4th real-world category from the citizen's workflow document (change of
+          ownership on a vehicle already registered in Lesotho) is Vehicle Transfer's job, not a
+          duplicate form here — see this file's header comment. */}
+      <div className="card mb-4">
+        <h2 className="mb-2 text-sm font-semibold text-slate-900">{t('traffic.vehicleRegistrationForm.categoryGuideTitle')}</h2>
+        <p className="text-sm text-slate-600">{t('traffic.vehicleRegistrationForm.categoryGuideBody')}</p>
+        <p className="mt-2 text-sm text-slate-600">
+          {t('traffic.vehicleRegistrationForm.changeOfOwnershipNotice')}{' '}
+          <Link to="/traffic/vehicle-transfer" className="font-medium text-gov-navy hover:underline">
+            {t('traffic.vehicleRegistrationForm.useVehicleTransferLink')}
+          </Link>
+        </p>
+      </div>
+      <DepartmentServicePage config={config} />
+    </div>
+  );
 }

@@ -381,7 +381,8 @@
     "Dispute Dismissed": "Kgohlano e hanywe",
     "Not Applicable": "Ha e sebetse",
     "Published": "E phatlalalitsoe",
-    "Physically Inspected": "E Hlahlobisitsoe ka 'Mele"
+    "Physically Inspected": "E Hlahlobisitsoe ka 'Mele",
+    "Customs Clearance Verified": "Bopaki ba 'Muso bo Netefalitsoe"
   },
   "statusHelp": {
     "Draft": "Ha o e so e romele.",
@@ -985,7 +986,6 @@
     "Driving Licence Replacement": "Nchafatso ea Laesense e Lahlehileng",
     "Public Driving Permit": "Laesense ea ho Khanna Lipalangoang tsa Sechaba",
     "Vehicle Registration (Imported/SADC)": "Ngoliso ea Koloi (e Tliselitsoeng / SADC)",
-    "Vehicle Registration (Second-Hand Local)": "Ngoliso ea Koloi e Sebelisitsoeng (Lefatseng)",
     "Vehicle Number Plate": "Poleiti ea Nomoro ea Koloi",
     "Temporary Permit (Awaiting Registration)": "Tumello ea Nakoana (e Ntse e Emela Ngoliso)",
     "Vehicle Licence Disc Application": "Kopo ea Disk ea Laesense ea Koloi",
@@ -1041,7 +1041,13 @@
       },
       "confirmPhysicalInspection": "Netefatsa tlhahlobo ea ‘mele’",
       "physicalInspectionNotesLabel": "U hlahlobile eng? (linomoro tsa chassis/enjene, boemo)",
-      "physicalInspectionNotice": "Hang ha u romella, tlisa koloi ofising ea sephethephethe eo u e khethileng. Molaoli o tlameha ho hlahloba koloi ka ‘mele’ a netefatse linomoro tsa chassis le enjene pele ngoliso ea hau e ka amoheloa."
+      "physicalInspectionNotice": "Hang ha u romella, tlisa koloi ofising ea sephethephethe eo u e khethileng. Molaoli o tlameha ho hlahloba koloi ka ‘mele’ a netefatse linomoro tsa chassis le enjene pele ngoliso ea hau e ka amoheloa.",
+      "confirmCustomsClearance": "Netefatsa bopaki ba 'muso (customs)",
+      "customsVerificationNotesLabel": "U hlahlobile eng? (bopaki ba 'muso, VAT/lekhetho la ho tlisa, bopaki ba sepolesa)",
+      "categoryGuideTitle": "Ke sehlopha sefe seo ke lokelang ho se khetha?",
+      "categoryGuideBody": "Khetha \"Ngoliso ea Koloi\" bakeng sa koloi e ncha e rekiloeng Lesotho. Khetha \"Ngoliso ea Koloi (e Tliselitsoeng / SADC)\" bakeng sa koloi e ncha e tliselitsoeng Lesotho. Khetha \"Ngoliso ea Koloi e Sebelisitsoeng (e Tliselitsoeng)\" bakeng sa koloi e sebelisitsoeng e tliselitsoeng Lesotho. Bakeng sa koloi e tliselitsoeng, u tlameha pele ho qeta ts'ebetso ea 'muso (customs) le Revenue Services Lesotho (RSL) pele u kopa mona — RSL e sebetsa ka ntle ho sistimi ena, kahoo sistimi ena e ke ke ea ba ea ikopanya le bona bakeng sa hau.",
+      "changeOfOwnershipNotice": "Na u ngolisa koloi e sebelisitsoeng e seng e ngolisitsoe Lesotho, 'me u fetola feela mong'a eona?",
+      "useVehicleTransferLink": "Sebelisa Phetisetso ea Koloi ho e-na le mona"
     },
     "vehicleRegistrationImportedForm": {
       "title": "Ngoliso ea Koloi (e Tliselitsoeng / SADC)",
@@ -1058,7 +1064,7 @@
       }
     },
     "vehicleRegistrationSecondHandForm": {
-      "title": "Ngoliso ea Koloi e Sebelisitsoeng (Lefatseng)"
+      "title": "Ngoliso ea Koloi e Sebelisitsoeng (e Tliselitsoeng)"
     },
     "vehicleTransferForm": {
       "title": "Phetisetso ea Koloi",
@@ -1310,7 +1316,8 @@
       "resultFailed": "U fumane {{score}}% — boemo bo tlamehang ke {{passMark}}%.",
       "timeRemaining": "Nako e setseng: {{time}}",
       "autoClosed": "Nako ea tlhahlobo e koetsoe 'me likarabo tsa hau li romelitsoe ka boeona."
-    }
+    },
+    "Vehicle Registration (Second-Hand Imported)": "Ngoliso ea Koloi e Sebelisitsoeng (e Tliselitsoeng)"
   },
   "finance": {
     "title": "Ditjhelete",

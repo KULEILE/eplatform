@@ -31,7 +31,11 @@ import DistrictOfficeSelect from './DistrictOfficeSelect';
  *                            e.g. a renewal needing a previous-permit/disc number a first
  *                            application doesn't; re-evaluated whenever the selected serviceType
  *                            changes, so the form only ever shows/requires what that type needs),
- *           transitions: { [status]: { action, labelKey, requiresText?, textLabelKey? } | [...] },
+ *           transitions: { [status]: { action, labelKey, requiresText?, textLabelKey? } | [...] }
+ *                         | (record) => (same shape for that one record) — a function when which
+ *                           action applies depends on more than the bare status (e.g. a Vehicle
+ *                           Registration's next action at 'Documents Checked' differs between an
+ *                           imported and a local registration — see VehicleRegistration.jsx),
  *           responseField?: { column, labelKey },
  *           formNotice?: string (an already-translated advisory shown at the top of the citizen's
  *             apply form, above the fields — e.g. "you must bring the vehicle in person") }
@@ -242,7 +246,11 @@ export default function DepartmentServicePage({ config }) {
           ...(isOfficer ? [{
             key: 'actions', header: t('common.actions'),
             render: (r) => {
-              const rawNext = config.transitions[r.status];
+              // transitions can be a plain { status: option } object, or — when which action
+              // applies depends on more than just the status (e.g. Vehicle Registration's customs
+              // step only applies to an imported registration, not a local one) — a function of
+              // the record itself. See config doc comment above.
+              const rawNext = typeof config.transitions === 'function' ? config.transitions(r) : config.transitions[r.status];
               const nextOptions = rawNext ? (Array.isArray(rawNext) ? rawNext : [rawNext]) : [];
               const busy = busyId === r[idColumn];
               return (

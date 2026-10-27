@@ -60,8 +60,52 @@ async function hasBothHandsEnrolled(citizenId) {
   return !!(rows[0] && rows[0].left_hand_captured_at && rows[0].right_hand_captured_at);
 }
 const VEHICLE_REGISTRATION_TYPES = [
-  'Vehicle Registration', 'Vehicle Registration (Imported/SADC)', 'Vehicle Registration (Second-Hand Local)',
+  'Vehicle Registration', 'Vehicle Registration (Imported/SADC)', 'Vehicle Registration (Second-Hand Imported)',
 ];
+
+// Batch 31 — from a written workflow document the citizen supplied specifying the real vehicle-
+// registration process. "Keep requirements configurable so that authorised administrators can
+// update them when official rules change" (document Section 10) — this is the one place that
+// decides both (a) which document fields a registration category requires and (b) whether that
+// category needs customs clearance verified at all. beforeApply and the statusFlow guards below
+// both read from this object rather than each having their own bespoke per-type logic, so a future
+// rule change (RSL starts requiring a 5th document, say) is one edit here, not a hunt through two
+// different functions. Deliberately a plain in-code object rather than a database table + admin
+// screen for now — lower risk and ships immediately; a database-backed version is a natural later
+// step if this needs to change often enough that a code deploy becomes the bottleneck.
+const COMMON_VEHICLE_REGISTRATION_FIELDS = [
+  { field: 'vehicleMake', message: 'vehicleMake and vehicleModel are required.' },
+  { field: 'vehicleModel', message: 'vehicleMake and vehicleModel are required.' },
+  { field: 'chassisNumber', message: 'chassisNumber and engineNumber are required to uniquely identify the vehicle and prevent duplicate registration.' },
+  { field: 'engineNumber', message: 'chassisNumber and engineNumber are required to uniquely identify the vehicle and prevent duplicate registration.' },
+  { field: 'ownershipProofReference', message: 'A photo of your proof of purchase/import document is required.' },
+  { field: 'preferredOfficeId', message: 'preferredOfficeId is required — choose the traffic office where you will bring the vehicle for physical inspection.' },
+];
+// Researched against Lesotho's own published requirements for registering a vehicle imported from
+// a SADC country (gov.ls): beyond the ownership/manufacturing document every registration already
+// needs, an import additionally needs customs clearance (Form CE 11), proof of VAT payment, and a
+// CID/Interpol (SARPCO) police clearance confirming the vehicle isn't reported stolen. RSL (Revenue
+// Services Lesotho) itself operates outside this platform — the citizen obtains these documents
+// from RSL directly and uploads them here; this system never claims to contact RSL automatically.
+const CUSTOMS_VEHICLE_REGISTRATION_FIELDS = [
+  { field: 'originCountry', message: 'originCountry is required for an imported or SADC vehicle registration.' },
+  { field: 'customsClearanceReference', message: 'customsClearanceReference is required (the Customs clearance / Form CE 11 reference number) for an imported or SADC vehicle registration.' },
+  { field: 'importTaxProofReference', message: 'A photo of your proof of VAT/import duty payment is required for an imported or SADC vehicle registration.' },
+  { field: 'policeClearanceReference', message: 'A photo of your CID/Interpol (SARPCO) police clearance is required for an imported or SADC vehicle registration, to confirm the vehicle is not reported stolen.' },
+];
+const VEHICLE_REGISTRATION_REQUIREMENTS = {
+  // Brand-new, purchased in Lesotho — no customs paperwork exists to produce.
+  'Vehicle Registration': { requiresCustoms: false, requiredFields: COMMON_VEHICLE_REGISTRATION_FIELDS },
+  // Brand-new, imported (including from a SADC country).
+  'Vehicle Registration (Imported/SADC)': { requiresCustoms: true, requiredFields: [...COMMON_VEHICLE_REGISTRATION_FIELDS, ...CUSTOMS_VEHICLE_REGISTRATION_FIELDS] },
+  // Second-hand, imported into Lesotho for the first time — needs the same customs paperwork as a
+  // brand-new import (a second-hand vehicle already registered in Lesotho changing hands is
+  // Vehicle Transfer's job, not this one — see this controller's VehicleRegistration.jsx comment).
+  'Vehicle Registration (Second-Hand Imported)': { requiresCustoms: true, requiredFields: [...COMMON_VEHICLE_REGISTRATION_FIELDS, ...CUSTOMS_VEHICLE_REGISTRATION_FIELDS] },
+};
+function requiresCustoms(serviceType) {
+  return !!(VEHICLE_REGISTRATION_REQUIREMENTS[serviceType] && VEHICLE_REGISTRATION_REQUIREMENTS[serviceType].requiresCustoms);
+}
 
 // Batch 30 — "we building system not realistic ... the pdp citizen must be at least 21 year have
 // to two year of experience driving to obtain the system must check how long does the citizen
@@ -183,22 +227,8 @@ async function beforeApply(req) {
   }
 
   if (VEHICLE_REGISTRATION_TYPES.includes(serviceType)) {
-    if (!b.vehicleMake || !b.vehicleModel) return { error: 'vehicleMake and vehicleModel are required.' };
-    if (!b.chassisNumber || !b.engineNumber) return { error: 'chassisNumber and engineNumber are required to uniquely identify the vehicle and prevent duplicate registration.' };
-    if (!b.ownershipProofReference) return { error: 'A photo of your proof of purchase/import document is required.' };
-    if (!b.preferredOfficeId) return { error: 'preferredOfficeId is required — choose the traffic office where you will bring the vehicle for physical inspection.' };
-    // Batch 30 — "car registration also need physical check of officers": researched against
-    // Lesotho's own published requirements for registering a vehicle imported from a SADC country
-    // (gov.ls), which list — beyond the ownership/manufacturing document already covered by
-    // ownership_proof_reference — customs clearance (Form CE 11), proof of VAT payment, and a
-    // CID/Interpol (SARPCO) police clearance confirming the vehicle isn't reported stolen. Required
-    // only for an Imported/SADC registration; a new-from-dealer or already-local second-hand
-    // vehicle genuinely doesn't cross a border and has none of this paperwork to produce.
-    if (serviceType === 'Vehicle Registration (Imported/SADC)') {
-      if (!b.originCountry) return { error: 'originCountry is required for an imported or SADC vehicle registration.' };
-      if (!b.customsClearanceReference) return { error: 'customsClearanceReference is required (the Customs clearance / Form CE 11 reference number) for an imported or SADC vehicle registration.' };
-      if (!b.importTaxProofReference) return { error: 'A photo of your proof of VAT/import duty payment is required for an imported or SADC vehicle registration.' };
-      if (!b.policeClearanceReference) return { error: 'A photo of your CID/Interpol (SARPCO) police clearance is required for an imported or SADC vehicle registration, to confirm the vehicle is not reported stolen.' };
+    for (const requirement of VEHICLE_REGISTRATION_REQUIREMENTS[serviceType].requiredFields) {
+      if (!b[requirement.field]) return { error: requirement.message };
     }
   }
 
@@ -288,6 +318,18 @@ function requireVehicleRegistration(record) {
   return null;
 }
 
+/** Shared by 'confirm-physical-inspection' (local registrations, straight from Documents Checked)
+ *  and 'confirm-physical-inspection-after-customs' (imports, after customs clearance has already
+ *  been verified) — see statusFlow below. Requires a non-empty officer note, same as before. */
+function physicalInspectionExtra(req) {
+  const notes = (req.body.officerResponse || '').trim();
+  if (!notes) return { error: 'Inspection notes are required — confirm the vehicle was physically brought in and that its chassis and engine numbers match the application.' };
+  return {
+    setSql: `physical_inspection_confirmed_at = NOW(), physical_inspection_confirmed_by_user_id = $3, physical_inspection_notes = $4`,
+    params: [req.user.userId, notes],
+  };
+}
+
 const controller = makeDepartmentController({
   table: 'traffic_records',
   idColumn: 'traffic_record_id',
@@ -302,7 +344,7 @@ const controller = makeDepartmentController({
     // uses this exact service_type string so every existing display/translation/tracking path
     // (My Applications, this very table) shows it exactly like any other record.
     'Vehicle Registration', 'Vehicle Transfer', 'Public Driving Permit',
-    'Vehicle Registration (Imported/SADC)', 'Vehicle Registration (Second-Hand Local)',
+    'Vehicle Registration (Imported/SADC)', 'Vehicle Registration (Second-Hand Imported)',
     'Vehicle Number Plate',
     'Vehicle Licence Disc Application', 'Vehicle Licence Disc Renewal',
   ],
@@ -348,17 +390,49 @@ const controller = makeDepartmentController({
     // structurally impossible to approve one without first confirming the vehicle was physically
     // brought in. requireVehicleRegistration guards both against being called on any other
     // service type by a stray/direct API call.
+    //
+    // Batch 31 — "keep customs verification separate from document uploading" (from the citizen's
+    // workflow document): for the two registration categories that involve an import, an officer
+    // must ALSO explicitly verify the RSL customs documents — a distinct step, with its own note
+    // and audit trail, from confirming the vehicle itself was physically brought in. This needs two
+    // different entry points into "confirm physical inspection" (one straight from Documents
+    // Checked for a local registration with no customs step, one from Customs Clearance Verified
+    // for an import) because this factory's statusFlow only supports one {from,to} pair per action
+    // name — see physicalInspectionExtra, shared by both so the actual inspection logic is written
+    // once.
+    'verify-customs-clearance': {
+      from: 'Documents Checked', to: 'Customs Clearance Verified',
+      extra: (record, req) => {
+        const guard = requireVehicleRegistration(record);
+        if (guard) return guard;
+        if (!requiresCustoms(record.service_type)) {
+          return { error: 'This action only applies to an imported vehicle registration — this registration type has no customs paperwork to verify.' };
+        }
+        const notes = (req.body.officerResponse || '').trim();
+        if (!notes) return { error: 'Verification notes are required — confirm the customs clearance, import tax proof, and police clearance documents were checked and are genuine.' };
+        return {
+          setSql: `customs_clearance_verified_at = NOW(), customs_clearance_verified_by_user_id = $3, customs_clearance_verification_notes = $4`,
+          params: [req.user.userId, notes],
+        };
+      },
+    },
     'confirm-physical-inspection': {
       from: 'Documents Checked', to: 'Physically Inspected',
       extra: (record, req) => {
         const guard = requireVehicleRegistration(record);
         if (guard) return guard;
-        const notes = (req.body.officerResponse || '').trim();
-        if (!notes) return { error: 'Inspection notes are required — confirm the vehicle was physically brought in and that its chassis and engine numbers match the application.' };
-        return {
-          setSql: `physical_inspection_confirmed_at = NOW(), physical_inspection_confirmed_by_user_id = $3, physical_inspection_notes = $4`,
-          params: [req.user.userId, notes],
-        };
+        if (requiresCustoms(record.service_type)) {
+          return { error: 'Customs clearance must be verified before the physical inspection step for this registration type — use "Verify customs clearance" first.' };
+        }
+        return physicalInspectionExtra(req);
+      },
+    },
+    'confirm-physical-inspection-after-customs': {
+      from: 'Customs Clearance Verified', to: 'Physically Inspected',
+      extra: (record, req) => {
+        const guard = requireVehicleRegistration(record);
+        if (guard) return guard;
+        return physicalInspectionExtra(req);
       },
     },
     'approve-registration': {
