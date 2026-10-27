@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { DocumentTextIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { api } from '../api/client';
@@ -80,6 +81,14 @@ import DistrictOfficeSelect from './DistrictOfficeSelect';
  * every one of their queues is consistent in a single change. "View details" stays a plain link —
  * it's a read-only info link, not a state-changing action, the same distinction professional
  * admin tables usually draw.
+ *
+ * Batch 36 — "bad design please design good buttons and ... be constant with design": when a
+ * service offers more than one serviceType, the plain <select> dropdown is replaced with a grid
+ * of clickable cards (one per service type) — the same tappable-tile language already used on
+ * every department hub (see PoliceHub.jsx). Clicking a card sets serviceType directly; no
+ * separate "which type?" step before the form appears. Fixed once here, same as the Batch 33
+ * button-consistency fix, so every department sharing this component (Finance, Traffic,
+ * Pensions, Vehicle Inspections, Transport Permits, ...) gets it in one change.
  */
 export default function DepartmentServicePage({ config }) {
   const { user } = useAuth();
@@ -225,11 +234,30 @@ export default function DepartmentServicePage({ config }) {
           {config.formNotice && <p className="mb-4 w-full rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">ℹ {config.formNotice}</p>}
 
           {config.serviceTypes.length > 1 && (
-            <FormField label={t(`${config.serviceTypeNs}.serviceType`)} htmlFor="serviceType">
-              <select id="serviceType" className="form-input" value={serviceType} onChange={(e) => setServiceType(e.target.value)}>
-                {config.serviceTypes.map((s) => <option key={s} value={s}>{t(`${config.serviceTypeNs}.${s}`)}</option>)}
-              </select>
-            </FormField>
+            <div className="mb-4">
+              <p className="form-label">{t(`${config.serviceTypeNs}.serviceType`)}</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label={t(`${config.serviceTypeNs}.serviceType`)}>
+                {config.serviceTypes.map((s) => {
+                  const active = serviceType === s;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => setServiceType(s)}
+                      className={`flex items-center gap-3 rounded-lg border-2 p-4 text-left transition ${
+                        active ? 'border-gov-navy bg-gov-navy/5 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'
+                      }`}
+                    >
+                      <DocumentTextIcon className={`h-6 w-6 shrink-0 ${active ? 'text-gov-navy' : 'text-slate-400'}`} strokeWidth={1.6} aria-hidden="true" />
+                      <span className={`text-sm font-semibold ${active ? 'text-gov-navy' : 'text-slate-800'}`}>{t(`${config.serviceTypeNs}.${s}`)}</span>
+                      {active && <CheckCircleIcon className="ml-auto h-5 w-5 shrink-0 text-gov-navy" aria-hidden="true" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
           <FieldInputs fields={extraFields} form={form} onChange={updateField} departmentKey={config.departmentKey || 'traffic'} />

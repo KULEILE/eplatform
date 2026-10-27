@@ -10,7 +10,12 @@ const config = {
   titleKey: 'finance.title',
   serviceTypeNs: 'finance',
   officerRoleKey: 'finance_officer',
-  serviceTypes: ['Supplier Registration Validation', 'Payment Information Update', 'Tax Identity Confirmation', 'Financial Records Correction'],
+  // Batch 36 — "remove that tax and validation": Supplier Registration Validation and Tax
+  // Identity Confirmation were bare placeholders with no real logic behind them, so they're
+  // removed from the citizen-facing options. Left in finance.controller.js's history-rendering
+  // path (and the locale files) untouched, so any already-submitted application of either type
+  // still displays correctly — only new applications can no longer choose them.
+  serviceTypes: ['Payment Information Update', 'Financial Records Correction'],
   transitions: {
     'Submitted': { action: 'start-review', labelKey: 'status.Under Review' },
     'Under Review': { action: 'verify-identity', labelKey: 'status.Identity Verified' },
