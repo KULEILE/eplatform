@@ -69,6 +69,17 @@ import DistrictOfficeSelect from './DistrictOfficeSelect';
  * current value, plus rejection_reason when the record was rejected and `config.responseField`
  * (e.g. an officer's written reply to a complaint or enquiry) when that column is set — list()
  * already returns every column via `SELECT *`/`SELECT t.*`, so this needs no extra request.
+ *
+ * Batch 33 — "make professional buttons and be consistence on design including buttons": the
+ * action column's buttons (the transition actions, Request more information, Reject, and the
+ * citizen's Edit and resubmit) use the small `.btn-row-primary` / `.btn-row-secondary` /
+ * `.btn-row-danger` classes (index.css) — the same color language as the app's full-size
+ * `.btn-primary`/`.btn-secondary`/`.btn-danger` used in modals and forms, just sized for a dense
+ * table row. Fixed once here rather than per-page, since this component is what every department
+ * (Traffic, Finance, Pensions, Vehicle Inspections, Transport Permits, ...) already shares, so
+ * every one of their queues is consistent in a single change. "View details" stays a plain link —
+ * it's a read-only info link, not a state-changing action, the same distinction professional
+ * admin tables usually draw.
  */
 export default function DepartmentServicePage({ config }) {
   const { user } = useAuth();
@@ -263,17 +274,17 @@ export default function DepartmentServicePage({ config }) {
               const nextOptions = rawNext ? (Array.isArray(rawNext) ? rawNext : [rawNext]) : [];
               const busy = busyId === r[idColumn];
               return (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {nextOptions.map((opt) => (
-                    <button key={opt.action} type="button" disabled={busy} className="text-sm font-medium text-gov-navy hover:underline"
+                    <button key={opt.action} type="button" disabled={busy} className="btn-row-primary"
                       onClick={() => opt.requiresText ? setResponseModal({ record: r, action: opt.action, textLabelKey: opt.textLabelKey, requiresFields: opt.requiresFields }) : transition(r, opt.action)}>
                       {t(opt.labelKey)}
                     </button>
                   ))}
                   {!['Rejected', 'Completed', 'Collected'].includes(r.status) && (
                     <>
-                      <button type="button" className="text-sm font-medium text-slate-500 hover:underline" onClick={() => setModal({ record: r, kind: 'request-information' })}>{t('common.requestInformation')}</button>
-                      <button type="button" className="text-sm font-medium text-gov-red hover:underline" onClick={() => setModal({ record: r, kind: 'reject' })}>{t('common.reject')}</button>
+                      <button type="button" disabled={busy} className="btn-row-secondary" onClick={() => setModal({ record: r, kind: 'request-information' })}>{t('common.requestInformation')}</button>
+                      <button type="button" disabled={busy} className="btn-row-danger" onClick={() => setModal({ record: r, kind: 'reject' })}>{t('common.reject')}</button>
                     </>
                   )}
                 </div>
@@ -282,7 +293,7 @@ export default function DepartmentServicePage({ config }) {
           } ] : [{
             key: 'citizenActions', header: t('common.actions'),
             render: (r) => r.status === 'Additional Information Required' ? (
-              <button type="button" className="text-xs font-semibold text-gov-navy underline" onClick={() => startResubmit(r)}>
+              <button type="button" className="btn-row-primary" onClick={() => startResubmit(r)}>
                 {t('common.editAndResubmit')}
               </button>
             ) : null,

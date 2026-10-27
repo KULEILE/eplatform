@@ -16,8 +16,16 @@ const TRANSITIONS = {
  *  VehicleLicenceDiscRenew.jsx used to be two separate tiles/pages for the same underlying
  *  service_type pair ('Vehicle Licence Disc Application'/'Renewal', migration 042) — same
  *  consolidation as Vehicle Registration and Transport Permit above: "do not duplicate the
- *  services ... its renewal they must in one place". A vehicle cannot be licensed without proof
- *  of insurance — enforced server-side. */
+ *  services ... its renewal they must in one place".
+ *
+ * Batch 33 — "in Lesotho proof of insurance is not required when applying for disc so remove
+ * that": private motor insurance was researched and is not actually required to license a
+ * vehicle in Lesotho in practice (Lesotho runs a fund-based third-party compensation model, the
+ * same as South Africa's RAF, rather than requiring individual private policies — see the Batch
+ * 33 README), so this requirement never matched how the real process works and is removed
+ * entirely, both here and in traffic.controller.js's beforeApply. insurance_proof_reference stays
+ * in the database (migration 042) so any already-submitted record that has one keeps it — this
+ * only stops asking for it going forward. */
 export default function VehicleLicenceDisc() {
   const { t } = useLanguage();
   const config = {
@@ -35,7 +43,6 @@ export default function VehicleLicenceDisc() {
       if (serviceType === 'Vehicle Licence Disc Renewal') {
         fields.push({ name: 'previousDiscNumber', type: 'text', required: true, label: t('traffic.licenceDiscRenewForm.field.previousDiscNumber') });
       }
-      fields.push({ name: 'insuranceProofReference', type: 'photo', required: true, label: t('traffic.licenceDiscApplyForm.field.insuranceProof'), help: t('traffic.licenceDiscApplyForm.field.insuranceProofHelp') });
       return fields;
     },
     transitions: TRANSITIONS,

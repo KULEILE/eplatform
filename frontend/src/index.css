@@ -26,7 +26,8 @@ html[data-contrast='High'] {
   --gov-bg: #ffffff;
   --gov-border: #000000;
 }
-html[data-contrast='High'] .btn-primary { outline: 2px solid #000; }
+html[data-contrast='High'] .btn-primary,
+html[data-contrast='High'] .btn-row-primary { outline: 2px solid #000; }
 html[data-contrast='High'] .status-badge { border-width: 2px; font-weight: 700; }
 
 body {
@@ -68,6 +69,23 @@ body {
   }
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 rounded-md bg-gov-red px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  /* Batch 33 — "make professional buttons and be consistence on design including buttons":
+     officer/citizen actions inside a dense table row (DepartmentServicePage's queue — Confirm
+     physical inspection, Reject, Request more information, Mark ready for collection, and the
+     same pattern across every other department's queue) used to be plain underlined text links,
+     which read as inconsistent with the real buttons used everywhere else in the app (modals,
+     forms). These are a smaller, table-row-sized sibling of btn-primary/btn-secondary/btn-danger
+     above — same color language and shape, just sized to sit several-to-a-row without
+     overwhelming a dense list. */
+  .btn-row-primary {
+    @apply inline-flex items-center justify-center gap-1 rounded-md bg-gov-navy px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-gov-navyDark disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-row-secondary {
+    @apply inline-flex items-center justify-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-row-danger {
+    @apply inline-flex items-center justify-center gap-1 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-gov-red shadow-sm transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .form-input {
     @apply block w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:border-gov-navy focus:ring-1 focus:ring-gov-navy;
@@ -200,6 +218,12 @@ html[data-theme='Dark'] .ring-violet-200    { @apply ring-violet-800; }
 /* Shared component classes (@layer components above) */
 html[data-theme='Dark'] .btn-secondary {
   @apply border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700;
+}
+html[data-theme='Dark'] .btn-row-secondary {
+  @apply border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700;
+}
+html[data-theme='Dark'] .btn-row-danger {
+  @apply border-red-800 bg-slate-800 text-red-300 hover:bg-slate-700;
 }
 html[data-theme='Dark'] .form-input {
   @apply border-slate-600 bg-slate-800 text-slate-100;

@@ -266,8 +266,13 @@ async function beforeApply(req) {
   }
 
   if (['Vehicle Licence Disc Application', 'Vehicle Licence Disc Renewal'].includes(serviceType)) {
+    // Batch 33 — "in Lesotho proof of insurance is not required when applying for disc so remove
+    // that": researched rather than assumed — Lesotho runs a fund-based third-party compensation
+    // model (the same shape as South Africa's RAF), not a system of mandatory individual private
+    // policies checked at licensing, so this requirement never matched real practice. Removed; see
+    // the Batch 33 README for the full research. insurance_proof_reference (migration 042) stays
+    // in the schema for any already-submitted record that has one, it's just no longer required.
     if (!b.vehicleRegistrationNumber) return { error: 'vehicleRegistrationNumber is required.' };
-    if (!b.insuranceProofReference) return { error: 'A photo of your proof of insurance is required — a vehicle cannot be licensed without proof of insurance.' };
     if (!(await citizenHasApprovedRecord(citizenId, 'vehicle_registration_number', b.vehicleRegistrationNumber))) {
       return { error: 'No registered vehicle with that registration number was found on your record.' };
     }
