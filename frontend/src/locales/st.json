@@ -1219,11 +1219,8 @@
         "waitNotice": "Nako ea likhoeli tse {{months}} e hlokahala pele laesense e lahlehileng kapa e utsoitsoeng e ka nchafatsoa. U ka kopa hape ho tloha ka {{date}}.",
         "waitPassedNotice": "Nako ea likhoeli tse {{months}} e fetile - u ka tsoela pele."
       },
-      "biometricsChoice": {
-        "label": "Setšoantšo le menoana",
-        "reuseId": "Sebelisa setšoantšo le menoana ea ka tsa ID ea Naha",
-        "captureNew": "Nka tse ncha"
-      },
+      "idCaptureReusedNotice": "Setšoantšo le liphetiso tsa menoana tse ngoliloeng ID ea hau ea Naha li tla sebelisoa bakeng sa laesense ena - ha ho hlokahale hore u li nke hape.",
+      "idCaptureRequiredNotice": "Rekoto ea hau ea ID ea Naha ha e na setšoantšo le liphetiso tsa menoana tse felletseng tse ngoliloeng. Li-biometric li nkoa hang feela, ka boeena, e le karolo ea ngoliso ea ID ea Naha - ka kopo qeta seo pele, joale u khutle u kope laesense ea hau ea ho khanna.",
       "surrender": {
         "confirmBoth": "Netefatsa - Laesense ea Seithuti e neheloe le laesense e nkoe",
         "failed": "Ha e khone ho neheloa",
@@ -1785,6 +1782,8 @@
     "biometricEnrollment": "Ngoliso ea sebopeho sa letsoho",
     "biometricEnrollmentDesc": "Tlhahlobo ea 'nete ea sebopeho sa letsoho e ngolisitsoeng rekoto ea hau — ntho e tshoanang eo Mapolesa a ka e batlang nakong ea tlhahlobo e hlahlojoang ea boitsebiso.",
     "biometricEnrolledBoth": "Matsoho a mabeli a ngolisitsoe.",
-    "biometricEnrolledOneHand": "Letsoho le le leng feela le ngolisitsoe hajoale — hlahloba le leng ka tlase bakeng sa tsamaiso e tsepamisehang."
+    "biometricEnrolledOneHand": "Letsoho le le leng feela le ngolisitsoe hajoale.",
+    "biometricNotEnrolled": "Ha u so ngolise.",
+    "biometricEnrollElsewhere": "Li-biometric tsa letsoho li nkoa hang feela, ka boeena, e le karolo ea ngoliso ea ID ea Naha — eseng mona."
   }
 }

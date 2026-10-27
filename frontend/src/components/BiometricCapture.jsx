@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { useAuth } from '../context/AuthContext';
 import { api } from '../api/client';
 import { extractHandFeatures } from '../utils/handGeometry';
 
@@ -13,23 +12,24 @@ const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
  * was ever measured from it and nothing was ever compared to anything. That was flagged directly
  * and honestly: "it does not scan for real it only capture image not biometrics".
  *
- * It now runs every captured frame through utils/handGeometry.js, client-side, BEFORE accepting
- * it: a photo that doesn't actually show a recognisable open hand (no hand in frame, too
- * close/far, too few fingers visible) is rejected with a specific reason, exactly like
- * PhotoCapture's face-compliance check. Only once a real hand-geometry template is extracted is
- * the frame uploaded (same convention as before — POST /api/uploads/biometric, kept as the
- * stored evidence photo) AND — when `enroll` is true and the logged-in user already has a
- * citizen_id — silently enrolled against that citizen's record (POST /api/biometrics/enroll), so
- * the captured hand becomes something a Police officer can later actually search against (see
- * pages/police/Police.jsx). See database/migrations/052_citizen_hand_biometrics.sql for the
- * storage side of this.
+ * It runs every captured frame through utils/handGeometry.js, client-side, BEFORE accepting it: a
+ * photo that doesn't actually show a recognisable open hand (no hand in frame, too close/far, too
+ * few fingers visible) is rejected with a specific reason, exactly like PhotoCapture's
+ * face-compliance check. Only once a real hand-geometry template is extracted is the frame
+ * uploaded (POST /api/uploads/biometric, kept as the stored evidence photo). See
+ * database/migrations/052_citizen_hand_biometrics.sql for the storage side of this.
  *
- * `enroll` is false for the two services that capture a hand BEFORE the applicant has a
- * citizen_id (Naturalization, Identity Verification) — there, the parent form carries the
- * template through in its own submission instead, and the officer-approval controller enrols it
- * server-side the moment a citizen_id actually exists. `hand` ('left'|'right') and
- * `enrollSource` (a short label, e.g. "National ID Application") describe where this capture is
- * happening, for citizen_biometrics.enrollment_source.
+ * Batch 29 — "the biomatrix must be captured once during id application so everywhere they are
+ * need they used reuse that one ... there is no self biomatric captured": this component used to
+ * also self-enrol the captured template against the logged-in citizen's own record (POST
+ * /api/biometrics/enroll) whenever `enroll` was true (the default). That endpoint is gone — a
+ * citizen is never enrolled by their own hand any more, full stop. `enroll` now defaults to
+ * `false` and, when true, is a no-op left in place only so a caller that still passes it doesn't
+ * crash; the ONE remaining caller (CitizenshipNaturalization.jsx) explicitly passes `false`
+ * anyway, since that applicant has no citizen_id yet — the parent form carries the template
+ * through in its own submission, and the officer-approval controller enrols it server-side the
+ * moment a citizen_id actually exists. `hand` ('left'|'right') and `enrollSource` describe where
+ * this capture is happening, kept for that same submission.
  *
  * Uses the rear ("environment") camera by default — a citizen scanning their own hand points
  * the device AT their hand, not at their face — falling back to a plain file picker only when
@@ -38,14 +38,12 @@ const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
  * Controlled component: value = biometricReference (string|null), onChange(biometricReference|null, template|null).
  * (The 2nd onChange argument is new; existing callers that only take one parameter simply ignore it.)
  */
-export default function BiometricCapture({ value, onChange, label, help, hand, enroll = true, enrollSource = 'Biometric Capture' }) {
+export default function BiometricCapture({ value, onChange, label, help, hand, enroll = false, enrollSource = 'Biometric Capture' }) {
   const { t } = useLanguage();
-  const { user } = useAuth();
   const [preview, setPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [checking, setChecking] = useState(false); // running the client-side hand-geometry check
   const [error, setError] = useState('');
-  const [enrollWarning, setEnrollWarning] = useState('');
   const [scanning, setScanning] = useState(false); // live camera feed is open
   const [cameraUnavailable, setCameraUnavailable] = useState(false); // fall back to file input
   const videoRef = useRef(null);
@@ -94,25 +92,14 @@ export default function BiometricCapture({ value, onChange, label, help, hand, e
 
   async function uploadBlob(blob, template) {
     setUploading(true);
-    setEnrollWarning('');
     const fd = new FormData();
     fd.append('biometric', blob, 'scan.png');
     try {
       const { biometricReference } = await api.postForm('/uploads/biometric', fd);
-      // Enrolment (when applicable) is attempted and awaited BEFORE onChange fires below — a
-      // caller like pages/Profile.jsx re-reads enrolment status from its onChange handler, and
-      // needs the enrolment POST to have already happened, not just been kicked off, for that
-      // re-read to see the new state.
-      if (enroll && user.citizenId && template) {
-        try {
-          await api.post('/biometrics/enroll', { hand, template, source: enrollSource });
-        } catch (enrollErr) {
-          // The capture + upload already succeeded and the form can proceed — enrolment failing
-          // (e.g. a transient network hiccup) shouldn't block the application itself. Surfaced
-          // as a soft, non-blocking notice rather than a hard error.
-          setEnrollWarning(t('biometricCapture.enrollWarning'));
-        }
-      }
+      // Batch 29: no more self-enrolment call here (POST /api/biometrics/enroll is gone — see
+      // this file's header comment). `enroll`/`hand`/`enrollSource`/`user` are kept as props only
+      // so the one remaining caller (CitizenshipNaturalization.jsx, enroll={false}) doesn't need
+      // changing; nothing in this function acts on them any more.
       onChange(biometricReference, template);
     } catch (err) {
       setError(err.message || t('common.somethingWentWrong'));
@@ -187,7 +174,6 @@ export default function BiometricCapture({ value, onChange, label, help, hand, e
     setPreview(null);
     onChange(null, null);
     setError('');
-    setEnrollWarning('');
     setCameraUnavailable(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
@@ -207,7 +193,6 @@ export default function BiometricCapture({ value, onChange, label, help, hand, e
           ) : value ? (
             <>
               <p className="text-sm text-gov-green">✓ {t('biometricCapture.uploaded')}</p>
-              {enrollWarning && <p className="text-xs text-gov-amber">⚠ {enrollWarning}</p>}
               <button type="button" className="btn-secondary !py-1 !text-xs" onClick={retake}>{t('biometricCapture.retake')}</button>
             </>
           ) : null}

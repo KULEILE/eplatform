@@ -5,7 +5,6 @@ import { useLanguage } from '../context/LanguageContext';
 import { api } from '../api/client';
 import Loading from '../components/ui/Loading';
 import StatusBadge from '../components/ui/StatusBadge';
-import BiometricCapture from '../components/BiometricCapture';
 import { formatDateOnly } from '../utils/format';
 
 export default function Profile() {
@@ -68,31 +67,26 @@ export default function Profile() {
         <div className="card mt-4">
           <h2 className="mb-1 font-semibold text-slate-800">{t('profile.biometricEnrollment')}</h2>
           <p className="mb-3 text-sm text-slate-500">{t('profile.biometricEnrollmentDesc')}</p>
+          {/* Batch 29 — "the biomatrix must be captured once during id application so everywhere
+              they are need they used reuse that one ... there is no self biomatric captured": this
+              card used to let a citizen scan their own hands right here ("Self-Enrolment") any time
+              they weren't yet enrolled — the most direct form of self-capture in the whole system,
+              with no officer or application context at all. It's gone. This is now read-only status:
+              biometrics are captured exactly once, in person, as part of National ID enrolment (an
+              officer does the scan at a police station — see NationalIdApply.jsx), and reused by
+              every service after that. A citizen who isn't enrolled yet is pointed at National ID,
+              never handed a camera. */}
           {!biometricStatus ? <Loading /> : biometricStatus.enrolled && biometricStatus.leftHand && biometricStatus.rightHand ? (
             <p className="text-sm text-gov-green">✓ {t('profile.biometricEnrolledBoth')}{biometricStatus.enrollmentSource ? ` (${biometricStatus.enrollmentSource})` : ''}</p>
           ) : (
             <div>
-              {biometricStatus.enrolled && <p className="mb-3 text-sm text-gov-amber">⚠ {t('profile.biometricEnrolledOneHand')}</p>}
-              {!biometricStatus.leftHand && (
-                <BiometricCapture
-                  value={null}
-                  onChange={() => loadBiometricStatus()}
-                  label={t('biometricCapture.leftHandLabel')}
-                  help={t('biometricCapture.scanHint')}
-                  hand="left"
-                  enrollSource="Self-Enrolment"
-                />
+              {biometricStatus.enrolled ? (
+                <p className="mb-3 text-sm text-gov-amber">⚠ {t('profile.biometricEnrolledOneHand')}</p>
+              ) : (
+                <p className="mb-3 text-sm text-slate-500">{t('profile.biometricNotEnrolled')}</p>
               )}
-              {!biometricStatus.rightHand && (
-                <BiometricCapture
-                  value={null}
-                  onChange={() => loadBiometricStatus()}
-                  label={t('biometricCapture.rightHandLabel')}
-                  help={t('biometricCapture.scanHint')}
-                  hand="right"
-                  enrollSource="Self-Enrolment"
-                />
-              )}
+              <p className="mb-3 text-sm text-slate-500">{t('profile.biometricEnrollElsewhere')}</p>
+              <Link to="/home-affairs/national-id" className="btn-secondary inline-flex">{t('homeAffairs.nationalIdCard')}</Link>
             </div>
           )}
         </div>

@@ -1,53 +1,33 @@
-// Citizen-level hand-biometric enrolment (migration 052). Storage only — the actual extraction
-// happens entirely in the browser (frontend/src/utils/handGeometry.js) before this is ever
-// called, and matching for a Police lookup lives in police.controller.js + utils/handMatch.js.
+// Citizen-level hand-biometric status (migration 052). Enrolment itself now only ever happens
+// officer-side (National ID, in person) or server-side on approval (Naturalization) — see the
+// removal note below — so this file is read-only: it just reports what citizen_biometrics holds.
 const db = require('../config/db');
-const { isValidTemplate } = require('../utils/handMatch');
 
-const VALID_HANDS = ['left', 'right'];
-
-/**
- * POST /api/biometrics/enroll
- * body: { hand: 'left'|'right', template: { signature[], aspectRatio, fingerCount }, source? }
- *
- * Self-enrolment only — always keyed to req.user.citizenId, never to a citizenId supplied in the
- * body, so there is no way to enrol a template under someone else's record. This is called from
- * exactly one place in the frontend: components/BiometricCapture.jsx, automatically, right after
- * a citizen who already has a citizen_id captures a hand scan as part of a form that already
- * required one (National ID application, a Driving Licence service, ...), or via the standalone
- * "complete your biometric enrolment" option on the citizen's own profile (pages/Profile.jsx).
- *
- * The pre-citizenId flows (Naturalization, Identity Verification) do NOT call this endpoint —
- * the applicant has no citizen_id to key it on yet, so their captured templates are held on
- * their own request row instead and copied in directly, server-side, by the officer-approval
- * controller at the moment a citizen_id is actually minted/linked (see
- * naturalization.controller.js's approveNaturalization and identity.controller.js's
- * verifyIdentityRequest).
- */
-async function enrollHand(req, res, next) {
-  try {
-    if (!req.user.citizenId) {
-      return res.status(403).json({ error: 'A verified identity is required before enrolling a biometric.' });
-    }
-    const { hand, template, source } = req.body;
-    if (!VALID_HANDS.includes(hand)) return res.status(400).json({ error: "hand must be 'left' or 'right'." });
-    if (!isValidTemplate(template)) return res.status(400).json({ error: 'A valid hand-geometry template is required.' });
-
-    // hand is checked against VALID_HANDS above before it ever reaches a column name, so this
-    // interpolation only ever picks between two fixed, hardcoded identifiers — never user input.
-    const column = hand === 'left' ? 'left_hand_template' : 'right_hand_template';
-    const capturedAtColumn = hand === 'left' ? 'left_hand_captured_at' : 'right_hand_captured_at';
-    await db.query(
-      `INSERT INTO citizen_biometrics (citizen_id, ${column}, ${capturedAtColumn}, enrollment_source, updated_at)
-       VALUES ($1, $2, NOW(), $3, NOW())
-       ON CONFLICT (citizen_id) DO UPDATE
-         SET ${column} = EXCLUDED.${column}, ${capturedAtColumn} = NOW(),
-             enrollment_source = EXCLUDED.enrollment_source, updated_at = NOW()`,
-      [req.user.citizenId, JSON.stringify(template), source || 'Self-Enrolment']
-    );
-    res.status(201).json({ enrolled: true, hand });
-  } catch (err) { next(err); }
-}
+// ============================================================================================
+// POST /api/biometrics/enroll — REMOVED (Batch 29). "the biomatrix must be captured once during
+// id application so everywhere they are need they used reuse that one ... remember the rule is
+// that there is no self biomatric captured."
+//
+// This endpoint used to let a citizen enrol their own hand-geometry template, self-keyed to
+// req.user.citizenId, called automatically by components/BiometricCapture.jsx wherever a form
+// passed it `enroll: true` — a standalone "complete your biometric enrolment" section on the
+// citizen's own profile (pages/Profile.jsx, now just a status display), and, before this same
+// batch, the Driving Licence and Public Driving Permit application forms (both now always reuse
+// the citizen's existing National ID capture server-side instead — see
+// drivingLicence.controller.js's resolveIdentityCapture and traffic.controller.js's beforeApply).
+//
+// Every remaining caller of BiometricCapture.jsx now passes `enroll: false` (Naturalization —
+// the applicant has no citizen_id yet, so there is nothing to self-enrol into in the first place;
+// an officer enrols that template server-side on approval), so nothing in this system legitimately
+// calls this endpoint any more. It is removed outright, not just unlinked from the UI, so a
+// citizen can't resurrect self-enrolment with a raw API call either. The one place hand biometrics
+// are actually captured is National ID enrolment, in person, at a police station an officer
+// administers (see homeAffairs.controller.js's captureNationalIdBiometrics and
+// pages/police/NationalIdBiometricCapture.jsx) — reused by every service after that, forever.
+//
+// getBiometricStatus below is untouched: a citizen can still see WHETHER they're enrolled, just
+// never enrol themselves.
+// ============================================================================================
 
 /** GET /api/biometrics/status — the logged-in citizen's own enrolment status (pages/Profile.jsx). */
 async function getBiometricStatus(req, res, next) {
@@ -69,4 +49,4 @@ async function getBiometricStatus(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { enrollHand, getBiometricStatus };
+module.exports = { getBiometricStatus };

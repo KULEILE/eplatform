@@ -1219,11 +1219,8 @@
         "waitNotice": "A {{months}}-month wait applies before a lost or stolen driving licence can be replaced. You can apply again from {{date}}.",
         "waitPassedNotice": "The {{months}}-month wait has passed - you may continue."
       },
-      "biometricsChoice": {
-        "label": "Photo and fingerprints",
-        "reuseId": "Reuse my National ID photo and fingerprints",
-        "captureNew": "Capture new"
-      },
+      "idCaptureReusedNotice": "Your photo and fingerprint scans on file with your National ID will be used for this licence - you don't need to capture them again.",
+      "idCaptureRequiredNotice": "Your National ID record does not have a complete photo and fingerprint capture on file yet. Biometrics are captured once, in person, as part of National ID enrolment - please complete that first, then come back to apply for your driving licence.",
       "surrender": {
         "confirmBoth": "Confirm - Learner's Permit surrendered and licence collected",
         "failed": "Cannot surrender",
@@ -1785,6 +1782,8 @@
     "biometricEnrollment": "Hand biometric enrolment",
     "biometricEnrollmentDesc": "A real hand-geometry scan enrolled against your record — the same thing Police can search against during an audited identity-verification lookup.",
     "biometricEnrolledBoth": "Both hands are enrolled.",
-    "biometricEnrolledOneHand": "Only one hand is enrolled so far — scan the other below for a more reliable match."
+    "biometricEnrolledOneHand": "Only one hand is enrolled so far.",
+    "biometricNotEnrolled": "You are not enrolled yet.",
+    "biometricEnrollElsewhere": "Hand biometrics are captured once, in person, as part of National ID enrolment — not here."
   }
 }

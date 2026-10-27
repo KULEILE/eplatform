@@ -10,9 +10,22 @@ const { makeDepartmentController } = require('../utils/simpleDepartmentControlle
 // controller (migration 067), the same shape as passport.controller.js:
 //
 //   1. A driving licence identifies a specific person, so its photo/fingerprints are resolved
-//      the same way National ID's are for a passport: reuse the citizen's own collected National
-//      ID capture, or capture fresh ones — never trust a client-sent "reuse" claim, always
-//      resolve it server-side from national_id_cards.
+//      the same way National ID's are for a passport: ALWAYS reuse the citizen's own collected
+//      National ID capture, resolved server-side from national_id_cards — never trust a
+//      client-sent reference, and never let the citizen capture a fresh one here.
+//
+//   Batch 29 — "the biomatrix must be captured once during id application so everywhere they
+//   are need they used reuse that one ... remove that biomatric required when capturing driving
+//   license and remember the rule is that there is no self biomatric captured": the citizen used
+//   to be offered a choice between reusing their National ID capture or scanning their own hands
+//   fresh right here (resolveIdentityCapture's 'new' path, and the fallback that forced a fresh
+//   scan when the ID capture was incomplete). Both of those were a citizen self-capturing their
+//   own biometrics, which this system's own design principle says should never happen — hand
+//   biometrics are captured exactly once, in person, during National ID enrolment (see
+//   NationalIdApply.jsx and migration 063's police-station flow), and reused everywhere after.
+//   There is no more 'new' path: applying for a driving licence now REQUIRES a complete National
+//   ID capture already on file, or the application is refused with a message telling the citizen
+//   to complete their National ID biometric capture first — it never offers them a camera.
 //   2. A FIRST licence ('New') requires a valid, unexpired Learner's Permit — which is no longer
 //      something a citizen can apply for directly; see driving_test_bookings/trafficServices2.
 //      controller.js. That permit is displayed throughout the application and must be physically
@@ -73,6 +86,25 @@ async function getIdCapture(citizenId) {
   return rows[0] || null;
 }
 
+/** True once BOTH hands are on file in citizen_biometrics for this citizen — the actual, current
+ *  source of truth for "has this citizen's hand biometrics been captured", the exact same check
+ *  homeAffairs.controller.js's hasBothHandsEnrolled uses for National ID itself ("the captured
+ *  once, reused everywhere rule the client asked for"). The OLDER national_id_cards.
+ *  biometric_reference_left/biometric_reference_right columns (migrations 034/036) are evidence
+ *  photos from the pre-063 self-capture flow — migration 063 moved real capture to
+ *  citizen_biometrics, done in person at a police station, and no longer writes those columns at
+ *  all (see homeAffairs.controller.js's captureNationalIdBiometrics). Checking them here instead
+ *  of citizen_biometrics would make a driving licence application permanently impossible for
+ *  every citizen enrolled since that change — caught by testing this batch against a real
+ *  database, not assumed. */
+async function hasBothHandsEnrolled(citizenId) {
+  const { rows } = await db.query(
+    'SELECT left_hand_captured_at, right_hand_captured_at FROM citizen_biometrics WHERE citizen_id = $1',
+    [citizenId]
+  );
+  return !!(rows[0] && rows[0].left_hand_captured_at && rows[0].right_hand_captured_at);
+}
+
 async function hasCollectedNationalId(citizenId) {
   const { rows } = await db.query(
     `SELECT 1 FROM national_id_cards WHERE citizen_id = $1 AND production_status = 'Collected' LIMIT 1`,
@@ -81,23 +113,22 @@ async function hasCollectedNationalId(citizenId) {
   return rows.length > 0;
 }
 
-/** Resolves photo + both-hand fingerprints from the citizen's biometricsSource choice
- *  ('id' | 'new'). 'id' is only honoured with a COMPLETE National ID capture on file (resolved
- *  server-side, never trusting client-sent references for it) — a card with some but not all
- *  three references on file falls back to requiring a fresh capture, same resilience spirit as
- *  passport.controller.js's getIdPhotoReference/hasCollectedNationalId split. */
-async function resolveIdentityCapture(citizenId, source, body) {
-  if (source === 'id') {
-    const idCapture = await getIdCapture(citizenId);
-    if (!idCapture || !idCapture.photo_reference || !idCapture.biometric_reference_left || !idCapture.biometric_reference_right) {
-      return { ok: false, error: 'Your National ID record does not have a complete photo and fingerprint capture on file to reuse. Please capture new ones instead.' };
-    }
-    return { ok: true, photoReference: idCapture.photo_reference, biometricReferenceLeft: idCapture.biometric_reference_left, biometricReferenceRight: idCapture.biometric_reference_right };
+/** Resolves photo + both-hand fingerprints ALWAYS from the citizen's own collected National ID
+ *  capture (resolved server-side, never trusting a client-sent reference for it). Batch 29: there
+ *  is no more "capture fresh ones instead" fallback — hand biometrics are captured exactly once,
+ *  in person, during National ID enrolment, and reused everywhere after; a citizen is never
+ *  offered a camera to self-capture them again here. A National ID without a complete capture on
+ *  file simply can't be used to apply yet — see the error message below. */
+async function resolveIdentityCapture(citizenId) {
+  const idCapture = await getIdCapture(citizenId);
+  const biometricsEnrolled = await hasBothHandsEnrolled(citizenId);
+  if (!idCapture || !idCapture.photo_reference || !biometricsEnrolled) {
+    return { ok: false, error: "Your National ID record does not have a complete photo and fingerprint capture on file yet. Biometrics are captured once, in person, as part of National ID enrolment — please complete that first, then apply for your driving licence." };
   }
-  if (!body.photoReference || !body.biometricReferenceLeft || !body.biometricReferenceRight) {
-    return { ok: false, error: 'A photo and a fingerprint scan of both hands are required.' };
-  }
-  return { ok: true, photoReference: body.photoReference, biometricReferenceLeft: body.biometricReferenceLeft, biometricReferenceRight: body.biometricReferenceRight };
+  // The pre-063 evidence-photo columns (see hasBothHandsEnrolled's comment) are carried forward
+  // opportunistically when present (a citizen enrolled under the old self-capture flow still has
+  // them), but are no longer what gates eligibility — biometricsEnrolled above is.
+  return { ok: true, photoReference: idCapture.photo_reference, biometricReferenceLeft: idCapture.biometric_reference_left || null, biometricReferenceRight: idCapture.biometric_reference_right || null };
 }
 
 /** The citizen's currently valid Learner's Permit (service_type = 'Learner Permit', status
@@ -174,7 +205,7 @@ async function getEligibility(req, res, next) {
     const citizenId = req.user.citizenId;
     const hasId = await hasCollectedNationalId(citizenId);
     const idCapture = await getIdCapture(citizenId);
-    const idCaptureAvailable = !!(idCapture && idCapture.photo_reference && idCapture.biometric_reference_left && idCapture.biometric_reference_right);
+    const idCaptureAvailable = !!(idCapture && idCapture.photo_reference && (await hasBothHandsEnrolled(citizenId)));
     const learnerPermit = await getValidLearnerPermit(citizenId);
     const currentLicence = await getCurrentDrivingLicence(citizenId);
     const { rows: inProgressRows } = await db.query(
@@ -203,18 +234,20 @@ async function getEligibility(req, res, next) {
 }
 
 /** POST /traffic/driving-licence/apply — body: { applicationType: 'New'|'Renewal'|'Replacement',
- *  preferredOfficeId, biometricsSource: 'id'|'new', photoReference?, biometricReferenceLeft?,
- *  biometricReferenceRight?, licenceCategory? ('A'|'B'|'C'|'D' — required for New, carried
- *  forward automatically for Renewal/Replacement, see resolveLicenceCategory above),
- *  paymentReference, receiptImageReference (the licence fee — required on all three, same proof
- *  shape migration 033 already uses for the Passport fee), renewalDamaged?, damageProofReference?,
- *  replacementReason?, previousLicenceNumber?, reportedLostAt? }. */
+ *  preferredOfficeId, licenceCategory? ('A'|'B'|'C'|'D' — required for New, carried forward
+ *  automatically for Renewal/Replacement, see resolveLicenceCategory above), paymentReference,
+ *  receiptImageReference (the licence fee — required on all three, same proof shape migration 033
+ *  already uses for the Passport fee), renewalDamaged?, damageProofReference?, replacementReason?,
+ *  previousLicenceNumber?, reportedLostAt? }. Batch 29: no more photoReference/
+ *  biometricReferenceLeft/biometricReferenceRight/biometricsSource in the body — the photo and
+ *  both-hand fingerprints are always resolved server-side from the citizen's National ID capture
+ *  (see resolveIdentityCapture above); a citizen is never asked to supply or capture them here. */
 async function apply(req, res, next) {
   try {
     if (!req.user.citizenId) return res.status(403).json({ error: 'A verified identity is required to apply for a driving licence.' });
     const citizenId = req.user.citizenId;
     const b = req.body;
-    const { applicationType, preferredOfficeId, biometricsSource } = b;
+    const { applicationType, preferredOfficeId } = b;
     if (!['New', 'Renewal', 'Replacement'].includes(applicationType)) {
       return res.status(400).json({ error: "applicationType must be 'New', 'Renewal', or 'Replacement'." });
     }
@@ -298,8 +331,8 @@ async function apply(req, res, next) {
     if (!categoryResolution.ok) return res.status(400).json({ error: categoryResolution.error });
     const licenceCategory = categoryResolution.category;
 
-    const capture = await resolveIdentityCapture(citizenId, biometricsSource, b);
-    if (!capture.ok) return res.status(400).json({ error: capture.error });
+    const capture = await resolveIdentityCapture(citizenId);
+    if (!capture.ok) return res.status(409).json({ error: capture.error });
 
     const referenceNumber = generateReference('TR');
     const client = await db.getClient();
@@ -315,7 +348,7 @@ async function apply(req, res, next) {
          VALUES ($1,$2,$3,'Submitted',$4,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
          RETURNING traffic_record_id`,
         [citizenId, referenceNumber, serviceType, preferredOfficeId,
-          capture.photoReference, capture.biometricReferenceLeft, capture.biometricReferenceRight, biometricsSource,
+          capture.photoReference, capture.biometricReferenceLeft, capture.biometricReferenceRight, 'id',
           linkedLearnerPermitId, surrenderStatus, renewalDamaged, renewalDamageProofReference,
           replacementReason, previousLicenceNumber, reportedLostAt,
           licenceCategory, b.paymentReference, b.receiptImageReference]
@@ -551,10 +584,13 @@ const generic = makeDepartmentController({
   officerRoleKey: 'traffic_officer',
   refPrefix: 'TR',
   serviceTypes: SERVICE_TYPES,
+  // Batch 29: photo_reference/biometric_reference_left/biometric_reference_right are deliberately
+  // NOT here any more — they're always resolved server-side from the citizen's National ID
+  // capture (resolveIdentityCapture, used only by apply() above) and must never be settable
+  // through resubmit's generic "whatever the body sends" field list, or a citizen could use
+  // resubmit as a side door to self-supply a biometric reference apply() would never have let
+  // them send in the first place.
   extraInsertFields: [
-    { column: 'photo_reference', fromBody: 'photoReference' },
-    { column: 'biometric_reference_left', fromBody: 'biometricReferenceLeft' },
-    { column: 'biometric_reference_right', fromBody: 'biometricReferenceRight' },
     { column: 'renewal_damage_proof_reference', fromBody: 'damageProofReference' },
     { column: 'payment_reference', fromBody: 'paymentReference' },
     { column: 'receipt_image_reference', fromBody: 'receiptImageReference' },

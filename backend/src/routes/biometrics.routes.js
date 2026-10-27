@@ -5,7 +5,8 @@ const bc = require('../controllers/biometrics.controller');
 const router = express.Router();
 router.use(requireAuth);
 
-router.post('/enroll', bc.enrollHand);
+// POST /enroll (citizen self-enrolment) removed in Batch 29 — see biometrics.controller.js's
+// removal note. Hand biometrics are now only ever captured officer-administered, in person.
 router.get('/status', bc.getBiometricStatus);
 
 module.exports = router;

@@ -8,8 +8,6 @@ import DataTable from '../../components/ui/DataTable';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Modal from '../../components/ui/Modal';
 import DistrictOfficeSelect from '../../components/DistrictOfficeSelect';
-import PhotoCapture from '../../components/PhotoCapture';
-import BiometricCapture from '../../components/BiometricCapture';
 import DocumentCapture from '../../components/DocumentCapture';
 import ReceiptCapture from '../../components/ReceiptCapture';
 import SignaturePad from '../../components/SignaturePad';
@@ -37,6 +35,15 @@ import { formatDateOnly } from '../../utils/format';
 // information) already lives right on this row; the card itself — photo, signature, full bio-data
 // — is citizen-only, enforced both here (no link) and on the backend (getOne rejects any role but
 // the owning citizen and system_administrator).
+//
+// Batch 29: "the biomatrix must be captured once during id application so everywhere they are
+// need they used reuse that one ... remove that biomatric required when capturing driving license
+// ... there is no self biomatric captured" — this form used to offer a choice between reusing the
+// citizen's National ID photo/fingerprints or scanning fresh ones right here. That "capture new"
+// choice is gone: the identity capture is now ALWAYS the one already on file from National ID
+// enrolment (resolved server-side — see drivingLicence.controller.js), and a citizen whose
+// National ID capture isn't complete yet is told to go complete that first, never handed a camera
+// here instead.
 const NEXT = {
   'Submitted': { action: 'confirm-payment', labelKey: 'traffic.drivingLicence.confirmPayment' },
   'Ready for Collection': { action: 'collect', labelKey: 'common.collect' },
@@ -53,10 +60,6 @@ export default function DrivingLicence() {
 
   const [applicationType, setApplicationType] = useState('New');
   const [preferredOfficeId, setPreferredOfficeId] = useState('');
-  const [biometricsSource, setBiometricsSource] = useState(''); // '' | 'id' | 'new'
-  const [photoReference, setPhotoReference] = useState(null);
-  const [biometricReferenceLeft, setBiometricReferenceLeft] = useState(null);
-  const [biometricReferenceRight, setBiometricReferenceRight] = useState(null);
   const [renewalDamaged, setRenewalDamaged] = useState(false);
   const [damageProofReference, setDamageProofReference] = useState('');
   const [replacementReason, setReplacementReason] = useState('');
@@ -90,10 +93,6 @@ export default function DrivingLicence() {
 
   function resetForm() {
     setPreferredOfficeId('');
-    setBiometricsSource('');
-    setPhotoReference(null);
-    setBiometricReferenceLeft(null);
-    setBiometricReferenceRight(null);
     setRenewalDamaged(false);
     setDamageProofReference('');
     setReplacementReason('');
@@ -119,10 +118,13 @@ export default function DrivingLicence() {
   const renewalCategoryKnown = applicationType === 'Renewal' && !!eligibility?.currentLicence?.licenceCategory;
   const categorySelectRequired = applicationType === 'New' || (applicationType === 'Renewal' && !renewalCategoryKnown);
 
+  // Batch 29: the identity capture is no longer something this form collects at all — it's
+  // always the citizen's own National ID capture, reused server-side. submitDisabled only needs
+  // to know WHETHER one is on file (eligibility.idCaptureAvailable); if it isn't, the whole form
+  // is replaced by a blocking notice below rather than this flag ever mattering.
   const submitDisabled =
     !preferredOfficeId ||
-    (eligibility?.idCaptureAvailable ? !biometricsSource || (biometricsSource === 'new' && (!photoReference || !biometricReferenceLeft || !biometricReferenceRight))
-      : (!photoReference || !biometricReferenceLeft || !biometricReferenceRight)) ||
+    !eligibility?.idCaptureAvailable ||
     (applicationType === 'New' && !canApplyNew) ||
     (applicationType === 'Renewal' && currentLicenceNotExpired && (!renewalDamaged || !damageProofReference)) ||
     (applicationType === 'Replacement' && (!replacementReason || !previousLicenceNumber.trim() ||
@@ -137,10 +139,6 @@ export default function DrivingLicence() {
     try {
       await api.post('/traffic/driving-licence/apply', {
         applicationType, preferredOfficeId,
-        biometricsSource: eligibility?.idCaptureAvailable ? biometricsSource : 'new',
-        photoReference: biometricsSource === 'id' ? undefined : photoReference,
-        biometricReferenceLeft: biometricsSource === 'id' ? undefined : biometricReferenceLeft,
-        biometricReferenceRight: biometricsSource === 'id' ? undefined : biometricReferenceRight,
         licenceCategory: licenceCategory || undefined,
         paymentReference: receipt.paymentReference.trim(),
         receiptImageReference: receipt.receiptImageReference,
@@ -320,36 +318,18 @@ export default function DrivingLicence() {
                 </>
               )}
 
-              {applicationType === 'New' && !canApplyNew ? null : (
+              {applicationType === 'New' && !canApplyNew ? null : !eligibility.idCaptureAvailable ? (
+                // Batch 29: no more "capture new" fallback here — a citizen without a complete
+                // National ID photo/fingerprint capture on file is sent to go complete that first,
+                // never handed a camera on this form instead.
+                <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-gov-amber">
+                  ⚠ {t('traffic.drivingLicence.idCaptureRequiredNotice')}
+                </p>
+              ) : (
                 <>
-                  {eligibility.idCaptureAvailable ? (
-                    <div className="mb-4 rounded-md border border-dashed border-slate-300 p-4">
-                      <p className="mb-2 text-sm font-medium text-slate-700">{t('traffic.drivingLicence.biometricsChoice.label')}</p>
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                        <label className="flex flex-1 cursor-pointer items-start gap-2 rounded-md border border-slate-200 p-3 text-sm">
-                          <input type="radio" name="biometricsSource" className="mt-1" checked={biometricsSource === 'id'} onChange={() => setBiometricsSource('id')} />
-                          <span className="font-medium">{t('traffic.drivingLicence.biometricsChoice.reuseId')}</span>
-                        </label>
-                        <label className="flex flex-1 cursor-pointer items-start gap-2 rounded-md border border-slate-200 p-3 text-sm">
-                          <input type="radio" name="biometricsSource" className="mt-1" checked={biometricsSource === 'new'} onChange={() => setBiometricsSource('new')} />
-                          <span className="font-medium">{t('traffic.drivingLicence.biometricsChoice.captureNew')}</span>
-                        </label>
-                      </div>
-                      {biometricsSource === 'new' && (
-                        <>
-                          <PhotoCapture value={photoReference} onChange={setPhotoReference} help={t('photoCapture.idHelp')} faceCheck />
-                          <BiometricCapture value={biometricReferenceLeft} onChange={setBiometricReferenceLeft} label={t('biometricCapture.leftHandLabel')} help={t('biometricCapture.scanHint')} hand="left" enrollSource="Driving Licence" />
-                          <BiometricCapture value={biometricReferenceRight} onChange={setBiometricReferenceRight} label={t('biometricCapture.rightHandLabel')} help={t('biometricCapture.scanHint')} hand="right" enrollSource="Driving Licence" />
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      <PhotoCapture value={photoReference} onChange={setPhotoReference} help={t('photoCapture.idHelp')} faceCheck />
-                      <BiometricCapture value={biometricReferenceLeft} onChange={setBiometricReferenceLeft} label={t('biometricCapture.leftHandLabel')} help={t('biometricCapture.scanHint')} hand="left" enrollSource="Driving Licence" />
-                      <BiometricCapture value={biometricReferenceRight} onChange={setBiometricReferenceRight} label={t('biometricCapture.rightHandLabel')} help={t('biometricCapture.scanHint')} hand="right" enrollSource="Driving Licence" />
-                    </>
-                  )}
+                  <p className="mb-4 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                    ℹ {t('traffic.drivingLicence.idCaptureReusedNotice')}
+                  </p>
 
                   <ReceiptCapture value={receipt} onChange={setReceipt} help={t('traffic.drivingLicence.paymentNotice')} />
 
