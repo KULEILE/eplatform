@@ -65,7 +65,8 @@
     "copied": "Copied",
     "citizen": "Citizen",
     "backTo": "Back to {{department}}",
-    "remove": "Remove"
+    "remove": "Remove",
+    "eligibilityConfirmed": "You are eligible for this service."
   },
   "nav": {
     "home": "Home",
@@ -379,7 +380,8 @@
     "Dispute Upheld": "Dispute Upheld",
     "Dispute Dismissed": "Dispute Dismissed",
     "Not Applicable": "Not Applicable",
-    "Published": "Published"
+    "Published": "Published",
+    "Physically Inspected": "Physically Inspected"
   },
   "statusHelp": {
     "Draft": "You haven't submitted this yet.",
@@ -971,19 +973,14 @@
       "learnerPermit": "Learner Permit",
       "publicDrivingPermit": "Public Driving Permit",
       "testBookings": "Driving Theory / Practical Test",
-      "vehicleRegistration": "Vehicle Registration",
-      "vehicleRegistrationImported": "Vehicle Registration (Imported / SADC)",
-      "vehicleRegistrationSecondHand": "Vehicle Registration (Second-Hand, Local)",
+      "vehicleRegistration": "Vehicle Registration (New / Imported / Second-Hand)",
       "vehicleTransfer": "Vehicle Transfer",
       "numberPlate": "Vehicle Number Plate",
-      "temporaryPermit": "Temporary Permit (Awaiting Registration)",
       "inspection": "Roadworthiness Test & Certificate of Fitness",
-      "transportPermitNew": "Transport Operating Permit",
-      "transportPermitRenew": "Transport Operating Permit Renewal",
-      "licenceDiscApply": "Vehicle Licence Disc",
-      "licenceDiscRenew": "Vehicle Licence Disc Renewal",
       "instructors": "Driving Instructor & Examiner Certification",
-      "applicationTracking": "My Applications"
+      "applicationTracking": "My Applications",
+      "transportPermit": "Transport Operating Permit (New / Renewal)",
+      "licenceDisc": "Vehicle Licence Disc (Apply / Renew)"
     },
     "Driving Licence Replacement": "Driving Licence Replacement",
     "Public Driving Permit": "Public Driving Permit",
@@ -1038,14 +1035,26 @@
       }
     },
     "vehicleRegistrationForm": {
-      "title": "Vehicle Registration"
+      "title": "Vehicle Registration",
+      "field": {
+        "preferredOffice": "Traffic office you will bring the vehicle to"
+      },
+      "confirmPhysicalInspection": "Confirm physical inspection",
+      "physicalInspectionNotesLabel": "What did you check? (chassis/engine numbers, condition)",
+      "physicalInspectionNotice": "Once submitted, bring the vehicle to your chosen traffic office. An officer must physically inspect it and confirm the chassis and engine numbers before your registration can be approved."
     },
     "vehicleRegistrationImportedForm": {
       "title": "Vehicle Registration (Imported / SADC)",
       "field": {
         "originCountry": "Country the vehicle was imported from",
         "importProof": "Proof of purchase / import document",
-        "importProofHelp": "A photo of the import/customs document or purchase receipt."
+        "importProofHelp": "A photo of the import/customs document or purchase receipt.",
+        "customsClearance": "Customs clearance reference (Form CE 11)",
+        "customsClearanceHelp": "The reference number from your customs clearance certificate.",
+        "importTaxProof": "Proof of import VAT / tax payment",
+        "importTaxProofHelp": "A photo of your VAT/import duty payment receipt.",
+        "policeClearance": "Police clearance reference",
+        "policeClearanceHelp": "A photo of your CID/Interpol/SARPCC police clearance confirming the vehicle is not reported stolen."
       }
     },
     "vehicleRegistrationSecondHandForm": {
@@ -1066,7 +1075,8 @@
         "reason": "Reason for request",
         "personalisedText": "Personalised plate text",
         "personalisedTextHelp": "Required only if your reason is ‘Personalised’."
-      }
+      },
+      "newPlateAutoNotice": "A brand new plate is no longer requested here — it is generated automatically once your Temporary Permit (issued when your vehicle registration is approved) expires after 21 days. Use this form only for a lost, damaged, or personalised plate."
     },
     "plateRequestReason": {
       "new": "New",

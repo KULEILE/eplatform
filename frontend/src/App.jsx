@@ -55,17 +55,18 @@ import DrivingLicenceDocument from './pages/traffic/DrivingLicenceDocument';
 // read-only status content now lives inside DrivingTestBookings.jsx instead. See TrafficHub.jsx.
 import PublicDrivingPermit from './pages/traffic/PublicDrivingPermit';
 import DrivingTestBookings from './pages/traffic/DrivingTestBookings';
+// Batch 30: VehicleRegistrationImported.jsx, VehicleRegistrationSecondHand.jsx,
+// TransportPermitNew.jsx, TransportPermitRenew.jsx, VehicleLicenceDiscApply.jsx,
+// VehicleLicenceDiscRenew.jsx, and TemporaryPermit.jsx were all removed — each pair of
+// duplicate/related pages is now one consolidated page (VehicleRegistration.jsx,
+// TransportPermit.jsx, VehicleLicenceDisc.jsx) with a type selector, and Temporary Permit is no
+// longer citizen-facing (it's now auto-created on registration approval). See TrafficHub.jsx.
 import VehicleRegistration from './pages/traffic/VehicleRegistration';
-import VehicleRegistrationImported from './pages/traffic/VehicleRegistrationImported';
-import VehicleRegistrationSecondHand from './pages/traffic/VehicleRegistrationSecondHand';
 import VehicleTransfer from './pages/traffic/VehicleTransfer';
 import VehicleNumberPlate from './pages/traffic/VehicleNumberPlate';
-import TemporaryPermit from './pages/traffic/TemporaryPermit';
 import VehicleInspection from './pages/traffic/VehicleInspection';
-import TransportPermitNew from './pages/traffic/TransportPermitNew';
-import TransportPermitRenew from './pages/traffic/TransportPermitRenew';
-import VehicleLicenceDiscApply from './pages/traffic/VehicleLicenceDiscApply';
-import VehicleLicenceDiscRenew from './pages/traffic/VehicleLicenceDiscRenew';
+import TransportPermit from './pages/traffic/TransportPermit';
+import VehicleLicenceDisc from './pages/traffic/VehicleLicenceDisc';
 import DrivingInstructors from './pages/traffic/DrivingInstructors';
 import Finance from './pages/finance/Finance';
 import GovernmentEmployment from './pages/finance/GovernmentEmployment';
@@ -160,16 +161,11 @@ export default function App() {
         <Route path="/traffic/public-driving-permit" element={<ProtectedRoute><PublicDrivingPermit /></ProtectedRoute>} />
         <Route path="/traffic/test-bookings" element={<ProtectedRoute><DrivingTestBookings /></ProtectedRoute>} />
         <Route path="/traffic/vehicle-registration" element={<ProtectedRoute><VehicleRegistration /></ProtectedRoute>} />
-        <Route path="/traffic/vehicle-registration/imported" element={<ProtectedRoute><VehicleRegistrationImported /></ProtectedRoute>} />
-        <Route path="/traffic/vehicle-registration/second-hand" element={<ProtectedRoute><VehicleRegistrationSecondHand /></ProtectedRoute>} />
         <Route path="/traffic/vehicle-transfer" element={<ProtectedRoute><VehicleTransfer /></ProtectedRoute>} />
         <Route path="/traffic/number-plate" element={<ProtectedRoute><VehicleNumberPlate /></ProtectedRoute>} />
-        <Route path="/traffic/temporary-permit" element={<ProtectedRoute><TemporaryPermit /></ProtectedRoute>} />
         <Route path="/traffic/inspections" element={<ProtectedRoute><VehicleInspection /></ProtectedRoute>} />
-        <Route path="/traffic/transport-permits/new" element={<ProtectedRoute><TransportPermitNew /></ProtectedRoute>} />
-        <Route path="/traffic/transport-permits/renew" element={<ProtectedRoute><TransportPermitRenew /></ProtectedRoute>} />
-        <Route path="/traffic/licence-disc/apply" element={<ProtectedRoute><VehicleLicenceDiscApply /></ProtectedRoute>} />
-        <Route path="/traffic/licence-disc/renew" element={<ProtectedRoute><VehicleLicenceDiscRenew /></ProtectedRoute>} />
+        <Route path="/traffic/transport-permits" element={<ProtectedRoute><TransportPermit /></ProtectedRoute>} />
+        <Route path="/traffic/licence-disc" element={<ProtectedRoute><VehicleLicenceDisc /></ProtectedRoute>} />
         <Route path="/traffic/instructors" element={<ProtectedRoute><DrivingInstructors /></ProtectedRoute>} />
         <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
         <Route path="/finance/government-employment" element={<ProtectedRoute><GovernmentEmployment /></ProtectedRoute>} />

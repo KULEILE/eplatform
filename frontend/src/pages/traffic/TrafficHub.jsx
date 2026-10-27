@@ -14,17 +14,18 @@ const SERVICES = [
   // lives as a section of the "testBookings" page instead — see DrivingTestBookings.jsx.
   { key: 'publicDrivingPermit', to: '/traffic/public-driving-permit', icon: '🚐', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
   { key: 'testBookings', to: '/traffic/test-bookings', icon: '📝', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
+  // Batch 30 — "do not duplicate the services ... its renewal they must in one place": New,
+  // Imported/SADC and Second-Hand registration are one tile/page now (VehicleRegistration.jsx),
+  // same for Transport Permit's New/Renewal and Vehicle Licence Disc's Application/Renewal.
+  // "temporaryPermit" tile is gone entirely — a Temporary Permit is no longer something a citizen
+  // applies for; it's auto-created when a registration is approved and auto-converts to a
+  // permanent Number Plate after its 21-day validity (see traffic.controller.js).
   { key: 'vehicleRegistration', to: '/traffic/vehicle-registration', icon: '🚗', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
-  { key: 'vehicleRegistrationImported', to: '/traffic/vehicle-registration/imported', icon: '🚢', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
-  { key: 'vehicleRegistrationSecondHand', to: '/traffic/vehicle-registration/second-hand', icon: '🚙', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
   { key: 'vehicleTransfer', to: '/traffic/vehicle-transfer', icon: '🔑', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
   { key: 'numberPlate', to: '/traffic/number-plate', icon: '🔢', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
-  { key: 'temporaryPermit', to: '/traffic/temporary-permit', icon: '⏳', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
   { key: 'inspection', to: '/traffic/inspections', icon: '🔧', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
-  { key: 'transportPermitNew', to: '/traffic/transport-permits/new', icon: '🚚', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
-  { key: 'transportPermitRenew', to: '/traffic/transport-permits/renew', icon: '📦', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
-  { key: 'licenceDiscApply', to: '/traffic/licence-disc/apply', icon: '🏷️', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
-  { key: 'licenceDiscRenew', to: '/traffic/licence-disc/renew', icon: '🏷️', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
+  { key: 'transportPermit', to: '/traffic/transport-permits', icon: '🚚', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
+  { key: 'licenceDisc', to: '/traffic/licence-disc', icon: '🏷️', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
   { key: 'instructors', to: '/traffic/instructors', icon: '🎓', roles: ['traffic_officer', 'system_administrator'] },
   { key: 'applicationTracking', to: '/applications', icon: '📊', roles: ['citizen', 'traffic_officer', 'system_administrator'] },
 ];

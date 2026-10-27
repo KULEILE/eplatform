@@ -1026,6 +1026,15 @@ async function rejectTestBooking(req, res, next) {
 // ROADWORTHINESS TEST & CERTIFICATE OF FITNESS (COF)
 // ============================================================================================
 
+// Batch 30 — "car fitness need physical attendance so that officer can check they citizen can not
+// obtain fitness certificate without taking car to traffic". Confirmed against Lesotho's own
+// published roadworthy-certificate procedure (wikiprocedure.com's Lesotho Vehicle Roadworthy
+// Certificate page): the vehicle itself must be taken to the test centre, form T.C. 12 filled
+// there — this was never modelled before; the flow only ever reviewed documents. This controller
+// is dedicated to exactly one service type, so — unlike traffic.controller.js's shared factory,
+// where 'process' is also used by several OTHER service types and had to be left alone —
+// 'process' itself can simply be repointed to start from the new 'Physically Inspected' status:
+// there's no other service type sharing this statusFlow that it could collide with.
 const vehicleInspectionsController = makeDepartmentController({
   table: 'vehicle_inspections',
   idColumn: 'vehicle_inspection_id',
@@ -1036,7 +1045,7 @@ const vehicleInspectionsController = makeDepartmentController({
   finalStatuses: ['Rejected', 'Approved'], // Approved IS the end state here — no physical collection step
   beforeApply: async (req) => {
     if (!req.body.vehicleRegistrationNumber) return { error: 'vehicleRegistrationNumber is required.' };
-    if (!req.body.officeId) return { error: 'officeId is required — choose an inspection centre.' };
+    if (!req.body.officeId) return { error: 'officeId is required — choose an inspection centre (the same office the vehicle must be physically brought to).' };
     if (!(await citizenHasApprovedTrafficRecord(req.user.citizenId, 'vehicle_registration_number', req.body.vehicleRegistrationNumber))) {
       return { error: 'No registered vehicle with that registration number was found on your record.' };
     }
@@ -1049,7 +1058,18 @@ const vehicleInspectionsController = makeDepartmentController({
   statusFlow: {
     'start-review': { from: 'Submitted', to: 'Under Review' },
     'check-documents': { from: 'Under Review', to: 'Documents Checked' },
-    'process': { from: 'Documents Checked', to: 'Processing' },
+    'confirm-physical-inspection': {
+      from: 'Documents Checked', to: 'Physically Inspected',
+      extra: (record, req) => {
+        const notes = (req.body.officerResponse || '').trim();
+        if (!notes) return { error: 'Inspection notes are required — confirm the vehicle was physically brought in for testing (form T.C. 12) and record the result.' };
+        return {
+          setSql: `physical_inspection_confirmed_at = NOW(), physical_inspection_confirmed_by_user_id = $3, physical_inspection_notes = $4`,
+          params: [req.user.userId, notes],
+        };
+      },
+    },
+    'process': { from: 'Physically Inspected', to: 'Processing' },
     'approve': {
       from: 'Processing', to: 'Approved',
       extra: () => ({

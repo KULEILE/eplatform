@@ -65,7 +65,8 @@
     "copied": "E kopitsweng",
     "citizen": "Moahi",
     "backTo": "Khutlela ho {{department}}",
-    "remove": "Tlosa"
+    "remove": "Tlosa",
+    "eligibilityConfirmed": "U tshwanelehile bakeng sa tshebeletso ena."
   },
   "nav": {
     "home": "Lapeng",
@@ -379,7 +380,8 @@
     "Dispute Upheld": "Kgohlano e tshehetswe",
     "Dispute Dismissed": "Kgohlano e hanywe",
     "Not Applicable": "Ha e sebetse",
-    "Published": "E phatlalalitsoe"
+    "Published": "E phatlalalitsoe",
+    "Physically Inspected": "E Hlahlobisitsoe ka 'Mele"
   },
   "statusHelp": {
     "Draft": "Ha o e so e romele.",
@@ -971,19 +973,14 @@
       "learnerPermit": "Laesense ea Seithuti",
       "publicDrivingPermit": "Laesense ea ho Khanna Lipalangoang tsa Sechaba",
       "testBookings": "Tlhahlobo ea Thiori / Ketso ea ho Khanna",
-      "vehicleRegistration": "Ngoliso ea Koloi",
-      "vehicleRegistrationImported": "Ngoliso ea Koloi (e Tliselitsoeng / SADC)",
-      "vehicleRegistrationSecondHand": "Ngoliso ea Koloi e Sebelisitsoeng (Lefatseng)",
+      "vehicleRegistration": "Ngoliso ea Koloi (e Ncha / e Tliselitsoeng / e Sebelisitsoeng)",
       "vehicleTransfer": "Phetisetso ea Koloi",
       "numberPlate": "Poleiti ea Nomoro ea Koloi",
-      "temporaryPermit": "Tumello ea Nakoana (e Ntse e Emela Ngoliso)",
       "inspection": "Tlhahlobo ea Koloi le Setifikeiti sa Tsela",
-      "transportPermitNew": "Tumello ea ho Tsamaisa Lipalangoang",
-      "transportPermitRenew": "Nchafatso ea Tumello ea ho Tsamaisa Lipalangoang",
-      "licenceDiscApply": "Disk ea Laesense ea Koloi",
-      "licenceDiscRenew": "Nchafatso ea Disk ea Laesense ea Koloi",
       "instructors": "Boitlhahiso ba Barupeli le Bahlahlobi ba ho Khanna",
-      "applicationTracking": "Likopo tsa Ka"
+      "applicationTracking": "Likopo tsa Ka",
+      "transportPermit": "Tumello ea ho Tsamaisa Lipalangoang (e Ncha / Nchafatso)",
+      "licenceDisc": "Disk ea Laesense ea Koloi (Kopa / Nchafatsa)"
     },
     "Driving Licence Replacement": "Nchafatso ea Laesense e Lahlehileng",
     "Public Driving Permit": "Laesense ea ho Khanna Lipalangoang tsa Sechaba",
@@ -1038,14 +1035,26 @@
       }
     },
     "vehicleRegistrationForm": {
-      "title": "Ngoliso ea Koloi"
+      "title": "Ngoliso ea Koloi",
+      "field": {
+        "preferredOffice": "Ofisi ea sephethephethe eo u tla tlisa koloi ho eona"
+      },
+      "confirmPhysicalInspection": "Netefatsa tlhahlobo ea ‘mele’",
+      "physicalInspectionNotesLabel": "U hlahlobile eng? (linomoro tsa chassis/enjene, boemo)",
+      "physicalInspectionNotice": "Hang ha u romella, tlisa koloi ofising ea sephethephethe eo u e khethileng. Molaoli o tlameha ho hlahloba koloi ka ‘mele’ a netefatse linomoro tsa chassis le enjene pele ngoliso ea hau e ka amoheloa."
     },
     "vehicleRegistrationImportedForm": {
       "title": "Ngoliso ea Koloi (e Tliselitsoeng / SADC)",
       "field": {
         "originCountry": "Naha eo koloi e tliselitsoeng ho tsoa ho eona",
         "importProof": "Bopaki ba ho reka / tokomane ea ho tlisa",
-        "importProofHelp": "Setšoantšo sa tokomane ea customs kapa resiti ea thekiso."
+        "importProofHelp": "Setšoantšo sa tokomane ea customs kapa resiti ea thekiso.",
+        "customsClearance": "Nomoro ea bopaki ba customs (Form CE 11)",
+        "customsClearanceHelp": "Nomoro ea bopaki e tsoang setifikeiti sa hau sa customs.",
+        "importTaxProof": "Bopaki ba tefo ea VAT / lekhetho la ho tlisa",
+        "importTaxProofHelp": "Setšoántsšo sa resiti ea hau ea tefo ea VAT/lekhetho.",
+        "policeClearance": "Nomoro ea bopaki ba sepolesa",
+        "policeClearanceHelp": "Setšoántsšo sa bopaki ba sepolesa (CID/Interpol/SARPCC) bo netefatsang hore koloi ha e tlalehoe e utsoitsoe."
       }
     },
     "vehicleRegistrationSecondHandForm": {
@@ -1066,7 +1075,8 @@
         "reason": "Lebaka la kopo",
         "personalisedText": "Mantsoe a poleiti e khethehileng",
         "personalisedTextHelp": "E hlokahala feela haeba lebaka la hau le ‘E Khethehileng’."
-      }
+      },
+      "newPlateAutoNotice": "Poleiti e ncha e sa hlole e koptjoa mona — e hlahisoa ka boeona hang ha Tumello ea Hau ea Nakoana (e fanoang ha ngoliso ea koloi e amoheloa) e felile ka matsatsi a 21. Sebelisa foromo ena feela bakeng sa poleiti e lahlehileng, e senyehileng, kapa e khethehileng."
     },
     "plateRequestReason": {
       "new": "E Ncha",

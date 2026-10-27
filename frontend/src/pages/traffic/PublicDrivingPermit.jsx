@@ -21,7 +21,17 @@ const TRANSITIONS = {
  *  made this form hand the citizen a camera to self-capture a fresh photo and hand scan every
  *  time; the photo and both-hand fingerprints are now always the ones already on file from the
  *  citizen's National ID capture, resolved server-side in traffic.controller.js's beforeApply —
- *  this form never asks for them, on first application or on a resubmission. */
+ *  this form never asks for them, on first application or on a resubmission.
+ *
+ *  Batch 30 — "the pdp citizen must be at least 21 year have to two year of experience driving
+ *  ... the system must check how long does the citizen hold her license and if is less than two
+ *  year they are not qualifying for pdp": as soon as the citizen types in the licence number this
+ *  permit would be issued against, DepartmentServicePage's eligibilityCheck debounces a call to
+ *  GET /traffic/public-driving-permit/eligibility (traffic.controller.js's getPdpEligibility,
+ *  which checks age and licence-tenure server-side against the citizen's own record — never
+ *  trusting a client-sent age or date) and shows the result right there, before they can submit —
+ *  the backend's beforeApply still enforces this independently either way, so this is purely
+ *  "tell them now, not after a wasted trip to the office". */
 export default function PublicDrivingPermit() {
   const { t } = useLanguage();
   const config = {
@@ -36,6 +46,7 @@ export default function PublicDrivingPermit() {
       { name: 'existingLicenceNumber', type: 'text', required: true, label: t('traffic.publicDrivingPermitForm.field.existingLicenceNumber'), help: t('traffic.publicDrivingPermitForm.field.existingLicenceNumberHelp') },
       { name: 'preferredOfficeId', type: 'office', required: true },
     ],
+    eligibilityCheck: { fieldName: 'existingLicenceNumber', url: '/traffic/public-driving-permit/eligibility' },
     transitions: TRANSITIONS,
   };
   return <DepartmentServicePage config={config} />;

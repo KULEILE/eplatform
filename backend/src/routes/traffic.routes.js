@@ -70,6 +70,13 @@ router.get('/instructors', c2.listDrivingInstructors);
 router.get('/instructors/:id', c2.getDrivingInstructor);
 router.post('/instructors/:id/status', c2.updateDrivingInstructorStatus);
 
+// Batch 30 — registered before the generic '/:id/:action' catch-all below for the same
+// route-ordering reason as everything else in this file: a two-segment literal path must come
+// first or it gets swallowed by '/:id/:action' with id='public-driving-permit' or
+// id='sweep-temporary-permits'.
+router.get('/public-driving-permit/eligibility', c.getPdpEligibility);
+router.post('/sweep-temporary-permits', c.sweepTemporaryPermitsRoute);
+
 // Original five service types plus the eight added in migration 042, all on traffic_records.
 router.post('/apply', c.apply);
 router.get('/', c.list);
