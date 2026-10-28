@@ -8,6 +8,7 @@ import DataTable from '../../components/ui/DataTable';
 import StatusBadge from '../../components/ui/StatusBadge';
 import FormField from '../../components/ui/FormField';
 import EmptyState from '../../components/ui/EmptyState';
+import Modal from '../../components/ui/Modal';
 
 const OFFICER_ROLE_OPTIONS = ['home_affairs_officer', 'traffic_officer', 'finance_officer', 'pensions_officer', 'police_officer', 'passport_officer'];
 const DEPT_FOR_ROLE = {
@@ -41,11 +42,20 @@ export default function AdminUsers() {
   const [users, setUsers] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [offices, setOffices] = useState([]);
-  const [form, setForm] = useState({ username: '', email: '', phone: '', roleKey: isScopedAdmin ? DEPT_FOR_ROLE_KEY(currentDepartmentKey) : 'branch_admin', departmentKey: '', officeId: '' });
+  const [form, setForm] = useState({ username: '', email: '', phone: '', roleKey: isScopedAdmin ? DEPT_FOR_ROLE_KEY(currentDepartmentKey) : 'branch_admin', departmentKey: '', officeId: '', permanentIdentityNumber: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState(null); // { username, email, temporaryPassword }
   const [copied, setCopied] = useState(false);
+  // "the system must automatically mark officers as government employees" — linking an
+  // existing account to a citizen identity does that (see admin.controller.js's
+  // linkEmployeeCitizen). System Administrator only, same as the create form's own optional
+  // link field below.
+  const isSystemAdmin = user.roleKey === 'system_administrator';
+  const [linkTarget, setLinkTarget] = useState(null); // { user_id, username }
+  const [linkPin, setLinkPin] = useState('');
+  const [linkError, setLinkError] = useState('');
+  const [linkBusy, setLinkBusy] = useState(false);
 
   function DEPT_FOR_ROLE_KEY(deptKey) {
     return OFFICER_ROLE_OPTIONS.find((r) => DEPT_FOR_ROLE[r] === deptKey) || OFFICER_ROLE_OPTIONS[0];
@@ -78,10 +88,13 @@ export default function AdminUsers() {
         payload.departmentKey = form.roleKey === 'branch_admin' ? form.departmentKey : DEPT_FOR_ROLE[form.roleKey];
         payload.officeId = form.officeId || undefined;
       }
+      if (form.roleKey !== 'citizen' && form.permanentIdentityNumber.trim()) {
+        payload.permanentIdentityNumber = form.permanentIdentityNumber.trim();
+      }
       const result = await api.post('/admin/users', payload);
       setCreated({ username: result.user.username, email: result.user.email, temporaryPassword: result.temporaryPassword });
       setCopied(false);
-      setForm((f) => ({ ...f, username: '', email: '', phone: '', officeId: '' }));
+      setForm((f) => ({ ...f, username: '', email: '', phone: '', officeId: '', permanentIdentityNumber: '' }));
       load();
     } catch (err) {
       setError(err.message);
@@ -164,6 +177,12 @@ export default function AdminUsers() {
               </select>
             </FormField>
           )}
+
+          {form.roleKey !== 'citizen' && (
+            <FormField label={t('admin.linkCitizen.fieldLabel')} htmlFor="permanentIdentityNumber" help={t('admin.linkCitizen.fieldHelp')}>
+              <input id="permanentIdentityNumber" className="form-input" value={form.permanentIdentityNumber} onChange={(e) => setForm((f) => ({ ...f, permanentIdentityNumber: e.target.value }))} />
+            </FormField>
+          )}
         </div>
 
         <p className="mb-4 rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-800">ℹ {t('admin.tempPasswordNotice')}</p>
@@ -196,6 +215,16 @@ export default function AdminUsers() {
             { key: 'office_name', header: t('offices.branch'), render: (r) => r.office_name || '—' },
             { key: 'account_status', header: t('admin.accountStatus'), render: (r) => <StatusBadge status={r.account_status} /> },
             { key: 'must_change_password', header: t('admin.passwordStatus'), render: (r) => r.must_change_password ? <span className="text-xs font-medium text-gov-amber">⚠ {t('admin.temporaryPassword')}</span> : <span className="text-xs text-slate-400">—</span> },
+            ...(isSystemAdmin ? [{
+              key: 'employeeLink', header: t('admin.linkCitizen.columnHeader'),
+              render: (r) => r.role_key === 'citizen' ? '—' : r.citizen_id ? (
+                <span className="text-xs font-medium text-gov-green">✓ {t('admin.linkCitizen.linked')}</span>
+              ) : (
+                <button type="button" className="text-xs font-medium text-gov-navy hover:underline" onClick={() => { setLinkTarget(r); setLinkPin(''); setLinkError(''); }}>
+                  {t('admin.linkCitizen.action')}
+                </button>
+              ),
+            }] : []),
             {
               key: 'actions', header: t('common.actions'),
               render: (r) => (
@@ -207,6 +236,32 @@ export default function AdminUsers() {
           ]}
         />
       )}
+
+      <Modal open={!!linkTarget} onClose={() => setLinkTarget(null)} title={t('admin.linkCitizen.action')}
+        footer={<>
+          <button type="button" className="btn-secondary" onClick={() => setLinkTarget(null)}>{t('common.cancel')}</button>
+          <button type="button" className="btn-primary" disabled={linkBusy || !linkPin.trim()} onClick={linkCitizen}>{t('common.confirm')}</button>
+        </>}>
+        {linkError && <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-gov-red" role="alert">⚠ {linkError}</p>}
+        <p className="mb-3 text-sm text-slate-600">{t('admin.linkCitizen.modalHelp', { username: linkTarget?.username || '' })}</p>
+        <FormField label={t('auth.permanentIdentityNumber')} htmlFor="linkPin">
+          <input id="linkPin" className="form-input" value={linkPin} onChange={(e) => setLinkPin(e.target.value)} />
+        </FormField>
+      </Modal>
     </div>
   );
+
+  async function linkCitizen() {
+    setLinkBusy(true);
+    setLinkError('');
+    try {
+      await api.post(`/admin/users/${linkTarget.user_id}/link-citizen`, { permanentIdentityNumber: linkPin.trim() });
+      setLinkTarget(null);
+      load();
+    } catch (err) {
+      setLinkError(err.message || t('common.somethingWentWrong'));
+    } finally {
+      setLinkBusy(false);
+    }
+  }
 }

@@ -1,7 +1,6 @@
 const express = require('express');
 const { requireAuth } = require('../middleware/auth');
 const c = require('../controllers/finance.controller');
-const pub = require('../controllers/financePublications.controller');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -13,10 +12,20 @@ router.get('/', c.list);
 router.get('/government-employment/:permanentIdentityNumber', c.lookupGovernmentEmployment);
 router.post('/government-employment/declare', c.declareGovernmentEmployee);
 
-// Budget documents and tender announcements — also registered before the '/:id' routes.
-router.get('/publications', pub.listPublications);
-router.post('/publications', pub.uploadPublicationFile, pub.createPublication);
-router.patch('/publications/:publicationId', pub.setPublicationActive);
+// Retirement benefits tracking (service #2) and Budget/Tender publications (service #5) — both
+// registered before the generic '/:id' routes below for the same reason as
+// government-employment above.
+router.get('/retirement-tracking', c.retirementTracking);
+router.get('/publications', c.listPublications);
+router.post('/publications', c.createPublication);
+router.patch('/publications/:id/active', c.setPublicationActive);
+
+// Employee roster and payroll — registered before the generic '/:id' routes below for the same
+// reason as government-employment/retirement-tracking/publications above.
+router.get('/employees', c.listEmployees);
+router.patch('/employees/:citizenId/salary', c.setEmployeeSalary);
+router.post('/employees/:citizenId/pay', c.paySalary);
+router.get('/employees/:citizenId/payments', c.listSalaryPayments);
 
 router.get('/:id', c.getOne);
 router.post('/:id/resubmit', c.resubmit);

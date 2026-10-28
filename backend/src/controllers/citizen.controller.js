@@ -23,7 +23,9 @@ async function getProfile(req, res, next) {
     const { rows } = await db.query(
       `SELECT citizen_id, permanent_identity_number, first_name, middle_name, last_name,
               date_of_birth, place_of_birth, sex, citizenship_status, biometric_status,
-              identity_verification_status, is_deceased, created_at
+              identity_verification_status, is_deceased, created_at,
+              government_employment_status, employee_category, monthly_salary,
+              bank_name, bank_account_holder_name, bank_account_number, bank_branch_name, bank_details_updated_at
        FROM citizens WHERE citizen_id = $1`,
       [req.user.citizenId]
     );

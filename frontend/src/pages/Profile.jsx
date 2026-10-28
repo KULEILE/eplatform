@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { api } from '../api/client';
@@ -7,12 +8,20 @@ import Loading from '../components/ui/Loading';
 import StatusBadge from '../components/ui/StatusBadge';
 import { formatDateOnly } from '../utils/format';
 
+function maskAccountNumber(number) {
+  if (!number) return '';
+  const digits = String(number);
+  if (digits.length <= 4) return digits;
+  return '•'.repeat(digits.length - 4) + digits.slice(-4);
+}
+
 export default function Profile() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [biometricStatus, setBiometricStatus] = useState(null);
+  const [revealBank, setRevealBank] = useState(false);
 
   useEffect(() => {
     if (user.roleKey === 'citizen') {
@@ -60,6 +69,36 @@ export default function Profile() {
               <Link to="/home-affairs/corrections" className="btn-secondary mt-4 inline-flex">{t('homeAffairs.correction')}</Link>
             </div>
           ) : null}
+        </div>
+      )}
+
+      {user.roleKey === 'citizen' && profile?.citizen && (
+        <div className="card mt-4">
+          <h2 className="mb-3 font-semibold text-slate-800">{t('finance.bankDetails.onFileTitle')}</h2>
+          {profile.citizen.government_employment_status && profile.citizen.government_employment_status !== 'Not Applicable' && (
+            <p className="mb-3 text-sm text-slate-600">
+              {t('finance.employment.statusLabel')}: <span className="font-medium">{t(`finance.employmentStatus.${profile.citizen.government_employment_status}`)}</span>
+            </p>
+          )}
+          {profile.citizen.bank_account_number ? (
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><dt className="text-xs text-slate-500">{t('finance.bankDetails.field.bankName')}</dt><dd className="font-medium">{profile.citizen.bank_name}</dd></div>
+              <div><dt className="text-xs text-slate-500">{t('finance.bankDetails.field.bankAccountHolderName')}</dt><dd className="font-medium">{profile.citizen.bank_account_holder_name}</dd></div>
+              <div>
+                <dt className="text-xs text-slate-500">{t('finance.bankDetails.field.bankAccountNumber')}</dt>
+                <dd className="flex items-center gap-2 font-mono font-medium">
+                  {revealBank ? profile.citizen.bank_account_number : maskAccountNumber(profile.citizen.bank_account_number)}
+                  <button type="button" className="text-gov-navy" onClick={() => setRevealBank((r) => !r)}>
+                    {revealBank ? <EyeSlashIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                  </button>
+                </dd>
+              </div>
+              <div><dt className="text-xs text-slate-500">{t('finance.bankDetails.field.bankBranchName')}</dt><dd className="font-medium">{profile.citizen.bank_branch_name}</dd></div>
+            </dl>
+          ) : (
+            <p className="text-sm text-slate-500">{t('finance.bankDetails.noneOnFile')}</p>
+          )}
+          <Link to="/finance/bank-details" className="btn-secondary mt-4 inline-flex">{t('finance.bankDetails.title')}</Link>
         </div>
       )}
 

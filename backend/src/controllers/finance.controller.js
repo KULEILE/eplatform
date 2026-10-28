@@ -3,13 +3,28 @@ const { makeDepartmentController } = require('../utils/simpleDepartmentControlle
 const { getDepartmentId } = require('../utils/lookup');
 const { recordAudit } = require('../utils/audit');
 const { createNotification } = require('../utils/notify');
+const { checkDuplicateSubmission } = require('../utils/duplicateSubmissionGuard');
 
 const RETIREMENT_SERVICE_TYPE = 'Government Employee Retirement Declaration';
 const SUPPLIER_PAYMENT_SERVICE_TYPE = 'Government Supplier Payment Tracking';
 const COMPLAINT_SERVICE_TYPE = 'Finance Complaint or Enquiry';
+const PAYMENT_INFO_SERVICE_TYPE = 'Payment Information Update';
 const EMPLOYEE_CATEGORIES = ['General Civil Servant', 'Uniformed/Disciplined Services'];
 const RETIREMENT_REASONS = ['Standard', 'Ill-health', 'Medical Boarding', 'Compulsory Retirement', 'Redundancy', 'Other'];
 const CIVIL_SERVICE_PENSION_CLAIM = 'Civil Service Pension Claim';
+const ISSUE_CATEGORIES = ['Salary Issue', 'Bank Details Issue', 'Pension Issue', 'Supplier Payment Issue', 'Tax Issue', 'Other'];
+const FINANCE_FINAL_STATUSES = ['Rejected', 'Completed', 'Paid'];
+
+// "the citizen must not allowed to submit many claim unless other one is rejected" — see
+// duplicateSubmissionGuard.js for what 'claim' vs 'recurring' means. Government Supplier
+// Payment Tracking is deliberately left out of this map: a supplier submits one of these per
+// invoice, so many open ones at once over time is normal business, not a duplicate claim.
+const FINANCE_DUPLICATE_RULES = {
+  [RETIREMENT_SERVICE_TYPE]: 'claim',
+  [PAYMENT_INFO_SERVICE_TYPE]: 'recurring',
+  'Financial Records Correction': 'recurring',
+  [COMPLAINT_SERVICE_TYPE]: 'recurring',
+};
 
 /** A retirement declaration needs a reason category, a reason-details note when the reason is
  *  'Other', the supporting document (an opaque upload — never parsed for content, same as every
@@ -17,10 +32,23 @@ const CIVIL_SERVICE_PENSION_CLAIM = 'Civil Service Pension Claim';
  *  government employee (if Finance has them wrong, that's what the corrections mechanism is
  *  for — see corrections.controller.js — not a path to self-declare retirement). */
 async function beforeApply(req) {
+  const serviceType = req.body.serviceType;
+
+  // "the citizen must not allowed to submit many claim unless other one is rejected" — checked
+  // up front, before any of the per-type validation below, so it applies uniformly regardless
+  // of which service type was picked.
+  if (FINANCE_DUPLICATE_RULES[serviceType]) {
+    const dupError = await checkDuplicateSubmission({
+      table: 'finance_records', citizenId: req.user.citizenId, serviceType,
+      mode: FINANCE_DUPLICATE_RULES[serviceType], finalStatuses: FINANCE_FINAL_STATUSES,
+    });
+    if (dupError) return { status: 409, error: dupError };
+  }
+
   // Government Supplier Payment Tracking: a real invoice, not a bare service type — same reasoning
   // as every other required-field check in this system, enforced server-side so it can't be
   // bypassed by calling the API directly.
-  if (req.body.serviceType === SUPPLIER_PAYMENT_SERVICE_TYPE) {
+  if (serviceType === SUPPLIER_PAYMENT_SERVICE_TYPE) {
     const { supplierName, invoiceNumber, invoiceAmount } = req.body;
     if (!supplierName || !supplierName.trim()) return { status: 400, error: 'supplierName is required.' };
     if (!invoiceNumber || !invoiceNumber.trim()) return { status: 400, error: 'invoiceNumber is required.' };
@@ -30,14 +58,34 @@ async function beforeApply(req) {
     return null;
   }
 
-  if (req.body.serviceType === COMPLAINT_SERVICE_TYPE) {
+  if (serviceType === COMPLAINT_SERVICE_TYPE) {
     if (!req.body.complaintText || !req.body.complaintText.trim()) {
       return { status: 400, error: 'complaintText is required.' };
+    }
+    // "when citizen have issues must select sub finance eg. health, education and many other" —
+    // a category on top of the complaint, not a new department (this system's six departments
+    // are fixed). Defaults to 'Other' rather than rejecting, so an older client that doesn't
+    // send it yet still works.
+    if (req.body.issueCategory && !ISSUE_CATEGORIES.includes(req.body.issueCategory)) {
+      return { status: 400, error: `issueCategory must be one of: ${ISSUE_CATEGORIES.join(', ')}` };
     }
     return null;
   }
 
-  if (req.body.serviceType !== RETIREMENT_SERVICE_TYPE) return null;
+  // "the citizen must be able to provide their bank details and correct them later if thy
+  // change banks" — real, structured bank fields, reviewed by an officer the same way every
+  // other official record change in this system is (see afterTransition below, which copies
+  // these onto citizens.bank_* only once an officer approves the application).
+  if (serviceType === PAYMENT_INFO_SERVICE_TYPE) {
+    const { bankName, bankAccountHolderName, bankAccountNumber, bankBranchName } = req.body;
+    if (!bankName || !bankName.trim()) return { status: 400, error: 'bankName is required.' };
+    if (!bankAccountHolderName || !bankAccountHolderName.trim()) return { status: 400, error: 'bankAccountHolderName is required.' };
+    if (!bankAccountNumber || !bankAccountNumber.trim()) return { status: 400, error: 'bankAccountNumber is required.' };
+    if (!bankBranchName || !bankBranchName.trim()) return { status: 400, error: 'bankBranchName is required.' };
+    return null;
+  }
+
+  if (serviceType !== RETIREMENT_SERVICE_TYPE) return null;
   const { retirementReason, retirementReasonDetails, retirementDocumentReference } = req.body;
   if (!RETIREMENT_REASONS.includes(retirementReason)) {
     return { status: 400, error: `retirementReason must be one of: ${RETIREMENT_REASONS.join(', ')}` };
@@ -62,15 +110,31 @@ async function beforeApply(req) {
  *  to Retired — this is what actually grants Civil Service Pension eligibility later (see
  *  pensions.controller.js), never the declaration's submission itself. */
 async function afterTransition(client, record, toStatus, req) {
-  if (record.service_type !== RETIREMENT_SERVICE_TYPE || toStatus !== 'Completed') return;
-  await client.query(
-    `UPDATE citizens SET government_employment_status = 'Retired', retirement_reason = $1, retirement_reason_details = $2, updated_at = NOW() WHERE citizen_id = $3`,
-    [record.retirement_reason, record.retirement_reason_details, record.citizen_id]
-  );
-  await recordAudit({
-    userId: req.user.userId, departmentId: await getDepartmentId('finance'), action: 'GOVERNMENT_EMPLOYEE_RETIRED',
-    targetType: 'citizen', targetId: record.citizen_id, reason: record.retirement_reason,
-  });
+  if (record.service_type === RETIREMENT_SERVICE_TYPE && toStatus === 'Completed') {
+    await client.query(
+      `UPDATE citizens SET government_employment_status = 'Retired', retirement_reason = $1, retirement_reason_details = $2, updated_at = NOW() WHERE citizen_id = $3`,
+      [record.retirement_reason, record.retirement_reason_details, record.citizen_id]
+    );
+    await recordAudit({
+      userId: req.user.userId, departmentId: await getDepartmentId('finance'), action: 'GOVERNMENT_EMPLOYEE_RETIRED',
+      targetType: 'citizen', targetId: record.citizen_id, reason: record.retirement_reason,
+    });
+    return;
+  }
+
+  // On approval of a Payment Information Update, what the citizen submitted on this
+  // application becomes what is actually on file for paying them — never before an officer has
+  // reviewed it (see the required-field checks in beforeApply above).
+  if (record.service_type === PAYMENT_INFO_SERVICE_TYPE && toStatus === 'Completed') {
+    await client.query(
+      `UPDATE citizens SET bank_name = $1, bank_account_holder_name = $2, bank_account_number = $3, bank_branch_name = $4, bank_details_updated_at = NOW(), updated_at = NOW() WHERE citizen_id = $5`,
+      [record.bank_name, record.bank_account_holder_name, record.bank_account_number, record.bank_branch_name, record.citizen_id]
+    );
+    await recordAudit({
+      userId: req.user.userId, departmentId: await getDepartmentId('finance'), action: 'CITIZEN_BANK_DETAILS_UPDATED',
+      targetType: 'citizen', targetId: record.citizen_id,
+    });
+  }
 }
 
 const controller = makeDepartmentController({
@@ -83,7 +147,7 @@ const controller = makeDepartmentController({
   // placeholders with no real logic — see Finance.jsx). Kept out of this allow-list too, so a
   // direct API call can't submit either even though the UI no longer offers them.
   serviceTypes: [
-    'Payment Information Update',
+    PAYMENT_INFO_SERVICE_TYPE,
     'Financial Records Correction', RETIREMENT_SERVICE_TYPE, SUPPLIER_PAYMENT_SERVICE_TYPE, COMPLAINT_SERVICE_TYPE,
   ],
   extraInsertFields: [
@@ -96,8 +160,13 @@ const controller = makeDepartmentController({
     { column: 'invoice_date', fromBody: 'invoiceDate' },
     { column: 'evidence_reference', fromBody: 'evidenceReference' },
     { column: 'complaint_text', fromBody: 'complaintText' },
+    { column: 'issue_category', fromBody: 'issueCategory' },
+    { column: 'bank_name', fromBody: 'bankName' },
+    { column: 'bank_account_holder_name', fromBody: 'bankAccountHolderName' },
+    { column: 'bank_account_number', fromBody: 'bankAccountNumber' },
+    { column: 'bank_branch_name', fromBody: 'bankBranchName' },
   ],
-  finalStatuses: ['Rejected', 'Completed', 'Paid'],
+  finalStatuses: FINANCE_FINAL_STATUSES,
   beforeApply,
   afterTransition,
   statusFlow: {
@@ -303,7 +372,106 @@ async function setPublicationActive(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// ============================================================================================
+// EMPLOYEE ROSTER AND PAYROLL — "it must show all employee and those who are still alive and
+// those who are dead and finance department should pay this employee." Unlike
+// lookupGovernmentEmployment above (one citizen at a time, by design — see its own comment),
+// this IS a browsable roster, deliberately: it is the citizen's own explicit, repeated request
+// for "a full real system", confirmed after I flagged the reversal. It lists every officer/
+// admin ACCOUNT (users.role_key != 'citizen'), not only citizens who happen to have applied for
+// something, which is also why an account with no linked citizen identity still shows up here
+// (flagged, not hidden) — see migration 080's note #5 on why most officer accounts start out
+// this way and admin.controller.js's linkEmployeeCitizen for how a system administrator fixes
+// that for an existing account.
+// ============================================================================================
+
+const EMPLOYEE_ROLES_CLAUSE = `r.role_key != 'citizen'`;
+
+/** GET /api/finance/employees — officer/admin only. */
+async function listEmployees(req, res, next) {
+  try {
+    if (!['finance_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
+    const { rows } = await db.query(
+      `SELECT u.user_id, u.username, u.email, u.account_status, r.role_key, r.display_name AS role_name,
+              d.name AS department_name, o.name AS office_name,
+              c.citizen_id, c.first_name, c.last_name, c.permanent_identity_number, c.is_deceased,
+              c.government_employment_status, c.employee_category, c.monthly_salary,
+              c.bank_name, c.bank_account_holder_name, c.bank_account_number, c.bank_branch_name
+       FROM users u
+       JOIN roles r ON r.role_id = u.role_id
+       LEFT JOIN departments d ON d.department_id = u.department_id
+       LEFT JOIN offices o ON o.office_id = u.office_id
+       LEFT JOIN citizens c ON c.citizen_id = u.citizen_id
+       WHERE ${EMPLOYEE_ROLES_CLAUSE}
+       ORDER BY (c.citizen_id IS NULL), c.government_employment_status = 'Active' DESC, u.created_at DESC`
+    );
+    res.json({ employees: rows });
+  } catch (err) { next(err); }
+}
+
+/** PATCH /api/finance/employees/:citizenId/salary  body: { monthlySalary } — officer/admin
+ *  only. Only settable for a currently active employee — matches declareGovernmentEmployee's
+ *  own "employment status is the gate" reasoning above. */
+async function setEmployeeSalary(req, res, next) {
+  try {
+    if (!['finance_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
+    const { monthlySalary } = req.body;
+    if (monthlySalary === undefined || monthlySalary === null || monthlySalary === '' || Number.isNaN(Number(monthlySalary)) || Number(monthlySalary) < 0) {
+      return res.status(400).json({ error: 'monthlySalary is required and must be zero or a positive number.' });
+    }
+    const { rows } = await db.query('SELECT government_employment_status FROM citizens WHERE citizen_id = $1', [req.params.citizenId]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Citizen record not found.' });
+    if (rows[0].government_employment_status !== 'Active') {
+      return res.status(409).json({ error: 'A salary can only be set for an active government employee.' });
+    }
+    await db.query('UPDATE citizens SET monthly_salary = $1, updated_at = NOW() WHERE citizen_id = $2', [monthlySalary, req.params.citizenId]);
+    await recordAudit({ userId: req.user.userId, departmentId: await getDepartmentId('finance'), action: 'EMPLOYEE_SALARY_SET', targetType: 'citizen', targetId: req.params.citizenId, metadata: { monthlySalary } });
+    res.json({ citizenId: Number(req.params.citizenId), monthlySalary: Number(monthlySalary) });
+  } catch (err) { next(err); }
+}
+
+/** POST /api/finance/employees/:citizenId/pay  body: { payPeriod: 'YYYY-MM', reference? }
+ *  officer/admin only. A real (simulated) payment event — amount comes from citizens.
+ *  monthly_salary, never from the request body, so Finance can't be asked to pay an arbitrary
+ *  figure that doesn't match what was actually set on record. */
+async function paySalary(req, res, next) {
+  try {
+    if (!['finance_officer', 'system_administrator'].includes(req.user.roleKey)) return res.status(403).json({ error: 'Officer only.' });
+    const { payPeriod, reference } = req.body;
+    if (!/^\d{4}-\d{2}$/.test(payPeriod || '')) return res.status(400).json({ error: "payPeriod is required, in 'YYYY-MM' format." });
+    const { rows } = await db.query('SELECT citizen_id, government_employment_status, monthly_salary FROM citizens WHERE citizen_id = $1', [req.params.citizenId]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Citizen record not found.' });
+    const citizen = rows[0];
+    if (citizen.government_employment_status !== 'Active') return res.status(409).json({ error: 'Only an active government employee can be paid.' });
+    if (!citizen.monthly_salary) return res.status(409).json({ error: 'Set a monthly salary for this employee before recording a payment.' });
+    try {
+      const { rows: payRows } = await db.query(
+        `INSERT INTO salary_payments (citizen_id, pay_period, amount, reference, paid_by_user_id) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+        [citizen.citizen_id, payPeriod, citizen.monthly_salary, reference || null, req.user.userId]
+      );
+      await recordAudit({ userId: req.user.userId, departmentId: await getDepartmentId('finance'), action: 'SALARY_PAID', targetType: 'citizen', targetId: citizen.citizen_id, metadata: { payPeriod, amount: citizen.monthly_salary } });
+      const userRow = (await db.query('SELECT user_id FROM users WHERE citizen_id = $1', [citizen.citizen_id])).rows[0];
+      if (userRow) await createNotification({ userId: userRow.user_id, title: 'Salary paid', message: `Your salary for ${payPeriod} has been paid.`, type: 'Approval' });
+      res.status(201).json({ payment: payRows[0] });
+    } catch (err) {
+      if (err.code === '23505') return res.status(409).json({ error: `This employee has already been paid for ${payPeriod}.` });
+      throw err;
+    }
+  } catch (err) { next(err); }
+}
+
+/** GET /api/finance/employees/:citizenId/payments — officer/admin, or the employee themselves. */
+async function listSalaryPayments(req, res, next) {
+  try {
+    const isOfficer = ['finance_officer', 'system_administrator'].includes(req.user.roleKey);
+    if (!isOfficer && req.user.citizenId !== Number(req.params.citizenId)) return res.status(403).json({ error: 'Not authorized.' });
+    const { rows } = await db.query('SELECT * FROM salary_payments WHERE citizen_id = $1 ORDER BY pay_period DESC', [req.params.citizenId]);
+    res.json({ payments: rows });
+  } catch (err) { next(err); }
+}
+
 module.exports = {
   ...controller, lookupGovernmentEmployment, declareGovernmentEmployee,
   retirementTracking, listPublications, createPublication, setPublicationActive,
+  listEmployees, setEmployeeSalary, paySalary, listSalaryPayments,
 };

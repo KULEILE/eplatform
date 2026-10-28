@@ -66,7 +66,8 @@
     "citizen": "Citizen",
     "backTo": "Back to {{department}}",
     "remove": "Remove",
-    "eligibilityConfirmed": "You are eligible for this service."
+    "eligibilityConfirmed": "You are eligible for this service.",
+    "show": "Show"
   },
   "nav": {
     "home": "Home",
@@ -1431,7 +1432,8 @@
       "intro": "Submit a complaint or an enquiry about a Finance service. You will receive a reference number and an officer's response.",
       "field": {
         "complaintText": "Your complaint or enquiry",
-        "evidence": "Supporting document (optional)"
+        "evidence": "Supporting document (optional)",
+        "issueCategory": "What is this about?"
       },
       "officerResponseLabel": "Officer's response",
       "noResponseYet": "No response yet — this will appear here once an officer reviews your submission."
@@ -1503,6 +1505,42 @@
       "reject": "Reject",
       "disburse": "Mark Disbursed",
       "disburseConfirm": "Confirm that these funds have been disbursed to the branch office."
+    },
+    "bankDetails": {
+      "title": "Bank Details",
+      "onFileTitle": "Bank details on file",
+      "noneOnFile": "No bank details are on file yet. Submit the form below to add them.",
+      "field": {
+        "bankName": "Bank name",
+        "bankAccountHolderName": "Account holder name",
+        "bankAccountNumber": "Account number",
+        "bankBranchName": "Branch name"
+      }
+    },
+    "issueCategory": {
+      "Salary Issue": "Salary issue",
+      "Bank Details Issue": "Bank details issue",
+      "Pension Issue": "Pension issue",
+      "Supplier Payment Issue": "Supplier payment issue",
+      "Tax Issue": "Tax issue",
+      "Other": "Other"
+    },
+    "employees": {
+      "title": "Employee Roster & Payroll",
+      "intro": "Every officer and administrator account, whether or not it is yet linked to a verified citizen identity. Finance pays active employees here once a monthly salary is on record.",
+      "notLinked": "Not linked to a citizen identity",
+      "lifeStatus": "Life status",
+      "alive": "Alive",
+      "deceased": "Deceased",
+      "salary": "Monthly salary",
+      "setSalary": "Set salary",
+      "pay": "Pay",
+      "payConfirm": "This will record a payment of M {amount} for this employee.",
+      "payPeriod": "Pay period",
+      "payReference": "Reference",
+      "history": "Payment history",
+      "noPayments": "No payments have been recorded yet.",
+      "linkHelp": "Ask a System Administrator to link this account to a citizen identity first."
     }
   },
   "pensions": {
@@ -1524,6 +1562,15 @@
       },
       "officerResponseLabel": "Officer's response",
       "noResponseYet": "No response yet — this will appear here once an officer reviews your enquiry."
+    },
+    "payments": {
+      "title": "Pension Payments",
+      "intro": "Approved pensioners, with totals. A pensioner drops off this list automatically if Home Affairs records their death.",
+      "totalPensioners": "Citizens earning a pension",
+      "totalPaid": "Total paid to date",
+      "monthlyAmount": "Monthly amount",
+      "setAmount": "Set amount",
+      "pay": "Pay"
     }
   },
   "correction": {
@@ -1862,7 +1909,15 @@
     "officeAddress": "Address",
     "saveChanges": "Save changes",
     "noOfficesYet": "No branch offices have been created yet. Use the form above to open the first one.",
-    "staffCount": "Staff"
+    "staffCount": "Staff",
+    "linkCitizen": {
+      "fieldLabel": "Link to citizen identity (optional)",
+      "fieldHelp": "Enter the employee’s own permanent identity number to mark them a government employee immediately.",
+      "columnHeader": "Employee identity",
+      "linked": "Linked",
+      "action": "Link citizen",
+      "modalHelp": "Link {username}’s account to their citizen identity. This marks them an active government employee."
+    }
   },
   "appointments": {
     "title": "Appointments",

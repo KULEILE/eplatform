@@ -15,7 +15,10 @@ const config = {
   // removed from the citizen-facing options. Left in finance.controller.js's history-rendering
   // path (and the locale files) untouched, so any already-submitted application of either type
   // still displays correctly — only new applications can no longer choose them.
-  serviceTypes: ['Payment Information Update', 'Financial Records Correction'],
+  // Batch 40 — Payment Information Update moved out to its own page (BankDetails.jsx), the same
+  // way Government Employee Retirement Declaration already has its own page, because it needs
+  // its own structured bank fields and its own "what's on file" display.
+  serviceTypes: ['Financial Records Correction'],
   transitions: {
     'Submitted': { action: 'start-review', labelKey: 'status.Under Review' },
     'Under Review': { action: 'verify-identity', labelKey: 'status.Identity Verified' },
@@ -32,6 +35,7 @@ export default function Finance() {
   // the explicit answer "leave it with Finance Officer" — not the new Department Finance
   // Administrator. Shown only to the officers who review/approve/disburse them.
   const canReviewBudgetRequests = ['finance_officer', 'system_administrator'].includes(user.roleKey);
+  const isFinanceOfficer = ['finance_officer', 'system_administrator'].includes(user.roleKey);
   return (
     <div>
       <div className="mb-6 flex flex-wrap gap-4 text-sm">
@@ -40,6 +44,9 @@ export default function Finance() {
         </Link>
         <Link to="/finance/retirement-tracking" className="font-medium text-gov-navy hover:underline">
           📋 {t('finance.retirementTracking.title')}
+        </Link>
+        <Link to="/finance/bank-details" className="font-medium text-gov-navy hover:underline">
+          🏦 {t('finance.bankDetails.title')}
         </Link>
         <Link to="/finance/supplier-payments" className="font-medium text-gov-navy hover:underline">
           💰 {t('finance.supplierPayment.title')}
@@ -56,6 +63,11 @@ export default function Finance() {
         {canReviewBudgetRequests && (
           <Link to="/finance/budget-requests" className="font-medium text-gov-navy hover:underline">
             🏦 {t('finance.budgetRequests.title')}
+          </Link>
+        )}
+        {isFinanceOfficer && (
+          <Link to="/finance/employees" className="font-medium text-gov-navy hover:underline">
+            👥 {t('finance.employees.title')}
           </Link>
         )}
       </div>

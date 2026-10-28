@@ -1,12 +1,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import DepartmentServicePage from '../../components/DepartmentServicePage';
 
-// 'Pension Status Enquiry' now has its own page (PensionEnquiry.jsx) where the citizen types
-// their question and sees the officer's answer, so it is no longer offered in the generic form.
-const ENQUIRY_TYPE = 'Pension Status Enquiry';
-
+// 'Pension Status Enquiry' has its own dedicated page (PensionEnquiry.jsx) — same precedent as
+// GovernmentEmployment.jsx being split out of Finance.jsx — because it needs config.responseField
+// and the 'respond-enquiry' text-collecting action, which don't make sense alongside this
+// generic multi-type form.
 const config = {
   apiBase: '/pensions',
   idColumn: 'pension_record_id',
@@ -14,8 +15,6 @@ const config = {
   serviceTypeNs: 'pensions',
   officerRoleKey: 'pensions_officer',
   serviceTypes: ['New Pension Enrolment', 'Proof of Life Verification', 'Beneficiary Correction', 'Pension Age Eligibility Claim', 'Civil Service Pension Claim'],
-  listFilter: (r) => r.service_type !== ENQUIRY_TYPE,
-  finalStatuses: ['Rejected', 'Completed', 'Stopped (Deceased)'],
   transitions: {
     'Submitted': { action: 'start-review', labelKey: 'status.Under Review' },
     'Under Review': { action: 'verify-identity', labelKey: 'status.Identity Verified' },
@@ -29,12 +28,20 @@ const config = {
 };
 
 export default function Pensions() {
+  const { user } = useAuth();
   const { t } = useLanguage();
+  const isOfficer = ['pensions_officer', 'system_administrator'].includes(user.roleKey);
   return (
     <div>
-      <div className="mb-6 flex flex-wrap gap-x-6 gap-y-3 text-sm">
-        <Link to="/pensions/enquiry" className="font-medium text-gov-navy hover:underline">💬 {t('pensions.enquiry.title')}</Link>
-        <Link to="/finance/retirement-tracking" className="font-medium text-gov-navy hover:underline">📈 {t('finance.retirementTracking.title')}</Link>
+      <div className="mb-6 flex flex-wrap gap-4 text-sm">
+        <Link to="/pensions/enquiry" className="font-medium text-gov-navy hover:underline">
+          ❓ {t('pensions.enquiry.title')}
+        </Link>
+        {isOfficer && (
+          <Link to="/pensions/payments" className="font-medium text-gov-navy hover:underline">
+            💰 {t('pensions.payments.title')}
+          </Link>
+        )}
       </div>
       <DepartmentServicePage config={config} />
     </div>

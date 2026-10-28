@@ -22,6 +22,12 @@ const requireAccountManager = requireRole('system_administrator', 'branch_admin'
 router.get('/users', requireAccountManager, admin.listUsers);
 router.post('/users', requireAccountManager, admin.createUser);
 router.patch('/users/:id', requireAccountManager, admin.updateUser);
+// System Administrator only — retroactively links an existing officer/admin account to a
+// citizen identity (see admin.controller.js's linkEmployeeCitizen doc comment). Kept out of
+// requireAccountManager deliberately: unlike status/role/office changes, this attaches a real
+// civil identity to a login, which is a more sensitive action than branch-level account
+// management should need to grant.
+router.post('/users/:id/link-citizen', requireAdmin, admin.linkEmployeeCitizen);
 
 router.get('/audit', requireAdmin, admin.listAuditLogs);
 router.get('/departments', requireAdmin, admin.listDepartments);

@@ -66,7 +66,8 @@
     "citizen": "Moahi",
     "backTo": "Khutlela ho {{department}}",
     "remove": "Tlosa",
-    "eligibilityConfirmed": "U tshwanelehile bakeng sa tshebeletso ena."
+    "eligibilityConfirmed": "U tshwanelehile bakeng sa tshebeletso ena.",
+    "show": "Bontša"
   },
   "nav": {
     "home": "Lapeng",
@@ -1431,7 +1432,8 @@
       "intro": "Romela pletso kapa potso mabapi le tshebeletso ya Ditjhelete. O tla fumana nomoro ya tshupiso le karabo ya lepolesa.",
       "field": {
         "complaintText": "Pletso kapa potso ya hao",
-        "evidence": "Tokomane ya tshehetso (ha e le teng)"
+        "evidence": "Tokomane ya tshehetso (ha e le teng)",
+        "issueCategory": "Sena se mabapi le eng?"
       },
       "officerResponseLabel": "Karabo ya ofisiri",
       "noResponseYet": "Ha ho na karabo ho fihlela jwale — e tla hlaha mona hang ha ofisiri a hlahloba kopo ya hao."
@@ -1503,6 +1505,42 @@
       "reject": "Hana",
       "disburse": "Tšoaea e Fanoe",
       "disburseConfirm": "Netefatsa hore chelete ena e fanoe ofisi ea lekala."
+    },
+    "bankDetails": {
+      "title": "Lintlha tsa Panka",
+      "onFileTitle": "Lintlha tsa panka tse ngolisitsoeng",
+      "noneOnFile": "Ha ho na lintlha tsa panka tse ngolisitsoeng. Tlatsa foromo e ka tlase ho li kenya.",
+      "field": {
+        "bankName": "Lebitso la panka",
+        "bankAccountHolderName": "Lebitso la mong’a akhaonto",
+        "bankAccountNumber": "Nomoro ya akhaonto",
+        "bankBranchName": "Lebitso la lekala"
+      }
+    },
+    "issueCategory": {
+      "Salary Issue": "Taba ya moputso",
+      "Bank Details Issue": "Taba ya lintlha tsa panka",
+      "Pension Issue": "Taba ya penjene",
+      "Supplier Payment Issue": "Taba ya tefo ya mofani",
+      "Tax Issue": "Taba ya lekhetho",
+      "Other": "Tse ling"
+    },
+    "employees": {
+      "title": "Lethathamo la Basebetsi le Meputso",
+      "intro": "Akhaonto e nngwe le e nngwe ya liofisiri le batsamaisi, hore na e amahanngwe le boitsebahatso ba moahi bo netefatsitsoeng kapa ha ho joalo. Lefapha la Tjhelete le lefa basebetsi ba sebetsang moputso o ngolisitsoeng kwano.",
+      "notLinked": "Ha e amahanngwe le boitsebahatso ba moahi",
+      "lifeStatus": "Boemo ba bophelo",
+      "alive": "O phela",
+      "deceased": "O hlokahetse",
+      "salary": "Moputso wa khoeli",
+      "setSalary": "Beha moputso",
+      "pay": "Lefa",
+      "payConfirm": "Sena se tla ngolisa tefo ya M {amount} bakeng sa mosebetsi enoa.",
+      "payPeriod": "Nako ya tefo",
+      "payReference": "Tšupiso",
+      "history": "Histori ya litefo",
+      "noPayments": "Ha ho litefo tse kileng tsa ngolisoa.",
+      "linkHelp": "Kopa Motsamaisi wa Sistimi ho amahanya akhaonto ena le boitsebahatso ba moahi pele."
     }
   },
   "pensions": {
@@ -1524,6 +1562,15 @@
       },
       "officerResponseLabel": "Karabo ya ofisiri",
       "noResponseYet": "Ha ho na karabo ho fihlela jwale — e tla hlaha mona hang ha ofisiri a hlahloba potso ya hao."
+    },
+    "payments": {
+      "title": "Litefo tsa Penjene",
+      "intro": "Bafumani-penjene ba amohetsoeng, hammoho le kakaretso. Mofumani-penjene o tlosoa lethathamong hang ha Lefapha la Merero ya Lapeng le ngolisa lefu la hae.",
+      "totalPensioners": "Baahi ba fumanang penjene",
+      "totalPaid": "Kakaretso e lefshitsoeng",
+      "monthlyAmount": "Chelete ya khoeli",
+      "setAmount": "Beha chelete",
+      "pay": "Lefa"
     }
   },
   "correction": {
@@ -1862,7 +1909,15 @@
     "officeAddress": "Aterese",
     "saveChanges": "Boloka diphetoho",
     "noOfficesYet": "Ha ho na mafapha a mosebetsi a thehilweng ho fihlela hona jwale. Sebedisa foromo e kaholimo ho bula la pele.",
-    "staffCount": "Basebetsi"
+    "staffCount": "Basebetsi",
+    "linkCitizen": {
+      "fieldLabel": "Amahanya le boitsebahatso ba moahi (ha e hlokahale)",
+      "fieldHelp": "Kenya nomoro ya boitsebahatso ya mosebetsi ho mo beha mosebetsi oa ’muso hang-hang.",
+      "columnHeader": "Boitsebahatso ba mosebetsi",
+      "linked": "E amahantsoe",
+      "action": "Amahanya moahi",
+      "modalHelp": "Amahanya akhaonto ya {username} le boitsebahatso ba hae ba moahi. Sena se mo beha mosebetsi oa ’muso o sebetsang."
+    }
   },
   "appointments": {
     "title": "Dikopano",

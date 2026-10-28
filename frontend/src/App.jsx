@@ -83,8 +83,11 @@ import RetirementTracking from './pages/finance/RetirementTracking';
 import BudgetAndTenders from './pages/finance/BudgetAndTenders';
 import ReportFinancialIssue from './pages/finance/ReportFinancialIssue';
 import FinanceBudgetRequests from './pages/finance/FinanceBudgetRequests';
+import BankDetails from './pages/finance/BankDetails';
+import EmployeeRoster from './pages/finance/EmployeeRoster';
 import Pensions from './pages/pensions/Pensions';
 import PensionEnquiry from './pages/pensions/PensionEnquiry';
+import PensionPayments from './pages/pensions/PensionPayments';
 import Police from './pages/police/Police';
 import PoliceHub from './pages/police/PoliceHub';
 import NationalIdBiometricCapture from './pages/police/NationalIdBiometricCapture';
@@ -196,8 +199,11 @@ export default function App() {
         <Route path="/finance/complaints" element={<ProtectedRoute><FinanceComplaint /></ProtectedRoute>} />
         <Route path="/finance/retirement-tracking" element={<ProtectedRoute><RetirementTracking /></ProtectedRoute>} />
         <Route path="/finance/publications" element={<ProtectedRoute><BudgetAndTenders /></ProtectedRoute>} />
+        <Route path="/finance/bank-details" element={<ProtectedRoute><BankDetails /></ProtectedRoute>} />
+        <Route path="/finance/employees" element={<ProtectedRoute roles={['finance_officer', 'system_administrator']}><EmployeeRoster /></ProtectedRoute>} />
         <Route path="/pensions" element={<ProtectedRoute><Pensions /></ProtectedRoute>} />
         <Route path="/pensions/enquiry" element={<ProtectedRoute><PensionEnquiry /></ProtectedRoute>} />
+        <Route path="/pensions/payments" element={<ProtectedRoute roles={['pensions_officer', 'system_administrator']}><PensionPayments /></ProtectedRoute>} />
         <Route path="/police" element={<ProtectedRoute><PoliceHub /></ProtectedRoute>} />
         <Route path="/police/identity-verification" element={<ProtectedRoute roles={['police_officer', 'system_administrator']}><Police /></ProtectedRoute>} />
         <Route path="/police/national-id-biometrics" element={<ProtectedRoute roles={['police_officer', 'system_administrator']}><NationalIdBiometricCapture /></ProtectedRoute>} />

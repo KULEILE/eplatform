@@ -171,8 +171,15 @@ async function main() {
   // Provisional account: no verified citizen record linked yet (Option B in the registration flow)
   uid.provisional = await makeUser({ username: 'palesa', email: 'palesa.new@example.ls', phone: '+26658998877', roleKey: 'citizen', provisional: true });
 
-  // System Administrator (head office) — appoints Branch Administrators.
-  uid.admin = await makeUser({ username: 'admin', email: 'admin@gov.ls', phone: '+26622110000', roleKey: 'system_administrator' });
+  // System Administrator (head office) — appoints Branch Administrators. Linked to a citizen
+  // identity (palesa_m's citizen row — otherwise unused as a portal login) so the Employee Roster
+  // demonstrates "the system must automatically mark officers as government employees" for at
+  // least one account out of the box; see the employment-status/payroll block below. Several
+  // other officer accounts below are deliberately left UNLINKED, so the roster also shows the
+  // "not yet linked — a system administrator can link one" state this feature has to handle for
+  // every pre-existing officer account (see migration 080's note #5 and admin.controller.js's
+  // linkEmployeeCitizen).
+  uid.admin = await makeUser({ citizenKey: 'palesa_m', username: 'admin', email: 'admin@gov.ls', phone: '+26622110000', roleKey: 'system_administrator' });
 
   // Branch Administrators — appointed by the System Administrator, one per branch shown here.
   // They in turn create the officer accounts for their own branch (see uid.officerHomeAffairs below).
@@ -191,10 +198,15 @@ async function main() {
     username: 'officer_homeaffairs', email: 'officer.homeaffairs@gov.ls', phone: '+26622110001', roleKey: 'home_affairs_officer',
     deptKey: 'home_affairs', officeKey: 'Maseru Home Affairs Office', appointedBy: uid.branchAdminHomeAffairsMaseru,
   });
+  // officerFinance, officerPensions and officerPolice are linked to a citizen identity for the
+  // same "automatically mark officers as government employees" demo reasoning as uid.admin
+  // above (and so the new Employee Roster / payroll pages have real linked employees to show —
+  // see the employment-status/payroll block below). officerTraffic, officerPassport,
+  // officerHomeAffairs and both branch admins are deliberately left unlinked.
   uid.officerTraffic  = await makeUser({ username: 'officer_traffic',  email: 'officer.traffic@gov.ls',  phone: '+26622110002', roleKey: 'traffic_officer',  deptKey: 'traffic',  officeKey: 'Maseru Traffic Office', appointedBy: uid.admin });
-  uid.officerFinance  = await makeUser({ username: 'officer_finance',  email: 'officer.finance@gov.ls',  phone: '+26622110003', roleKey: 'finance_officer',  deptKey: 'finance',  officeKey: 'Maseru Finance Office', appointedBy: uid.admin });
-  uid.officerPensions = await makeUser({ username: 'officer_pensions', email: 'officer.pensions@gov.ls', phone: '+26622110004', roleKey: 'pensions_officer', deptKey: 'pensions', officeKey: 'Maseru Pensions Office', appointedBy: uid.admin });
-  uid.officerPolice   = await makeUser({ username: 'officer_police',   email: 'officer.police@gov.ls',  phone: '+26622110005', roleKey: 'police_officer',   deptKey: 'police',   officeKey: 'Maseru Central Police Station', appointedBy: uid.admin });
+  uid.officerFinance  = await makeUser({ citizenKey: 'mpho', username: 'officer_finance',  email: 'officer.finance@gov.ls',  phone: '+26622110003', roleKey: 'finance_officer',  deptKey: 'finance',  officeKey: 'Maseru Finance Office', appointedBy: uid.admin });
+  uid.officerPensions = await makeUser({ citizenKey: 'mamello', username: 'officer_pensions', email: 'officer.pensions@gov.ls', phone: '+26622110004', roleKey: 'pensions_officer', deptKey: 'pensions', officeKey: 'Maseru Pensions Office', appointedBy: uid.admin });
+  uid.officerPolice   = await makeUser({ citizenKey: 'retse', username: 'officer_police',   email: 'officer.police@gov.ls',  phone: '+26622110005', roleKey: 'police_officer',   deptKey: 'police',   officeKey: 'Maseru Central Police Station', appointedBy: uid.admin });
   uid.officerPassport = await makeUser({ username: 'officer_passport', email: 'officer.passport@gov.ls', phone: '+26622110006', roleKey: 'passport_officer', deptKey: 'passport', officeKey: 'Maseru Passport Office', appointedBy: uid.admin });
 
   // A freshly onboarded officer, still on their temporary password — demonstrates the forced
@@ -205,6 +217,60 @@ async function main() {
     deptKey: 'home_affairs', officeKey: 'Leribe Home Affairs Office', appointedBy: uid.branchAdminHomeAffairsLeribe,
     mustChangePassword: true, password: 'TempPass2026!',
   });
+
+  // --- employment status, payroll and pension disbursement demo data ------------------------
+  // Mirrors exactly what admin.controller.js's autoActivateEmployment does when an account is
+  // linked to a citizen identity (this seed inserts directly into the database rather than
+  // going through that controller, so it has to set this explicitly): government_employment_
+  // status = 'Active', with a category derived from the role.
+  await client.query(
+    `UPDATE citizens SET government_employment_status = 'Active', employee_category = 'General Civil Servant', monthly_salary = 18500.00 WHERE citizen_id = $1`,
+    [cid.palesa_m]
+  );
+  await client.query(
+    `UPDATE citizens SET government_employment_status = 'Active', employee_category = 'General Civil Servant', monthly_salary = 15200.00 WHERE citizen_id = $1`,
+    [cid.mpho]
+  );
+  await client.query(
+    `UPDATE citizens SET government_employment_status = 'Active', employee_category = 'General Civil Servant', monthly_salary = 14800.00 WHERE citizen_id = $1`,
+    [cid.mamello]
+  );
+  // Uniformed/Disciplined Services — police_officer, the one uniformed role among today's
+  // officer roles (see admin.controller.js's employeeCategoryForRole).
+  await client.query(
+    `UPDATE citizens SET government_employment_status = 'Active', employee_category = 'Uniformed/Disciplined Services', monthly_salary = 16400.00 WHERE citizen_id = $1`,
+    [cid.retse]
+  );
+
+  // A real (simulated) payroll run for officer_finance (mpho), so the Employee Roster's payment
+  // history has something to show out of the box.
+  const mphoSalaryPeriod = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+  await client.query(
+    `INSERT INTO salary_payments (citizen_id, pay_period, amount, reference, paid_by_user_id) VALUES ($1,$2,15200.00,'SAL-DEMO-0001',$3)`,
+    [cid.mpho, mphoSalaryPeriod, uid.admin]
+  );
+
+  // A Civil Service / Old Age pension claim, approved, with a monthly amount and one recorded
+  // (simulated) disbursement — none of the existing seed pension_records reach 'Completed' for
+  // either pension TYPE (only 'Proof of Life Verification' does), so the new Pension Payments
+  // page and its totals report would otherwise have nothing real to show. Inserted directly,
+  // the same way every other historical seed record in this file bypasses the live controller's
+  // apply() path.
+  const litsoaneloPensionClaimRef = ref('PEN', 2026, 3);
+  const { rows: litsoaneloClaim } = await client.query(
+    `INSERT INTO pension_records (citizen_id, application_reference, service_type, life_status, status, monthly_amount)
+     VALUES ($1,$2,'Pension Age Eligibility Claim','Alive','Completed',1200.00) RETURNING pension_record_id`,
+    [cid.litsoanelo, litsoaneloPensionClaimRef]
+  );
+  await indexApplication({
+    citizenKey: 'litsoanelo', deptKey: 'pensions', serviceType: 'Pension Age Eligibility Claim',
+    referenceNumber: litsoaneloPensionClaimRef, sourceTable: 'pension_records', sourceId: litsoaneloClaim[0].pension_record_id,
+    status: 'Completed', submittedAt: new Date(Date.now() - 60 * 86400000), completedAt: new Date(Date.now() - 55 * 86400000),
+  });
+  await client.query(
+    `INSERT INTO pension_payments (pension_record_id, citizen_id, pay_period, amount, reference, paid_by_user_id) VALUES ($1,$2,$3,1200.00,'PEN-DEMO-0001',$4)`,
+    [litsoaneloClaim[0].pension_record_id, cid.litsoanelo, mphoSalaryPeriod, uid.officerPensions]
+  );
 
   // --- applications index helper -------------------------------------------------------------
   async function indexApplication({ citizenKey, deptKey, serviceType, referenceNumber, sourceTable, sourceId, status, submittedAt, completedAt = null }) {

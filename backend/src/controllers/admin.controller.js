@@ -24,6 +24,28 @@ function generateTempPassword() {
   return out;
 }
 
+// "the system must automatically mark officers as government employees" — see migration 080's
+// note #5. The moment an officer/admin account is linked to a citizen identity (at creation
+// below, or retroactively via linkEmployeeCitizen), that citizen is marked an active government
+// employee, with a default category derived from the role (police officers are the one
+// uniformed/disciplined role among today's officer roles; everything else defaults to General
+// Civil Servant — an officer who later needs the other category can still be changed through
+// Finance's existing declareGovernmentEmployee panel). Never downgrades an already-'Retired'
+// employee — retiring is a deliberate, Finance-reviewed action (finance.controller.js) and
+// linking an account afterward should not silently undo it.
+function employeeCategoryForRole(roleKey) {
+  return roleKey === 'police_officer' ? 'Uniformed/Disciplined Services' : 'General Civil Servant';
+}
+
+async function autoActivateEmployment(queryable, citizenId, roleKey) {
+  await queryable.query(
+    `UPDATE citizens SET government_employment_status = 'Active',
+            employee_category = COALESCE(employee_category, $1), updated_at = NOW()
+     WHERE citizen_id = $2 AND government_employment_status != 'Retired'`,
+    [employeeCategoryForRole(roleKey), citizenId]
+  );
+}
+
 /** GET /api/public/settings — no auth required; the header/login page needs branding before login. */
 async function getPublicSettings(req, res, next) {
   try {
@@ -110,7 +132,7 @@ async function listUsers(req, res, next) {
     const scopedToOffice = scope ? scope.officeId : null;
     const { rows } = await db.query(
       `SELECT u.user_id, u.username, u.email, u.phone, u.account_status, u.is_provisional, u.must_change_password,
-              u.last_login_at, u.created_at, r.role_key, r.display_name AS role_name,
+              u.last_login_at, u.created_at, u.citizen_id, r.role_key, r.display_name AS role_name,
               d.name AS department_name, o.name AS office_name, dist.name AS district_name,
               c.first_name, c.last_name, appointer.email AS appointed_by_email
        FROM users u JOIN roles r ON r.role_id = u.role_id
@@ -143,7 +165,7 @@ const USERNAME_RE = /^[a-z0-9_.]{3,50}$/;
 
 async function createUser(req, res, next) {
   try {
-    const { email, phone, roleKey } = req.body;
+    const { email, phone, roleKey, permanentIdentityNumber } = req.body;
     let { departmentKey, officeId } = req.body;
     const username = (req.body.username || '').trim().toLowerCase();
     if (!username || !roleKey) return res.status(400).json({ error: 'username and roleKey are required.' });
@@ -203,14 +225,32 @@ async function createUser(req, res, next) {
       if (existingEmail.length > 0) return res.status(409).json({ error: 'An account with this email already exists.' });
     }
 
+    // Optional, going forward: link this new employee account to their own verified citizen
+    // identity right at creation, which also marks them an active government employee (see
+    // autoActivateEmployment above) — the forward-looking half of "automatically mark officers
+    // as government employees"; linkEmployeeCitizen below is the retroactive half, for the
+    // accounts that already exist without this link.
+    let linkedCitizenId = null;
+    if (permanentIdentityNumber && permanentIdentityNumber.trim()) {
+      const { rows: citizenRows } = await db.query('SELECT citizen_id FROM citizens WHERE permanent_identity_number = $1', [permanentIdentityNumber.trim()]);
+      if (citizenRows.length === 0) return res.status(404).json({ error: 'No citizen record matches that permanent identity number.' });
+      const { rows: alreadyLinked } = await db.query(
+        `SELECT 1 FROM users u JOIN roles r ON r.role_id = u.role_id WHERE u.citizen_id = $1 AND r.role_key != 'citizen'`,
+        [citizenRows[0].citizen_id]
+      );
+      if (alreadyLinked.length > 0) return res.status(409).json({ error: 'This citizen identity is already linked to another employee account.' });
+      linkedCitizenId = citizenRows[0].citizen_id;
+    }
+
     const tempPassword = generateTempPassword();
     const passwordHash = await bcrypt.hash(tempPassword, 10);
     const { rows } = await db.query(
-      `INSERT INTO users (username, email, phone, password_hash, role_id, department_id, office_id, account_status, must_change_password, appointed_by_user_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'Active', TRUE, $8) RETURNING user_id, username, email`,
-      [username, email || null, phone || null, passwordHash, roleRows[0].role_id, departmentId, officeIdValidated, req.user.userId]
+      `INSERT INTO users (username, email, phone, password_hash, role_id, department_id, office_id, citizen_id, account_status, must_change_password, appointed_by_user_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'Active', TRUE, $9) RETURNING user_id, username, email, citizen_id`,
+      [username, email || null, phone || null, passwordHash, roleRows[0].role_id, departmentId, officeIdValidated, linkedCitizenId, req.user.userId]
     );
-    await recordAudit({ userId: req.user.userId, departmentId, action: 'USER_CREATED', targetType: 'user', targetId: rows[0].user_id, metadata: { roleKey, departmentKey, officeId: officeIdValidated } });
+    if (linkedCitizenId) await autoActivateEmployment(db, linkedCitizenId, roleKey);
+    await recordAudit({ userId: req.user.userId, departmentId, action: 'USER_CREATED', targetType: 'user', targetId: rows[0].user_id, metadata: { roleKey, departmentKey, officeId: officeIdValidated, linkedCitizenId } });
     await createNotification({
       userId: rows[0].user_id,
       title: 'Welcome — change your temporary password',
@@ -219,6 +259,43 @@ async function createUser(req, res, next) {
     });
     // Returned once, here — this is the only time the plaintext temporary password exists.
     res.status(201).json({ user: rows[0], temporaryPassword: tempPassword });
+  } catch (err) { next(err); }
+}
+
+/** POST /api/admin/users/:id/link-citizen  body: { permanentIdentityNumber }
+ *  System Administrator only — retroactively links an EXISTING officer/admin account (created
+ *  before this feature existed, or simply never linked at creation — see migration 080's note
+ *  #5) to a citizen identity, which also marks that citizen an active government employee. This
+ *  is the one-time fix an administrator runs once per existing employee account; going forward,
+ *  createUser's optional permanentIdentityNumber above does this at creation time instead. */
+async function linkEmployeeCitizen(req, res, next) {
+  try {
+    const { permanentIdentityNumber } = req.body;
+    if (!permanentIdentityNumber || !permanentIdentityNumber.trim()) {
+      return res.status(400).json({ error: 'permanentIdentityNumber is required.' });
+    }
+    const { rows: targetRows } = await db.query(
+      `SELECT u.user_id, u.citizen_id, r.role_key FROM users u JOIN roles r ON r.role_id = u.role_id WHERE u.user_id = $1`,
+      [req.params.id]
+    );
+    if (targetRows.length === 0) return res.status(404).json({ error: 'User not found.' });
+    const target = targetRows[0];
+    if (target.role_key === 'citizen') return res.status(400).json({ error: 'This action is for officer/administrator accounts, not citizen accounts.' });
+    if (target.citizen_id) return res.status(409).json({ error: 'This account is already linked to a citizen identity.' });
+
+    const { rows: citizenRows } = await db.query('SELECT citizen_id, first_name, last_name FROM citizens WHERE permanent_identity_number = $1', [permanentIdentityNumber.trim()]);
+    if (citizenRows.length === 0) return res.status(404).json({ error: 'No citizen record matches that permanent identity number.' });
+    const citizen = citizenRows[0];
+    const { rows: alreadyLinked } = await db.query(
+      `SELECT 1 FROM users u JOIN roles r ON r.role_id = u.role_id WHERE u.citizen_id = $1 AND r.role_key != 'citizen'`,
+      [citizen.citizen_id]
+    );
+    if (alreadyLinked.length > 0) return res.status(409).json({ error: 'This citizen identity is already linked to another employee account.' });
+
+    await db.query('UPDATE users SET citizen_id = $1, updated_at = NOW() WHERE user_id = $2', [citizen.citizen_id, target.user_id]);
+    await autoActivateEmployment(db, citizen.citizen_id, target.role_key);
+    await recordAudit({ userId: req.user.userId, departmentId: null, action: 'EMPLOYEE_CITIZEN_LINKED', targetType: 'user', targetId: target.user_id, metadata: { citizenId: citizen.citizen_id } });
+    res.json({ userId: target.user_id, citizenId: citizen.citizen_id, citizenName: `${citizen.first_name} ${citizen.last_name}` });
   } catch (err) { next(err); }
 }
 
@@ -321,5 +398,5 @@ async function getStats(req, res, next) {
 
 module.exports = {
   getPublicSettings, getSettings, updateSettings, uploadLogo, removeLogo,
-  listUsers, createUser, updateUser, listAuditLogs, listDepartments, getStats,
+  listUsers, createUser, updateUser, linkEmployeeCitizen, listAuditLogs, listDepartments, getStats,
 };
