@@ -313,7 +313,8 @@
     "goToWorkspace": "Go to {{department}} workspace",
     "manageOfficesCardDesc": "Open new branch offices and assign them to a district",
     "pendingParentConfirmationNotice": "You've been named as a parent on {{count}} birth registration(s) awaiting your confirmation.",
-    "branchBudgetRequestsDesc": "Apply for and track budget money for your branch office."
+    "branchBudgetRequestsDesc": "Apply for and track budget money for your branch office.",
+    "portalTagline": "e-Government Services Portal"
   },
   "departments": {
     "chooseTitle": "Which government department would you like to access?",

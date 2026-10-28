@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import {
   CheckCircleIcon, DocumentTextIcon, BellIcon, LifebuoyIcon, UserPlusIcon, BuildingOffice2Icon,
   UsersIcon, Cog6ToothIcon, ClipboardDocumentListIcon, RectangleGroupIcon, InboxStackIcon, ChevronRightIcon,
+  ExclamationTriangleIcon, ShieldCheckIcon, BanknotesIcon, BuildingLibraryIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { api } from '../api/client';
 import DepartmentCard from '../components/DepartmentCard';
 import Loading from '../components/ui/Loading';
-import { HeroBackdrop, FlagOnPole } from '../components/ui/HeroBackdrop';
+import { HeroBackdrop } from '../components/ui/HeroBackdrop';
 
 const DEPARTMENTS = ['home_affairs', 'traffic', 'finance', 'pensions', 'police', 'passport'];
 const DEPARTMENT_ROUTES = { home_affairs: '/home-affairs', traffic: '/traffic', finance: '/finance', pensions: '/pensions', police: '/police', passport: '/passport' };
@@ -19,47 +20,88 @@ function maskPin(pin) {
   return pin.slice(0, -4).replace(/./g, '•') + pin.slice(-4);
 }
 
+// DESIGN PREVIEW (this file only) — a single reusable "masthead" standing in for the plain
+// h2/p pairing every section used before. An icon badge + title + one-line description, with a
+// hairline rule underneath, so every section on the page reads as one consistent, deliberately
+// designed system rather than a stack of ad-hoc cards. If this direction is approved, the same
+// pattern should move into index.css (e.g. a `.section-header` layer class) so other pages can
+// share it instead of each page re-implementing it — left as plain Tailwind here, scoped to this
+// file only, specifically so this preview touches nothing else.
+function SectionHeader({ icon: Icon, tint = 'navy', title, description }) {
+  const TINTS = {
+    navy: 'bg-gov-navy/10 text-gov-navy',
+    blue: 'bg-blue-50 text-blue-700',
+    emerald: 'bg-emerald-50 text-emerald-700',
+    amber: 'bg-amber-50 text-amber-700',
+    slate: 'bg-slate-100 text-slate-600',
+  };
+  return (
+    <div className="flex items-start gap-3 border-b border-slate-200 pb-4">
+      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${TINTS[tint]}`} aria-hidden="true">
+        <Icon className="h-5 w-5" strokeWidth={1.75} />
+      </span>
+      <div>
+        <h2 className="text-lg font-bold text-slate-900 sm:text-xl">{title}</h2>
+        {description && <p className="mt-0.5 text-sm text-slate-600">{description}</p>}
+      </div>
+    </div>
+  );
+}
+
 function QuickActionsStrip({ t, systemOnline, isCitizen }) {
   return (
-    <section className={`mt-4 grid grid-cols-2 gap-3 ${isCitizen ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
-      <Link to="/applications" className="card-link flex items-center gap-3">
-        <DocumentTextIcon className="h-6 w-6 shrink-0 text-gov-navy" strokeWidth={1.6} />
-        <span>
-          <span className="block text-sm font-semibold text-slate-900">{t('dashboard.trackApplication')}</span>
-          <span className="block text-xs text-slate-500">{t('dashboard.trackApplicationDesc')}</span>
-        </span>
-      </Link>
-      <Link to="/notifications" className="card-link flex items-center gap-3">
-        <BellIcon className="h-6 w-6 shrink-0 text-gov-navy" strokeWidth={1.6} />
-        <span>
-          <span className="block text-sm font-semibold text-slate-900">{t('nav.notifications')}</span>
-          <span className="block text-xs text-slate-500">{t('dashboard.viewNotificationsDesc')}</span>
-        </span>
-      </Link>
-      {isCitizen && (
-        // Migration 078 — the ONE shared entry point for reporting a financial issue against
-        // any department, instead of a tile on every department's own hub.
-        <Link to="/report-financial-issue" className="card-link flex items-center gap-3">
-          <InboxStackIcon className="h-6 w-6 shrink-0 text-gov-navy" strokeWidth={1.6} />
+    <section className="mt-10">
+      <SectionHeader icon={RectangleGroupIcon} tint="slate" title={t('dashboard.quickActions')} />
+      <div className={`mt-5 grid grid-cols-2 gap-3 ${isCitizen ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
+        <Link to="/applications" className="card-link flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gov-navy/10 text-gov-navy" aria-hidden="true">
+            <DocumentTextIcon className="h-5 w-5" strokeWidth={1.75} />
+          </span>
           <span>
-            <span className="block text-sm font-semibold text-slate-900">{t('finance.reportIssue.title')}</span>
-            <span className="block text-xs text-slate-500">{t('finance.reportIssue.quickActionDesc')}</span>
+            <span className="block text-sm font-semibold text-slate-900">{t('dashboard.trackApplication')}</span>
+            <span className="block text-xs text-slate-500">{t('dashboard.trackApplicationDesc')}</span>
           </span>
         </Link>
-      )}
-      <a href="#" onClick={(e) => e.preventDefault()} className="card-link flex items-center gap-3">
-        <LifebuoyIcon className="h-6 w-6 shrink-0 text-gov-navy" strokeWidth={1.6} />
-        <span>
-          <span className="block text-sm font-semibold text-slate-900">{t('dashboard.needHelp')}</span>
-          <span className="block text-xs text-slate-500">{t('dashboard.needHelpDesc')}</span>
-        </span>
-      </a>
-      <div className="card flex items-center gap-3">
-        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${systemOnline ? 'bg-emerald-500' : systemOnline === false ? 'bg-gov-red' : 'bg-slate-300'}`} aria-hidden="true" />
-        <span>
-          <span className="block text-sm font-semibold text-slate-900">{t('common.systemStatus')}</span>
-          <span className="block text-xs text-slate-500">{systemOnline === null ? t('common.checking') : systemOnline ? t('common.allSystemsOperational') : t('common.systemUnreachable')}</span>
-        </span>
+        <Link to="/notifications" className="card-link flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gov-navy/10 text-gov-navy" aria-hidden="true">
+            <BellIcon className="h-5 w-5" strokeWidth={1.75} />
+          </span>
+          <span>
+            <span className="block text-sm font-semibold text-slate-900">{t('nav.notifications')}</span>
+            <span className="block text-xs text-slate-500">{t('dashboard.viewNotificationsDesc')}</span>
+          </span>
+        </Link>
+        {isCitizen && (
+          // Migration 078 — the ONE shared entry point for reporting a financial issue against
+          // any department, instead of a tile on every department's own hub.
+          <Link to="/report-financial-issue" className="card-link flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gov-navy/10 text-gov-navy" aria-hidden="true">
+              <InboxStackIcon className="h-5 w-5" strokeWidth={1.75} />
+            </span>
+            <span>
+              <span className="block text-sm font-semibold text-slate-900">{t('finance.reportIssue.title')}</span>
+              <span className="block text-xs text-slate-500">{t('finance.reportIssue.quickActionDesc')}</span>
+            </span>
+          </Link>
+        )}
+        <a href="#" onClick={(e) => e.preventDefault()} className="card-link flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gov-navy/10 text-gov-navy" aria-hidden="true">
+            <LifebuoyIcon className="h-5 w-5" strokeWidth={1.75} />
+          </span>
+          <span>
+            <span className="block text-sm font-semibold text-slate-900">{t('dashboard.needHelp')}</span>
+            <span className="block text-xs text-slate-500">{t('dashboard.needHelpDesc')}</span>
+          </span>
+        </a>
+        <div className="card flex items-center gap-3">
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${systemOnline ? 'bg-emerald-50' : systemOnline === false ? 'bg-red-50' : 'bg-slate-100'}`} aria-hidden="true">
+            <span className={`h-2.5 w-2.5 rounded-full ${systemOnline ? 'bg-emerald-500' : systemOnline === false ? 'bg-gov-red' : 'bg-slate-300'}`} />
+          </span>
+          <span>
+            <span className="block text-sm font-semibold text-slate-900">{t('common.systemStatus')}</span>
+            <span className="block text-xs text-slate-500">{systemOnline === null ? t('common.checking') : systemOnline ? t('common.allSystemsOperational') : t('common.systemUnreachable')}</span>
+          </span>
+        </div>
       </div>
     </section>
   );
@@ -128,68 +170,96 @@ export default function Dashboard() {
     <div>
       <section className="relative overflow-hidden rounded-2xl bg-hero-gradient text-white shadow-header">
         <HeroBackdrop className="pointer-events-none absolute inset-0 h-full w-full" />
-        
-        <div className="relative z-10 px-6 py-10 sm:px-10">
-          <p className="eyebrow text-white/70">{t('dashboard.welcomeBack')}</p>
-          <h1 className="mt-1 text-2xl font-bold drop-shadow-sm sm:text-3xl">{user.username}</h1>
+        {/* Thin gold rule along the top edge — a small, deliberate "seal of state" accent rather
+            than a flat gradient panel with nothing marking it as official. */}
+        <div className="absolute inset-x-0 top-0 z-10 h-1 bg-gov-gold" aria-hidden="true" />
 
-          {isCitizen && (
-            <div className="mt-4 inline-flex max-w-full flex-wrap items-center gap-4 rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm">
-              {loading ? <Loading /> : profile?.foreignNational ? (
-                <div>
-                  <p className="flex items-center gap-1.5 font-semibold text-amber-300">⚠ {t('auth.foreignNationalNoticeShort')}</p>
-                  <p className="mt-1 text-sm text-white/80">{profile.message}</p>
-                  <Link to="/home-affairs/naturalization" className="mt-2 inline-block text-sm font-semibold text-white underline underline-offset-2 hover:text-white/90">
-                    {t('homeAffairs.naturalization')} →
+        <div className="relative z-10 px-6 py-10 sm:px-10">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="eyebrow text-white/70">{t('dashboard.welcomeBack')}</p>
+              <h1 className="mt-1 text-2xl font-bold drop-shadow-sm sm:text-3xl">{user.username}</h1>
+
+              {isEmployee && (
+                <p className="mt-2 max-w-xl text-sm text-white/80">
+                  {t(`role.${user.roleKey}`)}
+                  {isDeptFinanceAdmin
+                    ? (user.activeDepartmentKey ? ` · ${t(`departments.${user.activeDepartmentKey}`)} · ${user.activeOfficeName}` : ` · ${t('deptFinance.noContextShort')}`)
+                    : <>
+                      {user.departmentKey && ` · ${t(`departments.${user.departmentKey}`)}`}
+                      {user.officeName && ` · ${user.officeName}`}
+                    </>}
+                </p>
+              )}
+
+              {isCitizen && profile?.pendingParentConfirmations?.length > 0 && (
+                <div className="mt-4 inline-flex max-w-full flex-wrap items-center gap-4 rounded-xl bg-amber-400/20 px-4 py-3 backdrop-blur-sm">
+                  <div>
+                    <p className="flex items-center gap-1.5 font-semibold text-amber-300">
+                      <ExclamationTriangleIcon className="h-5 w-5 shrink-0" strokeWidth={1.75} />
+                      {t('dashboard.pendingParentConfirmationNotice', { count: profile.pendingParentConfirmations.length })}
+                    </p>
+                  </div>
+                  <Link to="/home-affairs/parent-confirmations" className="btn-secondary !border-white/30 !bg-white/10 !text-white hover:!bg-white/20">
+                    {t('common.viewDetails')}
                   </Link>
-                  <Link to="/home-affairs/marriage-citizenship" className="mt-2 ml-4 inline-block text-sm font-semibold text-white underline underline-offset-2 hover:text-white/90">
-                    {t('homeAffairs.marriageCitizenship')} →
-                  </Link>
-                </div>
-              ) : profile?.provisional ? (
-                <div>
-                  <p className="flex items-center gap-1.5 font-semibold text-amber-300">⚠ {t('auth.provisionalNoticeShort')}</p>
-                  <p className="mt-1 text-sm text-white/80">{profile.message}</p>
-                  <Link to="/apply-for-birth-certificate" className="mt-2 inline-block text-sm font-semibold text-white underline underline-offset-2 hover:text-white/90">
-                    {t('homeAffairs.applyForBirthCertificate')} →
-                  </Link>
-                </div>
-              ) : (
-                <div>
-                  <p className="flex items-center gap-1.5 text-sm font-semibold text-emerald-300">
-                    <CheckCircleIcon className="h-5 w-5" strokeWidth={1.75} />{t('auth.verifiedNoticeShort')}
-                  </p>
-                  <button type="button" className="mt-1 font-mono text-base tracking-wide text-white underline-offset-2 hover:underline" onClick={() => setShowFullPin((s) => !s)}>
-                    {showFullPin ? profile?.citizen?.permanent_identity_number : maskPin(profile?.citizen?.permanent_identity_number)}
-                  </button>
                 </div>
               )}
-              <Link to="/profile" className="btn-secondary !border-white/30 !bg-white/10 !text-white hover:!bg-white/20">{t('nav.profile')}</Link>
             </div>
-          )}
 
-          {isCitizen && profile?.pendingParentConfirmations?.length > 0 && (
-            <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-4 rounded-xl bg-amber-400/20 px-4 py-3 backdrop-blur-sm">
-              <div>
-                <p className="flex items-center gap-1.5 font-semibold text-amber-300">⚠ {t('dashboard.pendingParentConfirmationNotice', { count: profile.pendingParentConfirmations.length })}</p>
+            {/* Identity / credential panel — the citizen-facing status block, now its own bordered
+                card (reads like a government ID summary) instead of floating directly on the
+                gradient. */}
+            {isCitizen && (
+              <div className="w-full max-w-sm shrink-0 rounded-xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm lg:w-80">
+                <p className="eyebrow text-white/60">{t('dashboard.identityStatus')}</p>
+                {loading ? (
+                  <div className="mt-2"><Loading /></div>
+                ) : profile?.foreignNational ? (
+                  <div className="mt-2">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-300">
+                      <ExclamationTriangleIcon className="h-5 w-5 shrink-0" strokeWidth={1.75} />
+                      {t('auth.foreignNationalNoticeShort')}
+                    </p>
+                    <p className="mt-1 text-sm text-white/80">{profile.message}</p>
+                    <div className="mt-3 flex flex-col gap-1.5">
+                      <Link to="/home-affairs/naturalization" className="inline-flex items-center gap-1 text-sm font-semibold text-white underline underline-offset-2 hover:text-white/90">
+                        {t('homeAffairs.naturalization')} <ChevronRightIcon className="h-3.5 w-3.5" />
+                      </Link>
+                      <Link to="/home-affairs/marriage-citizenship" className="inline-flex items-center gap-1 text-sm font-semibold text-white underline underline-offset-2 hover:text-white/90">
+                        {t('homeAffairs.marriageCitizenship')} <ChevronRightIcon className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+                ) : profile?.provisional ? (
+                  <div className="mt-2">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-300">
+                      <ExclamationTriangleIcon className="h-5 w-5 shrink-0" strokeWidth={1.75} />
+                      {t('auth.provisionalNoticeShort')}
+                    </p>
+                    <p className="mt-1 text-sm text-white/80">{profile.message}</p>
+                    <Link to="/apply-for-birth-certificate" className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-white underline underline-offset-2 hover:text-white/90">
+                      {t('homeAffairs.applyForBirthCertificate')} <ChevronRightIcon className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-emerald-300">
+                      <CheckCircleIcon className="h-5 w-5 shrink-0" strokeWidth={1.75} />{t('auth.verifiedNoticeShort')}
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-2 inline-block rounded-md border border-white/20 bg-black/10 px-3 py-1.5 font-mono text-sm tracking-wide text-white hover:bg-black/20"
+                      onClick={() => setShowFullPin((s) => !s)}
+                    >
+                      {showFullPin ? profile?.citizen?.permanent_identity_number : maskPin(profile?.citizen?.permanent_identity_number)}
+                    </button>
+                  </div>
+                )}
+                <Link to="/profile" className="btn-secondary mt-3 w-full !border-white/30 !bg-white/10 !text-white hover:!bg-white/20">{t('nav.profile')}</Link>
               </div>
-              <Link to="/home-affairs/parent-confirmations" className="btn-secondary !border-white/30 !bg-white/10 !text-white hover:!bg-white/20">
-                {t('common.viewDetails')}
-              </Link>
-            </div>
-          )}
-
-          {isEmployee && (
-            <p className="mt-2 max-w-xl text-sm text-white/80">
-              {t(`role.${user.roleKey}`)}
-              {isDeptFinanceAdmin
-                ? (user.activeDepartmentKey ? ` · ${t(`departments.${user.activeDepartmentKey}`)} · ${user.activeOfficeName}` : ` · ${t('deptFinance.noContextShort')}`)
-                : <>
-                  {user.departmentKey && ` · ${t(`departments.${user.departmentKey}`)}`}
-                  {user.officeName && ` · ${user.officeName}`}
-                </>}
-            </p>
-          )}
+            )}
+          </div>
         </div>
       </section>
 
@@ -197,8 +267,7 @@ export default function Dashboard() {
 
       {isSystemAdmin && (
         <section className="mt-10">
-          <h2 className="section-title">{t('dashboard.systemAdministration')}</h2>
-          <p className="mt-1 text-sm text-slate-600">{t('dashboard.systemAdministrationDesc')}</p>
+          <SectionHeader icon={ShieldCheckIcon} title={t('dashboard.systemAdministration')} description={t('dashboard.systemAdministrationDesc')} />
 
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatTile icon={UsersIcon} label={t('dashboard.statCitizens')} value={stats?.totalCitizens} loading={statsLoading} />
@@ -242,8 +311,7 @@ export default function Dashboard() {
 
       {isBranchAdmin && (
         <section className="mt-10">
-          <h2 className="section-title">{t('dashboard.branchManagement')}</h2>
-          <p className="mt-1 text-sm text-slate-600">{t('dashboard.branchManagementDesc', { office: user.officeName || '' })}</p>
+          <SectionHeader icon={BuildingOffice2Icon} tint="blue" title={t('dashboard.branchManagement')} description={t('dashboard.branchManagementDesc', { office: user.officeName || '' })} />
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Link to="/branch/users" className="card-link flex items-start gap-4">
               <span className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm"><UserPlusIcon className="h-6 w-6" strokeWidth={1.75} /></span>
@@ -272,8 +340,7 @@ export default function Dashboard() {
 
       {isDeptFinanceAdmin && (
         <section className="mt-10">
-          <h2 className="section-title">{t('deptFinance.title')}</h2>
-          <p className="mt-1 text-sm text-slate-600">{t('deptFinance.intro')}</p>
+          <SectionHeader icon={BanknotesIcon} tint="amber" title={t('deptFinance.title')} description={t('deptFinance.intro')} />
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Link to="/department-finance" className="card-link flex items-start gap-4">
               <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-600 text-white shadow-sm"><BuildingOffice2Icon className="h-6 w-6" strokeWidth={1.75} /></span>
@@ -308,8 +375,7 @@ export default function Dashboard() {
 
       {isOfficer && (
         <section className="mt-10">
-          <h2 className="section-title">{t('dashboard.myWorkspace')}</h2>
-          <p className="mt-1 text-sm text-slate-600">{t('dashboard.myWorkspaceDesc', { department: t(`departments.${user.departmentKey}`) })}</p>
+          <SectionHeader icon={RectangleGroupIcon} tint="blue" title={t('dashboard.myWorkspace')} description={t('dashboard.myWorkspaceDesc', { department: t(`departments.${user.departmentKey}`) })} />
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="card flex items-center gap-4">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gov-navy/10 text-gov-navy"><InboxStackIcon className="h-6 w-6" strokeWidth={1.75} /></span>
@@ -334,8 +400,7 @@ export default function Dashboard() {
 
       {isCitizen && !isLockedOutForeignNational && (
         <section className="mt-10">
-          <h2 className="section-title">{t('dashboard.governmentDepartments')}</h2>
-          <p className="mt-1 text-sm text-slate-600">{t('dashboard.chooseDepartmentDesc')}</p>
+          <SectionHeader icon={BuildingLibraryIcon} title={t('dashboard.governmentDepartments')} description={t('dashboard.chooseDepartmentDesc')} />
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visibleDepartments.map((d) => <DepartmentCard key={d} departmentKey={d} />)}
           </div>

@@ -313,7 +313,8 @@
     "goToWorkspace": "Ea sebakeng sa mosebetsi sa {{department}}",
     "manageOfficesCardDesc": "Bula mafapha a macha 'a mosebetsi 'a lefapha lefe kapa lefe 'a li abele setereke",
     "pendingParentConfirmationNotice": "O kentswe lebitso jwalo ka motswadi dikopong {{count}} tsa ngodiso ya tswalo tse emetseng netefatso ya hao.",
-    "branchBudgetRequestsDesc": "Kopa le ho latela chelete ea tekanyetso ea ofisi ea hau."
+    "branchBudgetRequestsDesc": "Kopa le ho latela chelete ea tekanyetso ea ofisi ea hau.",
+    "portalTagline": "Sethala sa Ditshebeletso tsa Mmuso tsa Inthaneteng"
   },
   "departments": {
     "chooseTitle": "O ka rata ho fihlela lefapha lefe la mmuso?",
