@@ -1940,5 +1940,296 @@
     "escalateToFinance": "Nyolosetsa ho Lichelete",
     "resolutionNotesLabel": "Lintlha tsa tharollo",
     "escalationNoteLabel": "Lintlha tsa ho nyolosa"
+  },
+  "help": {
+    "pageTitle": "Setsi sa Thuso",
+    "pageIntro": "Dikarabo tsa dipotso tse atisang ho botsuwa, tataiso ya hore na sethala se sebetsa jwang, le tataiso ya ditshebeletso tsa lefapha ka leng.",
+    "searchPlaceholder": "Batla Setsing sa Thuso...",
+    "noResults": "Ha ho dingolwa tsa thuso tse tshwanang le patlo ya hao. Leka lentswe le fapaneng, kapa o sebedise Ikopanye le Rona.",
+    "walkthroughTitle": "Hore na sethala sena se sebetsa jwang",
+    "walkthroughIntro": "Tshebeletso ka nngwe sethaleng sena e latela mekgahlelo e tshwanang e hlano.",
+    "walkthroughSteps": [
+      {
+        "title": "Etsa akhaonto",
+        "desc": "Moahi ya seng a ngodisitswe o netefatsa ka nomoro ya hae ya boitsebiso e sa fetoheng le letsatsi la tswalo. Ya se nang rekoto ya botjabatjaba o kopa setifikeiti sa tswalo pele. Moahi wa kantle o ngodisa mme a fumane akhaonto ya nakwana e tla bulwa ha kopo ya hae ya boahi e amohelwa."
+      },
+      {
+        "title": "Netefatsa boitsebiso ba hao",
+        "desc": "Akhaonto ya hao e hlahlojwa khahlanong le rekoto ya hao ya botjabatjaba. Ho fihlela seo se netefaditswe (kapa, bakeng sa moahi wa kantle, ho fihlela boahi bo amohelwa), o tla bona tlhokomediso e o tataisang kopong e nepahetseng."
+      },
+      {
+        "title": "Kopa tshebeletso",
+        "desc": "Kgetha lefapha dashboding ya hao, bula tshebeletso eo o e hlokang, mme o phethe foromo ya yona — bongata bo hloka ditokomane tse tshehetsang, setshwantsho, kapa ka dinako tse ding sekane sa seatla."
+      },
+      {
+        "title": "Latela kopo ya hao",
+        "desc": "Kopo e nngwe le e nngwe eo o e romellang e hlaha tlasa “Dikopo Tsaka” ka boemo ba yona ba hajwale. Haeba mohlanka a hloka ho eketsa, o tla fumana tsebiso mme a fumane monyetla wa ho romella hape."
+      },
+      {
+        "title": "Nka kapa fumana sephetho sa hao",
+        "desc": "Ho ya ka tshebeletso, o tla nka tokomane ya nnete ofising ya hau e haufi, kapa sephetho (jwalo ka setifikeiti sa dijithale) se tla fumaneha ka hara akhaonto ya hao."
+      }
+    ],
+    "faqTitle": "Dipotso tse atisang ho botsuwa",
+    "faqIntro": "Di hlophisitswe ka sehlooho — sebedisa lebokoso la ho batla ka hodimo ho ya ho e nngwe ka potlako.",
+    "faq": [
+      {
+        "category": "Akhaonto le boitsebiso",
+        "q": "Ke moahi wa Lesotho empa ha ke na nomoro ya boitsebiso e sa fetoheng. Ke ngodisa jwang?",
+        "a": "Leqepheng la ngodiso, kgetha “Ke hloka ho ngodisa”. Seo se tla o isa kopong ya setifikeiti sa tswalo sa phatlalatsa — ha Lekala la Merero ya Kahare le amohela, o tla tataiswa ho tswela pele ho etsa akhaonto ya hao ka nomoro ya hao e ncha."
+      },
+      {
+        "category": "Akhaonto le boitsebiso",
+        "q": "Ha ke moahi wa Lesotho — na nka sebedisa sethala sena?",
+        "a": "E, o ka sebedisa. Kgetha “Ha ke moahi” leqepheng la ngodiso. O tla fumana akhaonto ya nakwana e tla bulehang ka botlalo ha o atleha ho kopa boahi — ka ho ba moahi ka tsela ya tlwaelo, kapa ka ngodiso haeba o nyetswe/o nyetse moahi wa Lesotho."
+      },
+      {
+        "category": "Akhaonto le boitsebiso",
+        "q": "Ke lebetse password ya ka.",
+        "a": "Sebedisa “Ke lebetse password” leqepheng la ho kena mme o arabe dipotso tse pedi tsa tshireletso tseo o di behileng ha o qala akhaonto ya hao."
+      },
+      {
+        "category": "Akhaonto le boitsebiso",
+        "q": "Nomoro yaka ya boitsebiso e sa fetoheng ke efe?",
+        "a": "Ke nomoro e ikgethang e amanang le rekoto ya hao ya botjabatjaba, e sebediswang mafapheng kaofela. O ka bona e patehileng dashboding ya hao — o tobetse ho e bontsha ka botlalo, kapa o e fumane leqepheng la Profaele."
+      },
+      {
+        "category": "Dikopo",
+        "q": "Ke sheba jwang boemo ba kopo?",
+        "a": "Bula “Dikopo Tsaka” lenaneng le kgolo. Kopo e nngwe le e nngwe eo o kileng wa e romella, mafapheng ohle, e thathamisitswe moo ka boemo ba yona ba hajwale."
+      },
+      {
+        "category": "Dikopo",
+        "q": "Mohlanka o kopile dintlha tse ding — ke etsa jwang?",
+        "a": "O tla fumana tsebiso mme boemo ba kopo bo fetohe ho “Dintlha tse Eketsehileng tsa Hlokahala.” E bule ho Dikopo Tsaka ho bona hore na ho hlokahalang hantle, ebe o romella hape ho tswa skrineng se tshwanang."
+      },
+      {
+        "category": "Dikopo",
+        "q": "Na nka kopa ditshebeletso tse fetang e le nngwe ka nako e le nngwe?",
+        "a": "E, o ka kgona. Dikopo tse tswang ditshebeletsong le mafapheng a fapaneng di ikemetse ka botlalo, di sa amane."
+      },
+      {
+        "category": "Ditokomane le sekane",
+        "q": "Hobaneng tshebeletso e kopa ho hlahloba seatla sa ka kapa ho nka setshwantsho?",
+        "a": "Ditshebeletso tse ding — jwalo ka ID ya Setjhaba, Lengolo la ho Kganna, kapa kopo ya boahi — di hloka sekane sa seatla kapa setshwantsho e le karolo ya rekoto ya hao ya molao, feela jwaloka kadi ya ID ya nnete e hlokang setshwantsho le lengano kajeno."
+      },
+      {
+        "category": "Ditefo",
+        "q": "Ke lefa jwang tshebeletso?",
+        "a": "Bongata ba ditshebeletso tse lefellwang di kopa hore o lefe ofising e amehang kapa tseleng e amohetsweng ya tefo pele, ebe o kenya tshupiso ya tefo mme o kenya setshwantsho sa risiti e le karolo ya kopo."
+      },
+      {
+        "category": "Tshireletso le lekunutu",
+        "q": "Ke mang ya ka bonang kopo yaka?",
+        "a": "Ke wena feela, le bahlanka ba lefapha leo kopo ya hao e amanang le lona. Batsamaisi ba sistimi ba ka fumana direkoto bakeng sa taolo ya sethala. Sheba Molawana wa Lekunutu bakeng sa ponelopele e felletseng."
+      },
+      {
+        "category": "Tshireletso le lekunutu",
+        "q": "Na boitsebiso ba ka bo sireletsegile?",
+        "a": "Akhaonto ya hao e sirelediwa ke password le dipotso tsa tshireletso, mme direkoto tsa botjabatjaba tse bohlokwa di fetolwa feela ke bahlanka ba netefaditsweng. Sheba Molawana wa Lekunutu bakeng sa dintlha tse amanang le se kgobokeditsweng le hore na se sebediswa jwang."
+      }
+    ],
+    "departmentGuidesTitle": "Ditataiso tsa mafapha",
+    "departmentGuidesIntro": "Ponelopele e potlakileng ya seo lefapha le leng le le leng le le akarelletsang le tsela e tlwaelehileng ya ditshebeletso tsa lona.",
+    "guides": {
+      "home_affairs": {
+        "intro": "Merero ya Kahare e sebetsana le boitsebiso ba hao ba botjabatjaba — ngodiso ya tswalo, lenyalo, tlhalano le lefu, ID ya Setjhaba, dipasepoto, phetoho ya lebitso, kgolwa le boahi.",
+        "steps": [
+          "Bula Merero ya Kahare ho tswa dashboding ya hao.",
+          "Kgetha tshebeletso eo o e hlokang — mohlala, Kopo ya ID ya Setjhaba kapa Ngodiso ya Tswalo.",
+          "Phetha foromo mme o kenye setshwantsho kapa ditokomane tse hlokahalang.",
+          "Ditshebeletso tse ding, jwalo ka ID ya Setjhaba, di hloka sekane sa seatla ofising ya lekala pele ho amohelwa.",
+          "Latela tswelopele ho Dikopo Tsaka, ebe o nka tokomane ya hao kapa o e bone ka dijithale ha e amohetswe."
+        ]
+      },
+      "traffic": {
+        "intro": "Sepalangwang se akarelletsa dilengolo tsa ho kganna, ngodiso ya dikoloi, dilengolo tsa ho tsamaisa, le diteko/dihlahlobo tse amanang le tsona.",
+        "steps": [
+          "Bula Sepalangwang ho tswa dashboding ya hao.",
+          "Bakeng sa lengolo la ho kganna, hangata o tla beha nako mme o fete teko ya thiori, ebe teko ya ts'ebetso, pele o kopa.",
+          "Bakeng sa koloi, e ngodise tlasa Ngodiso ya Koloi — sena se ka hloka tlhahlobo ya 'mele le netefatso ya thepa.",
+          "Latela kopo le pehelo ya teko ka nngwe tlasa Dikopo Tsaka le Dipehelo."
+        ]
+      },
+      "finance": {
+        "intro": "Ditshebeletso tsa Ditjhelete di hloka boitsebiso bo netefaditsweng ba moahi mme di akarelletsa direkoto tsa mosebetsi wa mmuso, ditefo tsa bafani, ho latela phomolo, le dipapatso tsa tekanyetso/ditenta.",
+        "steps": [
+          "Bula Ditjhelete ho tswa dashboding ya hao mme o kgethe tshebeletso e amehang.",
+          "Haeba ho na le bothata ka tefo kapa ts'ebetso lefapheng lefe kapa lefe, sebedisa “Tlaleha Bothata ba Ditjhelete” diketsong tse potlakileng tsa dashboard — eseng lefapha ka bolona."
+        ]
+      },
+      "pensions": {
+        "intro": "Ditshebeletso tsa Diphenshene di o dumella ho netefatsa le ho sheba boemo ba moamoheli wa phenshene.",
+        "steps": [
+          "Bula Diphenshene ho tswa dashboding ya hao.",
+          "Romella Potso ya Phenshene ka dintlha tsa moamoheli.",
+          "Latela sephetho ho Dikopo Tsaka."
+        ]
+      },
+      "police": {
+        "intro": "Ditshebeletso tsa Sepolesa di akarelletsa netefatso ya boitsebiso, Disetifikeiti tsa Phepeletso ya Sepolesa, le ho tlaleha ditlolo, thepa e lahlehileng kapa e utswitsweng, batho ba lahlehileng le diketsahalo tse ding.",
+        "steps": [
+          "Bula Sepolesa ho tswa dashboding ya hao.",
+          "Bakeng sa Setifikeiti sa Phepeletso ya Sepolesa, kopa mme o eme tlhahlobo — dintlha tse ding di hloka netefatso ka sekane.",
+          "Ho tlaleha ketsahalo, kgetha mofuta o tshwanang wa tlaleho (thepa e lahlehileng, thepa e utswitsweng, bosholu bo akaretsang, bosenyi ba inthanete, motho ya lahlehileng, pefo ya lelapa, kapa kotsi ya sepalangwang).",
+          "Latela tshupiso ya nyewe tlasa Latela Nyewe ya Sepolesa."
+        ]
+      },
+      "passport": {
+        "intro": "Ditshebeletso tsa Pasepoto di tlasa Merero ya Kahare mme di akarelletsa dikopo tse ncha, ntjhafatso, le diphetoho tse amanang le maqephe.",
+        "steps": [
+          "Bula Pasepoto (e thathamisitsweng tlasa Merero ya Kahare).",
+          "Kopa mme o kenye ditokomane le setshwantsho se hlokahalang.",
+          "Ditshebeletso tse ding tsa pasepoto di hloka netefatso ya ka sebele kapa ho neelana ka tokomane ya kgale.",
+          "Nka pasepoto ya hao ha e se e lokile."
+        ]
+      }
+    },
+    "stillNeedHelp": "O sa hloka thuso?",
+    "stillNeedHelpDesc": "Haeba ha ho letho le arabileng potso ya hao, Ikopanye le Rona — kapa, haeba e amana le kopo e itseng, leqephe la yona hangata le na le dintlha tsa morao-rao ka ho fetisisa.",
+    "contactCta": "Ikopanye le Rona",
+    "backToTop": "Kgutlela hodimo"
+  },
+  "about": {
+    "pageTitle": "Ka Sethala Sena",
+    "intro": "Ditshebeletso tse Kopaneng tsa Mmuso di kenya mafapha a mmuso a Lesotho — Merero ya Kahare, Sepalangwang, Ditjhelete, Diphenshene, Sepolesa le Ditshebeletso tsa Pasepoto — akhaontong e le nngwe ya moahi, ho e-na le molaleng o arohaneng, foromo le ofisi bakeng sa e nngwe le e nngwe.",
+    "sections": [
+      {
+        "heading": "Moahi a le mong, profaele e le nngwe",
+        "body": "Boitsebiso ba hao bo a netefatswa hanngwe, khahlanong le rekoto ya hao ya botjabatjaba, ebe bo amoheleha mafapheng kaofela. Ha o pheti dintlha tsa hao bakeng sa kopo e nngwe le e nngwe e ncha."
+      },
+      {
+        "heading": "Hobaneng ho hlahile",
+        "body": "Ditshebeletso tse ngata tsa mmuso hajwale di hloka leeto la ka sebele hore feela ho hlahlojwe boemo kapa ho rometswe foromo e tlwaelehileng. Sethala sena se batla ho kenya karolo e kgolo ya seo inthaneteng — ha se ntse se boloka dikarolo tse hlokang kahlolo ya mohlanka wa nnete, jwalo ka sekane sa seatla kapa netefatso ya tokomane, matsohong a mohlanka wa nnete."
+      },
+      {
+        "heading": "E hahilwe ka ponaletso",
+        "body": "Kopo e nngwe le e nngwe eo o e romellang e latelwa ka boemo bo bonahalang, phetoho e nngwe le e nngwe ya boemo e a ngolwa, mme mola wa tlhahlobo wa bahlanka o sebetsa ka tsela e tshwanang mafapheng kaofela — e le hore mokgwa o behang qeto o tshwane, eseng o fetofetoha."
+      },
+      {
+        "heading": "Mohlala o ntseng o hlabolloha",
+        "body": "Sistimi ena ke mohlala, o hahuweng mme o tswelang pele ho hlabollwa e le morero o tswelang pele, eseng sehlahiswa se qedilweng. Dintlha di kenywa mme di ntlafatswa ha nako e ntse e tsamaya; haeba ho na le se bonahalang se sa phethahala, hangata ho jwalo — mme seo se lebeletswe boemong bona."
+      }
+    ]
+  },
+  "contactPage": {
+    "pageTitle": "Ikopanye le Rona",
+    "intro": "Bakeng sa ntho e nngwe le e nngwe ka kopo kapa tshebeletso e itseng, dikarabo tse potlakileng hangata di ka hara sethala ka bolona.",
+    "channels": [
+      {
+        "title": "Qala ka Setsi sa Thuso",
+        "body": "Dipotso tse ngata mabapi le hore na tshebeletso e sebetsa jwang di se di arabilwe teng, di hlophisitswe ka sehlooho."
+      },
+      {
+        "title": "Ntlafatso e amanang le kopo",
+        "body": "Haeba mohlanka a hloka ho eketsa ho tswa ho wena, o tla tsebiswa ka hara sethala ka bolona — sheba Ditsebiso le Dikopo Tsaka pele o sheba kwana."
+      },
+      {
+        "title": "Bothata ba tefo kapa ts'ebetso ya ditjhelete",
+        "body": "Sebedisa “Tlaleha Bothata ba Ditjhelete” diketsong tse potlakileng tsa dashboard ya hao. E fihlela lefapha le nepahetseng ka ho toba, le ha e le lefe leo e amanang le lona."
+      },
+      {
+        "title": "Ka sebele",
+        "body": "Bakeng sa merero e sa kgoneng ho rarollwa inthaneteng ka nnete, etela ofisi ya lekala e sebetsanang le ditshebeletso tsa lefapha le amehang seterekeng sa hao."
+      }
+    ],
+    "prototypeNote": "Sethala sena ke mohlala. Ts'ebetso ya nnete e tla thathamisa dinomoro tsa mohala tsa mafapha a nnete, diaterese tsa imeile le dihora tsa ofisi mona; hajwale, ditsela tse kaholimo ke tseo sistimi ena ya pontsho e di tshehetsang hantle."
+  },
+  "privacyPolicy": {
+    "pageTitle": "Molawana wa Lekunutu",
+    "intro": "Leqephe lena le hlalosa hore na sethala sena se kgobokeditse boitsebiso bofe le hore na bo sebediswa jwang.",
+    "sections": [
+      {
+        "heading": "Seo re se kgobokeletsang",
+        "body": "Dintlha tsa hao tsa boitsebiso (lebitso, letsatsi la tswalo, nomoro ya boitsebiso e sa fetoheng), dintlha tsa ho ikopanya, didintlha tsa akhaonto ya hao le dikarabo tsa dipotso tsa tshireletso, mme — bakeng sa ditshebeletso tse itseng — sekane sa seatla, ditshwantsho, le ditokomane tseo o di kenyang (jwalo ka risiti kapa bopaki bo tshehetsang)."
+      },
+      {
+        "heading": "Kamoo re e sebedisang",
+        "body": "Ho sebetsana le kopo kapa tshebeletso eo o e romellang, ho netefatsa boitsebiso ba hao khahlanong le rekoto ya hao ya botjabatjaba, ho dumella bahlanka ba hlahlobang lefapheng le amehang ho sebetsa ka kopo ya hao, le ho boloka direkoto tse hlokahalang ho ya ka melao ya mmuso."
+      },
+      {
+        "heading": "Ba ka bonang boitsebiso bona",
+        "body": "Ke wena feela, le bahlanka ba lefapha leo kopo ya hao e amanang le lona. Batsamaisi ba sistimi ba ka fumana direkoto bakeng sa taolo le tshehetso ya sethala, eseng mosebetsi wa letsatsi le letsatsi wa mafapha a sa amaneng."
+      },
+      {
+        "heading": "Nako eo re e bolokang",
+        "body": "Direkoto tsa botjabatjaba (tswalo, lenyalo, ID ya Setjhaba le tse tshwanang) di bolokwa e le karolo ya rekoto ya hao ya mmuso e sa feleng. Ditokomane tse amanang le kopo di bolokwa nako e hlokahalang ho sebetsana le ho hlahloba kopo eo."
+      },
+      {
+        "heading": "Ditokelo tsa hao",
+        "body": "O ka bona rekoto ya hao ya botjabatjaba le nalane ya dikopo nako efe kapa efe ka hara akhaonto ya hao. Haeba ho na le phoso rekotong ya hao, tshebeletso ya Phoso ya lefapha le amehang ke tsela ya ho kopa phoso e lokiswe."
+      },
+      {
+        "heading": "Ka molawana ona",
+        "body": "Sethala sena ke mohlala o ntseng o hlabolloha. Leqephe lena le bontsha seo sistimi ya hajwale e se etsang hantle; ts'ebetso ya nnete e tla tshwarwa ke tlhahlobo e felletseng ya molao le tshireletso e fetang seo se hlalositsweng mona."
+      }
+    ]
+  },
+  "termsOfUse": {
+    "pageTitle": "Melawana ya Tshebediso",
+    "intro": "Ka ho etsa akhaonto le ho sebedisa sethala sena, o dumela tse latelang.",
+    "sections": [
+      {
+        "heading": "Boitsebiso bo nepahetseng",
+        "body": "O dumela ho fana ka boitsebiso bo nepahetseng le ho sebedisa sethala feela bakeng sa ditlhoko tsa hao tsa nnete tsa tshebeletso ya mmuso. Ho romella boitsebiso bo fosahetseng ka boomo kopong — mohlala kopo ya tswalo, lenyalo, kapa boitsebiso — ho ka baka hore kopo e hanwe mme akhaonto ya hao e hlahlojwe."
+      },
+      {
+        "heading": "Akhaonto ya hao",
+        "body": "Boloka password ya hao le dikarabo tsa dipotso tsa tshireletso e le lekunutu. O ikarabella bakeng sa ts'ebetso e etswang tlasa akhaonto ya hao."
+      },
+      {
+        "heading": "Ho fumaneha",
+        "body": "Ditshebeletso tsa mmuso di itshetlehile ka tlhahlobo ya bahlanka mme ha di etsahale hang-hang. Sethala se bontsha letshwao la boemo ba sistimi, empa ho fumaneha ha ho tiiswe nako tsohle."
+      },
+      {
+        "heading": "Diphetoho",
+        "body": "Melawana ena, le ditshebeletso tse fumanehang sethaleng sena, di ka fetoha ha sistimi e ntse e hlabolloha."
+      },
+      {
+        "heading": "Ka melawana ena",
+        "body": "Sethala sena ke mohlala o ntseng o hlabolloha, o hahuweng e le karolo ya morero o tswelang pele, eseng sehlahiswa se qedilweng se hlahlobilweng ka molao."
+      }
+    ]
+  },
+  "landingExtra": {
+    "howItWorksTitle": "Hore na ho sebetsa jwang",
+    "howItWorksSteps": [
+      {
+        "title": "Etsa akhaonto",
+        "desc": "Netefatsa ka nomoro ya hao ya boitsebiso, kapa o kope pele haeba o se na yona."
+      },
+      {
+        "title": "Kopa tshebeletso",
+        "desc": "Kgetha lefapha mme o phethe foromo ya lona inthaneteng."
+      },
+      {
+        "title": "E latele",
+        "desc": "Latela boemo ba kopo ya hao ho tswa dashboding ya hao."
+      },
+      {
+        "title": "Nka sephetho sa hao",
+        "desc": "Nka tokomane ya hao, kapa o e bone ka hara akhaonto ya hao."
+      }
+    ],
+    "departmentsOverview": "Mafapha a tsheletseng, akhaonto e le nngwe. Sheba seo le leng le le leng le le akarelletsang ka tlase, kapa o sebedise lebokoso la ho batla ka hodimo ho ya ho tshebeletso ka ho toba.",
+    "trustTitle": "E sireletsegile, mme e hahetswe ho tshepahala",
+    "trustItems": [
+      {
+        "title": "E sireletsegile",
+        "body": "Akhaonto ya hao e sirelediwa ke password le dipotso tsa tshireletso, mme direkoto tsa botjabatjaba tse bohlokwa di fetolwa feela ke bahlanka ba netefaditsweng."
+      },
+      {
+        "title": "E bonolo",
+        "body": "Kopa, latela mme o laole ditshebeletso tsa mmuso ho tswa akhaontong e le nngwe ho e-na le leeto le arohaneng bakeng sa lefapha le leng le le leng."
+      },
+      {
+        "title": "E pepeneneng",
+        "body": "Kopo e nngwe le e nngwe e bontsha boemo bo hlakileng, mme phetoho e nngwe le e nngwe ya boemo e a ngolwa — e le hore o dula o tseba hore na ditaba di fihletse hokae."
+      },
+      {
+        "title": "E tsepamisitse maikutlo ho moahi",
+        "body": "Boitsebiso ba hao bo a netefatswa hanngwe mme bo amoheleha hohle — ha o pheti dintlha tse tshwanang bakeng sa tshebeletso e nngwe le e nngwe."
+      }
+    ]
   }
 }

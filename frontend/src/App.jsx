@@ -8,6 +8,11 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import BirthCertificateApplication from './pages/BirthCertificateApplication';
 import ForgotPassword from './pages/ForgotPassword';
+import HelpCenter from './pages/HelpCenter';
+import AboutUs from './pages/AboutUs';
+import ContactUs from './pages/ContactUs';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfUse from './pages/TermsOfUse';
 import Dashboard from './pages/Dashboard';
 import Departments from './pages/Departments';
 import Profile from './pages/Profile';
@@ -121,6 +126,15 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/apply-for-birth-certificate" element={<BirthCertificateApplication />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        {/* Batch 39 — Help Centre and the informational cluster next to it (About Us, Contact,
+            Privacy Policy, Terms of Use). All public: these are exactly the links shown in the
+            Header's top utility bar and the Footer, both of which render on the pre-login Landing
+            page too, so none of these can require a login. */}
+        <Route path="/help" element={<HelpCenter />} />
+        <Route path="/about" element={<AboutUs />} />
+        <Route path="/contact" element={<ContactUs />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-use" element={<TermsOfUse />} />
 
         <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

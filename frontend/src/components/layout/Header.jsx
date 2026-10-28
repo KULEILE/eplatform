@@ -39,11 +39,13 @@ function NavItem({ to, icon: Icon, children }) {
 export default function Header() {
   const { user, logout } = useAuth();
   const { t, language, setLanguage } = useLanguage();
-  const { fontSize, setFontSize, fontSizes, contrast, setContrast, brightness, setBrightness, theme, setTheme } = useAccessibility();
+  const {
+    fontSize, setFontSize, fontSizes, contrast, setContrast, brightness, setBrightness, theme, setTheme,
+    a11yPanelOpen: a11yOpen, setA11yPanelOpen: setA11yOpen,
+  } = useAccessibility();
   const { settings, logoUrl } = useSystemSettings();
   const [unread, setUnread] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [a11yOpen, setA11yOpen] = useState(false);
   const [a11yPanelStyle, setA11yPanelStyle] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -102,9 +104,9 @@ export default function Header() {
             <span>{t('common.kingdomOfLesotho')}</span>
           </div>
           <div className="flex items-center gap-4 text-white/80">
-            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white hover:underline">{t('common.help')}</a>
-            <a href="#" onClick={(e) => e.preventDefault()} className="hidden hover:text-white hover:underline sm:inline">{t('common.aboutUs')}</a>
-            <a href="#" onClick={(e) => e.preventDefault()} className="hidden hover:text-white hover:underline sm:inline">{t('common.contact')}</a>
+            <Link to="/help" className="hover:text-white hover:underline">{t('common.help')}</Link>
+            <Link to="/about" className="hidden hover:text-white hover:underline sm:inline">{t('common.aboutUs')}</Link>
+            <Link to="/contact" className="hidden hover:text-white hover:underline sm:inline">{t('common.contact')}</Link>
             <div className="flex overflow-hidden rounded border border-white/25">
               {['en', 'st'].map((lng) => (
                 <button

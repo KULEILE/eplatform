@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { MagnifyingGlassIcon, DocumentTextIcon, BellIcon, LifebuoyIcon } from '@heroicons/react/24/outline';
+import {
+  MagnifyingGlassIcon, DocumentTextIcon, BellIcon, LifebuoyIcon,
+  LockClosedIcon, ClockIcon, ShieldCheckIcon, UsersIcon,
+} from '@heroicons/react/24/outline';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSystemSettings } from '../context/SystemSettingsContext';
@@ -86,13 +89,13 @@ export default function Landing() {
             <span className="block text-xs text-slate-500">{t('dashboard.viewNotificationsDesc')}</span>
           </span>
         </Link>
-        <a href="#" onClick={(e) => e.preventDefault()} className="card-link flex items-center gap-3">
+        <Link to="/help" className="card-link flex items-center gap-3">
           <LifebuoyIcon className="h-6 w-6 shrink-0 text-gov-navy" strokeWidth={1.6} />
           <span>
             <span className="block text-sm font-semibold text-slate-900">{t('dashboard.needHelp')}</span>
             <span className="block text-xs text-slate-500">{t('dashboard.needHelpDesc')}</span>
           </span>
-        </a>
+        </Link>
         <div className="card flex items-center gap-3">
           <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${systemOnline ? 'bg-emerald-500' : systemOnline === false ? 'bg-gov-red' : 'bg-slate-300'}`} aria-hidden="true" />
           <span>
@@ -104,14 +107,50 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* How it works — a short walkthrough for a first-time visitor who has never used the
+          portal before. The full version, with more detail per step, lives at /help. */}
+      <section className="mt-10">
+        <h2 className="section-title">{t('landingExtra.howItWorksTitle')}</h2>
+        <ol className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {(t('landingExtra.howItWorksSteps') || []).map((step, i) => (
+            <li key={i} className="card relative pt-8">
+              <span className="absolute -top-3 left-4 flex h-7 w-7 items-center justify-center rounded-full bg-gov-navy text-xs font-bold text-white shadow-sm">{i + 1}</span>
+              <h3 className="text-sm font-semibold text-slate-900">{step.title}</h3>
+              <p className="mt-1 text-xs text-slate-600">{step.desc}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
       {/* Departments */}
       <section className="mt-10">
         <h2 className="section-title">{t('dashboard.governmentDepartments')}</h2>
-        <p className="mt-1 text-sm text-slate-600">{t('dashboard.chooseDepartmentDesc')}</p>
+        <p className="mt-1 max-w-2xl text-sm text-slate-600">{t('landingExtra.departmentsOverview')}</p>
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((d) => <DepartmentCard key={d} departmentKey={d} />)}
         </div>
         {visible.length === 0 && <p className="mt-4 text-sm text-slate-500">{t('common.noMatchingService')}</p>}
+      </section>
+
+      {/* Trust & security — the same four words shown as bare badges in the footer on every
+          page, explained properly here once, for a visitor who hasn't decided yet whether to
+          trust this portal with their identity. */}
+      <section className="mt-10 rounded-2xl border border-slate-200 bg-white p-6 shadow-card sm:p-8">
+        <h2 className="section-title text-center">{t('landingExtra.trustTitle')}</h2>
+        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
+          {(t('landingExtra.trustItems') || []).map((item, i) => {
+            const Icon = [LockClosedIcon, ClockIcon, ShieldCheckIcon, UsersIcon][i % 4];
+            return (
+              <div key={i} className="flex items-start gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gov-navy/10 text-gov-navy"><Icon className="h-5 w-5" strokeWidth={1.75} /></span>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">{item.title}</h3>
+                  <p className="mt-0.5 text-sm text-slate-600">{item.body}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
     </div>
   );

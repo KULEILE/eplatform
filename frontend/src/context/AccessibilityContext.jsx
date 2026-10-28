@@ -32,6 +32,11 @@ export function AccessibilityProvider({ children }) {
   const [contrast, setContrastState] = useState(() => readStored('gov_contrast', 'Normal', CONTRASTS));
   const [brightness, setBrightnessState] = useState(() => readStored('gov_brightness', 'Normal', BRIGHTNESS));
   const [theme, setThemeState] = useState(() => readStored('gov_theme', systemPrefersDark() ? 'Dark' : 'Light', THEMES));
+  // Batch 39 — lifted out of Header.jsx's own local state so Footer.jsx's "Accessibility" link
+  // can open the exact same panel instead of duplicating it. Header still owns the panel's
+  // positioning logic (it measures its own button's position), this context only owns whether
+  // it's open.
+  const [a11yPanelOpen, setA11yPanelOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-font-size', fontSize);
@@ -58,7 +63,8 @@ export function AccessibilityProvider({ children }) {
     contrast, setContrast: setContrastState, contrasts: CONTRASTS,
     brightness, setBrightness: setBrightnessState, brightnesses: BRIGHTNESS,
     theme, setTheme: setThemeState, themes: THEMES,
-  }), [fontSize, contrast, brightness, theme]);
+    a11yPanelOpen, setA11yPanelOpen,
+  }), [fontSize, contrast, brightness, theme, a11yPanelOpen]);
 
   return <AccessibilityContext.Provider value={value}>{children}</AccessibilityContext.Provider>;
 }

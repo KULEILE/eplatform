@@ -1940,5 +1940,296 @@
     "escalateToFinance": "Escalate to Finance",
     "resolutionNotesLabel": "Resolution notes",
     "escalationNoteLabel": "Escalation note"
+  },
+  "help": {
+    "pageTitle": "Help Centre",
+    "pageIntro": "Answers to common questions, a walkthrough of how the portal works, and a guide for each department's services.",
+    "searchPlaceholder": "Search the Help Centre...",
+    "noResults": "No help articles matched your search. Try a different word, or use Contact Us.",
+    "walkthroughTitle": "How this portal works",
+    "walkthroughIntro": "Every service on this portal follows roughly the same five steps.",
+    "walkthroughSteps": [
+      {
+        "title": "Create an account",
+        "desc": "An existing citizen verifies with their permanent identity number and date of birth. Someone without a civil record yet applies for a birth certificate first. A foreign national registers and gets a provisional account that unlocks once their citizenship application is approved."
+      },
+      {
+        "title": "Verify your identity",
+        "desc": "Your account is checked against your official civil record. Until that's confirmed (or, for a foreign national, until citizenship is approved), you'll see a notice guiding you to the right application instead of the full portal."
+      },
+      {
+        "title": "Apply for a service",
+        "desc": "Choose a department from your dashboard, open the service you need, and complete its form — most ask for supporting documents, a photo, or in some cases a hand-biometric scan."
+      },
+      {
+        "title": "Track your application",
+        "desc": "Every application you submit appears under “My Applications” with its current status. If an officer needs more from you, you'll get a notification and a chance to resubmit."
+      },
+      {
+        "title": "Collect or receive your result",
+        "desc": "Depending on the service, you'll either collect a physical document at your nearest branch office, or the result (like a digital certificate) becomes available directly in your account."
+      }
+    ],
+    "faqTitle": "Frequently asked questions",
+    "faqIntro": "Grouped by topic — use the search box above to jump straight to one.",
+    "faq": [
+      {
+        "category": "Account & identity",
+        "q": "I'm a Lesotho citizen but I don't have a permanent identity number yet. How do I register?",
+        "a": "On the registration page, choose “I need to register”. That takes you to the public birth certificate application — once Home Affairs approves it, you're guided straight into creating your account with your new identity number."
+      },
+      {
+        "category": "Account & identity",
+        "q": "I'm not a Lesotho citizen — can I use this portal?",
+        "a": "Yes. Choose “I'm not a citizen” on the registration page. You'll get a provisional account that unlocks the full portal once you successfully apply for citizenship — either by naturalization, or by registration if you're married to a Lesotho citizen."
+      },
+      {
+        "category": "Account & identity",
+        "q": "I forgot my password.",
+        "a": "Use “Forgot password” on the login page and answer the two security questions you set up when you created your account."
+      },
+      {
+        "category": "Account & identity",
+        "q": "What is my permanent identity number?",
+        "a": "A unique number tied to your civil record, used across every department. You can see a masked version on your dashboard — tap it to reveal the full number, or find it on your Profile page."
+      },
+      {
+        "category": "Applications",
+        "q": "How do I check the status of an application?",
+        "a": "Open “My Applications” from the main menu. Every application you've ever submitted, across every department, is listed there with its current status."
+      },
+      {
+        "category": "Applications",
+        "q": "An officer asked for more information — what do I do?",
+        "a": "You'll get a notification and the application's status changes to “Additional Information Required.” Open it from My Applications to see exactly what's missing, then resubmit from the same screen."
+      },
+      {
+        "category": "Applications",
+        "q": "Can I apply for more than one service at a time?",
+        "a": "Yes — applications from different services and departments are completely independent of each other."
+      },
+      {
+        "category": "Documents & biometrics",
+        "q": "Why does a service ask me to scan my hand or take a photo?",
+        "a": "Certain services — like a National ID, a Driving Licence, or a citizenship application — require a hand-biometric scan or a photo as part of your official record, the same way a physical ID card requires a photo and fingerprint today."
+      },
+      {
+        "category": "Fees & payment",
+        "q": "How do I pay for a service?",
+        "a": "Most paid services ask you to pay at the relevant office or an approved payment channel first, then enter the payment reference and upload a photo of your receipt as part of the application."
+      },
+      {
+        "category": "Security & privacy",
+        "q": "Who can see my application?",
+        "a": "Only you, and the officers at the specific department your application concerns. System administrators can access records for platform administration. See our Privacy Policy for the full picture."
+      },
+      {
+        "category": "Security & privacy",
+        "q": "Is my information secure?",
+        "a": "Your account is protected by a password and security questions, and sensitive civil records are only edited by verified officers. See our Privacy Policy for details on what's collected and how it's used."
+      }
+    ],
+    "departmentGuidesTitle": "Department guides",
+    "departmentGuidesIntro": "A quick overview of what each department covers and the typical path through its services.",
+    "guides": {
+      "home_affairs": {
+        "intro": "Home Affairs handles your civil identity — birth, marriage, divorce and death registration, National ID, passports, name changes, adoption and citizenship.",
+        "steps": [
+          "Open Home Affairs from your dashboard.",
+          "Pick the service you need — e.g. National ID Application or Birth Registration.",
+          "Complete the form and upload the required photo or documents.",
+          "Some services, like National ID, need a biometric capture at a branch office before approval.",
+          "Track progress in My Applications, then collect your document or view it digitally once approved."
+        ]
+      },
+      "traffic": {
+        "intro": "Traffic covers driving licences, vehicle registration, transport permits, and the tests and inspections that go with them.",
+        "steps": [
+          "Open Traffic from your dashboard.",
+          "For a driving licence, you'll usually book and pass a theory test, then a practical test, before applying.",
+          "For a vehicle, register it under Vehicle Registration — this can require a physical inspection and customs verification.",
+          "Track every application and test booking under My Applications and Appointments."
+        ]
+      },
+      "finance": {
+        "intro": "Finance services require a verified citizen identity and cover government employment records, supplier payments, retirement tracking, and budget/tender publications.",
+        "steps": [
+          "Open Finance from your dashboard and choose the relevant service.",
+          "If something seems wrong with a payment or process in any department, use “Report a Financial Issue” from your dashboard's quick actions — not the department itself."
+        ]
+      },
+      "pensions": {
+        "intro": "Pensions services let you verify and check on pension beneficiary status.",
+        "steps": [
+          "Open Pensions from your dashboard.",
+          "Submit a Pension Enquiry with the beneficiary's details.",
+          "Track the result in My Applications."
+        ]
+      },
+      "police": {
+        "intro": "Police services include identity verification, Police Clearance Certificates, and reporting crimes, lost or stolen property, missing persons and other incidents.",
+        "steps": [
+          "Open Police from your dashboard.",
+          "For a Police Clearance Certificate, apply and wait for review — some cases require biometric verification.",
+          "To report an incident, choose the matching report type (lost property, stolen property, general crime, cybercrime, missing person, domestic violence, or traffic accident).",
+          "Track any case reference under Police Case Track."
+        ]
+      },
+      "passport": {
+        "intro": "Passport services are grouped under Home Affairs and cover new applications, renewals and page-related changes.",
+        "steps": [
+          "Open Passport (listed under Home Affairs).",
+          "Apply and upload the required documents and photo.",
+          "Some passport services require in-person verification or surrender of an old document.",
+          "Collect your passport once it's ready."
+        ]
+      }
+    },
+    "stillNeedHelp": "Still need help?",
+    "stillNeedHelpDesc": "If none of this answered your question, Contact Us — or, if it's about a specific application, its own page usually has the most up-to-date information.",
+    "contactCta": "Contact Us",
+    "backToTop": "Back to top"
+  },
+  "about": {
+    "pageTitle": "About this portal",
+    "intro": "Integrated Government Services brings Lesotho's government departments — Home Affairs, Traffic, Finance, Pensions, Police and Passport Services — into one citizen account, instead of a separate queue, form and office for each one.",
+    "sections": [
+      {
+        "heading": "One citizen, one profile",
+        "body": "Your identity is verified once, against your civil record, and then recognised across every department. You don't re-enter your personal details for each new application."
+      },
+      {
+        "heading": "Why it exists",
+        "body": "Many government services currently require an in-person visit just to check a status or submit a routine form. This portal aims to move as much of that online as the service genuinely allows — while keeping the parts that legitimately need an officer's judgement, like biometric capture or document verification, in the hands of a real officer."
+      },
+      {
+        "heading": "Built transparently",
+        "body": "Every application you submit is tracked with a visible status, every status change is logged, and officer-facing review queues work the same way across every department — so the process behind a decision is consistent, not ad-hoc."
+      },
+      {
+        "heading": "A prototype in active development",
+        "body": "This system is a prototype, built and maintained as an ongoing development project rather than a finished product. Features are added and refined over time; if something looks incomplete, it likely is — and that's expected at this stage."
+      }
+    ]
+  },
+  "contactPage": {
+    "pageTitle": "Contact Us",
+    "intro": "For anything about a specific application or service, the fastest answers are usually inside the portal itself.",
+    "channels": [
+      {
+        "title": "Check the Help Centre first",
+        "body": "Most questions about how a service works are already answered there, organised by topic."
+      },
+      {
+        "title": "Application-specific updates",
+        "body": "If an officer needs more information from you, you'll be notified directly inside the portal — check Notifications and My Applications before looking elsewhere."
+      },
+      {
+        "title": "A problem with a payment or financial process",
+        "body": "Use “Report a Financial Issue” from your dashboard's quick actions. It reaches the right department directly, whichever one it concerns."
+      },
+      {
+        "title": "In person",
+        "body": "For matters that genuinely can't be resolved online, visit the branch office that handles the relevant department's services in your district."
+      }
+    ],
+    "prototypeNote": "This portal is a prototype. A production deployment would list real department phone numbers, email addresses and office hours here; for now, the channels above are the ones this demonstration system actually supports."
+  },
+  "privacyPolicy": {
+    "pageTitle": "Privacy Policy",
+    "intro": "This page describes what information this portal collects and how it's used.",
+    "sections": [
+      {
+        "heading": "What we collect",
+        "body": "Your identity details (name, date of birth, permanent identity number), contact information, your account credentials and security question answers, and — for specific services — hand-biometric templates, photos, and documents you upload (such as receipts or supporting evidence)."
+      },
+      {
+        "heading": "How we use it",
+        "body": "To process the specific application or service you submit, to verify your identity against your civil record, to let the reviewing officers at the relevant department act on your request, and to maintain the record-keeping and audit trail government services require."
+      },
+      {
+        "heading": "Who can see it",
+        "body": "Only you, and the officers at the specific department your application concerns. System administrators can access records for platform administration and support, not for unrelated departments' day-to-day work."
+      },
+      {
+        "heading": "How long we keep it",
+        "body": "Civil records (birth, marriage, National ID and similar) are retained as part of your permanent government record. Application-specific documents are kept as long as needed to process and audit that application."
+      },
+      {
+        "heading": "Your rights",
+        "body": "You can view your own civil record and application history at any time through your account. If something in your record is wrong, the relevant department's Correction service is the way to request a fix."
+      },
+      {
+        "heading": "About this policy",
+        "body": "This portal is a prototype under active development. This page reflects what the current system actually does; a production deployment would carry a full legal and security review beyond what's described here."
+      }
+    ]
+  },
+  "termsOfUse": {
+    "pageTitle": "Terms of Use",
+    "intro": "By creating an account and using this portal, you agree to the following.",
+    "sections": [
+      {
+        "heading": "Accurate information",
+        "body": "You agree to provide accurate information and to use the portal only for your own legitimate government service needs. Knowingly submitting false information on an application — for example a birth, marriage, or identity application — may result in the application being rejected and your account reviewed."
+      },
+      {
+        "heading": "Your account",
+        "body": "Keep your password and security question answers confidential. You're responsible for activity carried out under your account."
+      },
+      {
+        "heading": "Availability",
+        "body": "Government services depend on officer review and are not instant. The portal shows a system status indicator, but availability isn't guaranteed at all times."
+      },
+      {
+        "heading": "Changes",
+        "body": "These terms, and the services available on this portal, may change as the system develops."
+      },
+      {
+        "heading": "About these terms",
+        "body": "This portal is a prototype under active development, built as part of an ongoing project rather than a finished, legally reviewed product."
+      }
+    ]
+  },
+  "landingExtra": {
+    "howItWorksTitle": "How it works",
+    "howItWorksSteps": [
+      {
+        "title": "Create an account",
+        "desc": "Verify with your identity number, or apply first if you don't have one yet."
+      },
+      {
+        "title": "Apply for a service",
+        "desc": "Pick a department and complete its form online."
+      },
+      {
+        "title": "Track it",
+        "desc": "Follow your application's status from your dashboard."
+      },
+      {
+        "title": "Collect your result",
+        "desc": "Pick up your document, or view it directly in your account."
+      }
+    ],
+    "departmentsOverview": "Six departments, one account. Browse what each one covers below, or use the search box above to jump straight to a service.",
+    "trustTitle": "Secure, and built to be trusted",
+    "trustItems": [
+      {
+        "title": "Secure",
+        "body": "Your account is protected by a password and security questions, and sensitive civil records can only be changed by verified officers."
+      },
+      {
+        "title": "Convenient",
+        "body": "Apply, track and manage government services from one account instead of a separate visit for each department."
+      },
+      {
+        "title": "Transparent",
+        "body": "Every application shows a clear status, and every status change is recorded — so you always know where things stand."
+      },
+      {
+        "title": "Citizen centred",
+        "body": "Your identity is verified once and recognised everywhere — you don't re-enter the same details for every service."
+      }
+    ]
   }
 }

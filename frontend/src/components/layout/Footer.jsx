@@ -1,7 +1,9 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { LockClosedIcon, ClockIcon, ShieldCheckIcon, UsersIcon } from '@heroicons/react/24/outline';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSystemSettings } from '../../context/SystemSettingsContext';
+import { useAccessibility } from '../../context/AccessibilityContext';
 import LesothoFlag from '../ui/LesothoFlag';
 
 function TrustBadge({ icon: Icon, label }) {
@@ -16,6 +18,7 @@ function TrustBadge({ icon: Icon, label }) {
 export default function Footer() {
   const { t } = useLanguage();
   const { settings } = useSystemSettings();
+  const { setA11yPanelOpen } = useAccessibility();
 
   return (
     <footer className="border-t border-slate-200 bg-white">
@@ -32,10 +35,21 @@ export default function Footer() {
             {settings.system_name || t('common.appNameFallback')}
           </div>
           <div className="flex flex-wrap items-center gap-4 text-white/75">
-            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white hover:underline">{t('common.privacyPolicy')}</a>
-            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white hover:underline">{t('common.termsOfUse')}</a>
-            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white hover:underline">{t('common.accessibility')}</a>
-            <a href="#" onClick={(e) => e.preventDefault()} className="hover:text-white hover:underline">{t('common.contact')}</a>
+            <Link to="/privacy-policy" className="hover:text-white hover:underline">{t('common.privacyPolicy')}</Link>
+            <Link to="/terms-of-use" className="hover:text-white hover:underline">{t('common.termsOfUse')}</Link>
+            {/* Opens the exact same accessibility panel reachable from the header's own
+                Accessibility dropdown (AccessibilityContext.a11yPanelOpen, shared state) — a
+                page, rather than a button, would just redirect back here anyway. The panel is
+                anchored to the header's button near the top of the page, so this also scrolls
+                there first — otherwise it would open off-screen above a footer click. */}
+            <button
+              type="button"
+              onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); setA11yPanelOpen(true); }}
+              className="hover:text-white hover:underline"
+            >
+              {t('common.accessibility')}
+            </button>
+            <Link to="/contact" className="hover:text-white hover:underline">{t('common.contact')}</Link>
           </div>
           <span className="text-white/60">{t('common.footerRights', { year: new Date().getFullYear() })}</span>
         </div>
