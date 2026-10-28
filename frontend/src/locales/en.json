@@ -787,7 +787,7 @@
       "title": "Apply for Citizenship by Naturalization",
       "intro": "If you are a foreign national who has lived in Lesotho for at least 5 years, you may apply to become a citizen of Lesotho. A Home Affairs officer will review your application and supporting documents.",
       "notApplicable": "This service is for foreign-national accounts applying to become citizens of Lesotho. It does not apply to your account.",
-      "eligibilityNotice": "You must have lived in Lesotho for at least 5 years before you can apply, supported by a letter from your area chief confirming your residency.",
+      "eligibilityNotice": "You must have lived in Lesotho for at least 5 years before you can apply, supported by a letter from your area chief confirming your residency. Studying or working in Lesotho on a Work Permit or Study Permit does not by itself qualify you — see Citizenship by Registration if you are married to a Lesotho citizen instead.",
       "feeNotice": "A naturalization application fee is payable. Upload your payment reference and a photo of the receipt.",
       "field": {
         "firstName": "First name",
@@ -834,6 +834,42 @@
       "certificateLabel": "Certificate number",
       "newIdNumberLabel": "New permanent identity number",
       "empty": "No naturalization applications waiting for review."
+    },
+    "marriageCitizenship": "Citizenship by Registration (Marriage)",
+    "marriageCitizenshipForm": {
+      "title": "Apply for Citizenship by Registration (Marriage to a Lesotho Citizen)",
+      "intro": "If you are married to a citizen of Lesotho, you may be entitled to be registered as a citizen under section 40 of the Constitution (as amended in 2018), after five years of cohabitation and continuous lawful stay in Lesotho together — or, if your spouse has since died, five years of continuous lawful stay alone. A Home Affairs officer will review your application against your marriage record.",
+      "notApplicable": "This service is for foreign-national accounts applying to become citizens of Lesotho through marriage to a Lesotho citizen. It does not apply to your account.",
+      "eligibilityNotice": "You must reference an already-approved marriage certificate issued by Home Affairs, and show at least five years of cohabitation and continuous lawful stay in Lesotho with your spouse (or, if your spouse has since died, five years of continuous lawful stay alone).",
+      "feeNotice": "A registration application fee is payable. Upload your payment reference and a photo of the receipt.",
+      "field": {
+        "marriageCertificateNumber": "Marriage certificate number",
+        "marriageCertificateNumberHelp": "The certificate number from your approved Home Affairs marriage registration, e.g. MC-2026-483920.",
+        "firstName": "First name",
+        "middleName": "Middle name",
+        "lastName": "Last name",
+        "lastNameHelp": "Must match the name recorded for you on the marriage certificate above.",
+        "dateOfBirth": "Date of birth",
+        "placeOfBirth": "Place of birth",
+        "sex": "Sex",
+        "nationality": "Nationality (your country of citizenship)",
+        "arrivalDate": "Date you arrived to live in Lesotho",
+        "arrivalDateHelp": "Used to confirm your continuous lawful stay in Lesotho.",
+        "cohabitationStartDate": "Date you began living together with your spouse in Lesotho",
+        "cohabitationStartDateHelp": "Not required if your spouse has since died — leave blank in that case."
+      },
+      "submit": "Submit application"
+    },
+    "marriageCitizenshipQueue": {
+      "title": "Citizenship by Registration Applications",
+      "desc": "Review applications from foreign nationals married to a Lesotho citizen, each checked against an approved Home Affairs marriage record.",
+      "citizenSpouse": "Citizen spouse",
+      "marriageDate": "Marriage date",
+      "marriageRecordLabel": "Referenced marriage record",
+      "certificateLabel": "Certificate number",
+      "deceased": "deceased",
+      "notApplicableWidowed": "Not required — surviving spouse",
+      "empty": "No citizenship by registration applications waiting for review."
     },
     "birthCertificates": "Birth Certificate",
     "birthCertificatesIntro": "View your own birth certificate and any of your children's, and request a reissue if one is lost, damaged, or never collected.",

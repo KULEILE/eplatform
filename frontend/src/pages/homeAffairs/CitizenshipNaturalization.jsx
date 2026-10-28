@@ -14,7 +14,12 @@ import { formatDateOnly } from '../../utils/format';
 
 const SEX_OPTIONS = ['Male', 'Female', 'Other', 'Unspecified'];
 const TRAVEL_DOCUMENT_TYPES = ['Passport', 'Refugee Travel Document', 'Other'];
-const IMMIGRATION_STATUSES = ['Refugee', 'Asylum Seeker', 'Work Permit Holder', 'Study Permit Holder', 'Permanent Resident', 'Other'];
+// Work Permit Holder and Study Permit Holder were removed from the selectable options here —
+// studying or working in Lesotho does not by itself qualify someone for citizenship by
+// naturalization, enforced server-side in naturalization.controller.js. The locale keys for both
+// are kept (see locales/en.json, st.json) so an already-submitted application under either status
+// still displays correctly in the officer's "view details" modal below.
+const IMMIGRATION_STATUSES = ['Refugee', 'Asylum Seeker', 'Permanent Resident', 'Other'];
 
 function emptyForm() {
   return {

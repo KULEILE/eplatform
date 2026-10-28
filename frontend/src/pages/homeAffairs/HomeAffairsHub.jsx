@@ -30,6 +30,10 @@ const SERVICES = [
   // resolving a parentage dispute. See migration 061.
   { key: 'parentageDisputes', to: '/home-affairs/parentage-disputes', icon: '⚖️', roles: ['home_affairs_officer', 'system_administrator'] },
   { key: 'naturalization', to: '/home-affairs/naturalization', icon: '🌍', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
+  // Second, legally distinct route to citizenship — migration 079. Same visibility gating as
+  // naturalization below (a foreign-national applicant sees both tiles and can use whichever
+  // pathway actually applies to them).
+  { key: 'marriageCitizenship', to: '/home-affairs/marriage-citizenship', icon: '💞', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
   { key: 'applicationTracking', to: '/applications', icon: '📊', roles: ['citizen', 'home_affairs_officer', 'system_administrator'] },
 ];
 
@@ -49,11 +53,11 @@ export default function HomeAffairsHub() {
   const visible = SERVICES.filter((s) => {
     if (!s.roles.includes(user.roleKey)) return false;
     if (user.roleKey !== 'citizen') return true;
-    if (isLockedOutForeignNational) return s.key === 'naturalization' || s.key === 'applicationTracking';
+    if (isLockedOutForeignNational) return s.key === 'naturalization' || s.key === 'marriageCitizenship' || s.key === 'applicationTracking';
     // A citizen who was never a foreign national has no reason to see this service. One who
-    // WAS (even if long since naturalised) keeps seeing it, so they can still see their own
-    // approved application and certificate number.
-    if (s.key === 'naturalization') return wasForeignNational;
+    // WAS (even if long since naturalised/registered) keeps seeing it, so they can still see
+    // their own approved application and certificate number.
+    if (s.key === 'naturalization' || s.key === 'marriageCitizenship') return wasForeignNational;
     return true;
   });
   const isOfficer = ['home_affairs_officer', 'system_administrator'].includes(user.roleKey);

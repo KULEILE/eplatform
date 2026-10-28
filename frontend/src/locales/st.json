@@ -787,7 +787,7 @@
       "title": "Kopa Boahi ka Naturalization",
       "intro": "Haeba o moditjhaba o dutseng Lesotho dilemo tse 5 kapa ho feta, o ka kopa ho ba moahi wa Lesotho. Mohlanka wa Litaba tsa Selehae o tla hlahloba kopo ya hao le ditokomane tse tshehetsang.",
       "notApplicable": "Tshebeletso ena e bakeng sa di-akhaonto tsa baditjhaba ba kopang ho ba baahi ba Lesotho. Ha e sebetse akhaonto ya hao.",
-      "eligibilityNotice": "O tlameha ho be o dutse Lesotho dilemo tse 5 kapa ho feta pele o ka kopa, mme sena se tshehetswe ke lengolo le tswang ho morena wa sebaka sa hao le netefatsang bodulo ba hao.",
+      "eligibilityNotice": "O tlameha ho be o dutse Lesotho dilemo tse hlano bonyane pele o ka kopa, ho tshehediwa ke lengolo la morena wa sebaka sa hao le netefatsang boahi ba hao. Ho ithuta kapa ho sebetsa Lesotho ka Permit ya Mosebetsi kapa ya Thuto ha ho a lekana ka bo bona — sheba Boahi ka Ngodiso haeba o nyetse/o nyetswe ke moahi wa Lesotho.",
       "feeNotice": "Tefo ya kopo ya naturalization e hlokahala. Kenya nomoro ya hao ya tefo le setshwantsho sa risiti.",
       "field": {
         "firstName": "Lebitso la pele",
@@ -834,6 +834,42 @@
       "certificateLabel": "Nomoro ya setifikeiti",
       "newIdNumberLabel": "Nomoro e ntjha ya boitsebiso e sa fetoheng",
       "empty": "Ha ho dikopo tsa boahi ka naturalization tse emetseng tlhahlobo."
+    },
+    "marriageCitizenship": "Boahi ka Ngodiso (Lenyalo)",
+    "marriageCitizenshipForm": {
+      "title": "Kopa Boahi ka Ngodiso (Lenyalo le Moahi wa Lesotho)",
+      "intro": "Haeba o nyetse kapa o nyetswe ke moahi wa Lesotho, o ka ba le tokelo ya ho ngodiswa e le moahi tlasa temana 40 ya Molaotheo (jwalo ka ha e fetotswe ka 2018), kamora dilemo tse hlano tsa ho dula hammoho le ho dula Lesotho ka molao ka mehla — kapa, haeba molekane wa hao a hlokahetse, dilemo tse hlano tsa ho dula Lesotho ka molao feela. Ofisiri ya Lekala la Tsamaiso le Taolo e tla hlahloba kopo ya hao mabapi le rekoto ya lenyalo la hao.",
+      "notApplicable": "Tshebeletso ena ke ya di-akhaonto tsa baditjhaba tse kopang ho ba baahi ba Lesotho ka lenyalo le moahi wa Lesotho. Ha e sebetse ho akhaonto ya hao.",
+      "eligibilityNotice": "O tlameha ho bontsha setifikeiti sa lenyalo se seng se amohetswe ke Lekala la Tsamaiso le Taolo, le ho bontsha bonyane dilemo tse hlano tsa ho dula hammoho le ho dula Lesotho ka molao ka mehla le molekane wa hao (kapa, haeba molekane wa hao a hlokahetse, dilemo tse hlano tsa ho dula Lesotho ka molao feela).",
+      "feeNotice": "Tefo ya kopo ya ngodiso e a lefuwa. Kenya bopaki ba tefo le setshwantsho sa risiti.",
+      "field": {
+        "marriageCertificateNumber": "Nomoro ya setifikeiti sa lenyalo",
+        "marriageCertificateNumberHelp": "Nomoro ya setifikeiti ho tswa ngodisong ya lenyalo e amohetsweng ke Lekala la Tsamaiso le Taolo, mohlala MC-2026-483920.",
+        "firstName": "Lebitso la pele",
+        "middleName": "Lebitso la bobedi",
+        "lastName": "Fane",
+        "lastNameHelp": "E tlameha ho tshwana le lebitso le ngodisitsweng bakeng sa hao setifikeiting sa lenyalo se ka hodimo.",
+        "dateOfBirth": "Letsatsi la tswalo",
+        "placeOfBirth": "Sebaka sa tswalo",
+        "sex": "Bong",
+        "nationality": "Boahi (naha ya hao ya boahi)",
+        "arrivalDate": "Letsatsi leo o fihlileng ho dula Lesotho",
+        "arrivalDateHelp": "E sebediswa ho netefatsa ho dula ha hao Lesotho ka molao ka mehla.",
+        "cohabitationStartDate": "Letsatsi leo o qadileng ho dula hammoho le molekane wa hao Lesotho",
+        "cohabitationStartDateHelp": "Ha e hlokahale haeba molekane wa hao a hlokahetse — siya e se na letho ha ho jwalo."
+      },
+      "submit": "Romela kopo"
+    },
+    "marriageCitizenshipQueue": {
+      "title": "Dikopo tsa Boahi ka Ngodiso",
+      "desc": "Hlahloba dikopo tse tswang ho baditjhaba ba nyetseng/ba nyetsweng ke baahi ba Lesotho, e nngwe le e nngwe e hlahlobuwa khahlanong le rekoto ya lenyalo e amohetsweng ke Lekala la Tsamaiso le Taolo.",
+      "citizenSpouse": "Molekane ya leng moahi",
+      "marriageDate": "Letsatsi la lenyalo",
+      "marriageRecordLabel": "Rekoto ya lenyalo e supuwang",
+      "certificateLabel": "Nomoro ya setifikeiti",
+      "deceased": "o hlokahetse",
+      "notApplicableWidowed": "Ha e hlokahale — molekane ya saletseng",
+      "empty": "Ha ho dikopo tsa boahi ka ngodiso tse emetseng tlhahlobo."
     },
     "birthCertificates": "Setifikeiti sa Tswalo",
     "birthCertificatesIntro": "Sheba setifikeiti sa hao sa tswalo le tsa bana ba hao, mme o kope ho se hlahiswa hape haeba se lahlehile, se senyehile, kapa se e-s’o nkuwe.",

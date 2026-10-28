@@ -47,6 +47,7 @@ import Adoption from './pages/homeAffairs/Adoption';
 import MarriageSolemnisation from './pages/homeAffairs/MarriageSolemnisation';
 import MarriageOfficers from './pages/homeAffairs/MarriageOfficers';
 import CitizenshipNaturalization from './pages/homeAffairs/CitizenshipNaturalization';
+import MarriageCitizenship from './pages/homeAffairs/MarriageCitizenship';
 
 import TrafficHub from './pages/traffic/TrafficHub';
 import DrivingLicence from './pages/traffic/DrivingLicence';
@@ -160,6 +161,7 @@ export default function App() {
         <Route path="/home-affairs/marriage-solemnisation" element={<ProtectedRoute><MarriageSolemnisation /></ProtectedRoute>} />
         <Route path="/home-affairs/marriage-officers" element={<ProtectedRoute><MarriageOfficers /></ProtectedRoute>} />
         <Route path="/home-affairs/naturalization" element={<ProtectedRoute><CitizenshipNaturalization /></ProtectedRoute>} />
+        <Route path="/home-affairs/marriage-citizenship" element={<ProtectedRoute><MarriageCitizenship /></ProtectedRoute>} />
 
         <Route path="/traffic" element={<ProtectedRoute><TrafficHub /></ProtectedRoute>} />
         <Route path="/traffic/driving-licence" element={<ProtectedRoute><DrivingLicence /></ProtectedRoute>} />

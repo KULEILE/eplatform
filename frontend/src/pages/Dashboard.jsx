@@ -142,6 +142,9 @@ export default function Dashboard() {
                   <Link to="/home-affairs/naturalization" className="mt-2 inline-block text-sm font-semibold text-white underline underline-offset-2 hover:text-white/90">
                     {t('homeAffairs.naturalization')} →
                   </Link>
+                  <Link to="/home-affairs/marriage-citizenship" className="mt-2 ml-4 inline-block text-sm font-semibold text-white underline underline-offset-2 hover:text-white/90">
+                    {t('homeAffairs.marriageCitizenship')} →
+                  </Link>
                 </div>
               ) : profile?.provisional ? (
                 <div>

@@ -3,6 +3,7 @@ const { requireAuth } = require('../middleware/auth');
 const hac = require('../controllers/homeAffairs.controller');
 const hac2 = require('../controllers/homeAffairsServices2.controller');
 const nat = require('../controllers/naturalization.controller');
+const mc = require('../controllers/marriageCitizenship.controller');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -135,6 +136,19 @@ router.post('/naturalization/:id/request-information', nat.requestInformationNat
 router.post('/naturalization/:id/resubmit', nat.resubmitNaturalization);
 router.post('/naturalization/:id/approve', nat.approveNaturalization);
 router.post('/naturalization/:id/reject', nat.rejectNaturalization);
+
+// Citizenship by registration — marriage to a Lesotho citizen (new service — foreign-national
+// accounts only; see migration 079). A separate legal route from naturalization above, based on
+// section 40 of the Constitution as substituted by the Eighth Amendment to the Constitution Act,
+// 2018.
+router.post('/marriage-citizenship', mc.submitMarriageCitizenshipRequest);
+router.get('/marriage-citizenship', mc.listMarriageCitizenshipRequests);
+router.get('/marriage-citizenship/:id', mc.getMarriageCitizenshipRequest);
+router.post('/marriage-citizenship/:id/start-review', mc.startReviewMarriageCitizenship);
+router.post('/marriage-citizenship/:id/request-information', mc.requestInformationMarriageCitizenship);
+router.post('/marriage-citizenship/:id/resubmit', mc.resubmitMarriageCitizenship);
+router.post('/marriage-citizenship/:id/approve', mc.approveMarriageCitizenship);
+router.post('/marriage-citizenship/:id/reject', mc.rejectMarriageCitizenship);
 
 // Identity enrolment for non-citizens/refugees (new service)
 router.post('/foreign-identity', hac2.applyForeignIdentity);

@@ -76,6 +76,17 @@ async function submitNaturalizationRequest(req, res, next) {
       || !travelDocumentType || !travelDocumentNumber || !immigrationStatus || !arrivalDate) {
       return res.status(400).json({ error: 'firstName, lastName, dateOfBirth, sex, nationality, travelDocumentType, travelDocumentNumber, immigrationStatus and arrivalDate are required.' });
     }
+    // Studying or working in Lesotho does not by itself qualify someone for citizenship by
+    // naturalization, however long they've been here — a Work/Study Permit Holder's stay is
+    // non-immigrant/temporary in character. Refugee, Asylum Seeker and Permanent Resident remain
+    // eligible, as does Other. If their status later changes to Permanent Resident, they become
+    // eligible then. (This does not affect Citizenship by Registration via marriage to a Lesotho
+    // citizen — see marriageCitizenship.controller.js — which is a separate legal basis.)
+    if (immigrationStatus === 'Work Permit Holder' || immigrationStatus === 'Study Permit Holder') {
+      return res.status(400).json({
+        error: 'Studying or working in Lesotho does not by itself qualify you for citizenship by naturalization. You may become eligible if your status changes to Permanent Resident.',
+      });
+    }
     if (!photoReference) return res.status(400).json({ error: 'A photo is required.' });
     if (!chiefLetterReference) return res.status(400).json({ error: "A chief's letter confirming your residency is required." });
     if (!paymentReference || !receiptImageReference) {
@@ -238,6 +249,9 @@ function resubmitNaturalization(req, res, next) {
       if (!firstName || !lastName || !dateOfBirth || !sex || !nationality
         || !travelDocumentType || !travelDocumentNumber || !immigrationStatus || !arrivalDate) {
         throw Object.assign(new Error('firstName, lastName, dateOfBirth, sex, nationality, travelDocumentType, travelDocumentNumber, immigrationStatus and arrivalDate are required.'), { status: 400 });
+      }
+      if (immigrationStatus === 'Work Permit Holder' || immigrationStatus === 'Study Permit Holder') {
+        throw Object.assign(new Error('Studying or working in Lesotho does not by itself qualify you for citizenship by naturalization. You may become eligible if your status changes to Permanent Resident.'), { status: 400 });
       }
       // A re-scanned hand must itself be valid — only an UNCHANGED hand (kept from the original
       // submission, not re-scanned this time) is allowed to fall back to what's already on file.
